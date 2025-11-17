@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教學檔案傳送門</title>
+    <style>
+        :root {
+            --neon-cyan: #00f3ff;
+            --neon-pink: #bc13fe;
+            --neon-yellow: #fce300;
+            --bg-color: #050505;
+            --card-bg: rgba(20, 20, 25, 0.6);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            /* Cyberpunk 網格背景 */
+            background-image: 
+                linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 40px;
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: white;
+            text-shadow: 0 0 10px var(--neon-cyan), 0 0 20px var(--neon-cyan);
+        }
+
+        /* 網格佈局：模仿 Apple Widget 排列 */
+        .grid-box {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 25px;
+        }
+
+        /* 卡片基本樣式 */
+        .widget {
+            text-decoration: none;
+            color: white;
+            background: var(--card-bg);
+            border-radius: 24px; /* Apple 風格大圓角 */
+            padding: 25px;
+            height: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px); /* 毛玻璃特效 */
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
+        /* 啟用狀態的卡片特效 */
+        .widget.active {
+            border: 1px solid rgba(0, 243, 255, 0.3);
+        }
+
+        .widget.active:hover {
+            transform: translateY(-5px) scale(1.02);
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.4), inset 0 0 20px rgba(0, 243, 255, 0.1);
+        }
+
+        /* 特定卡片顏色變化 (讓版面不無聊) */
+        .widget.pink-mode.active:hover {
+            border-color: var(--neon-pink);
+            box-shadow: 0 0 20px rgba(188, 19, 254, 0.4), inset 0 0 20px rgba(188, 19, 254, 0.1);
+        }
+
+        /* 施工中卡片樣式 */
+        .widget.disabled {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px dashed rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.3);
+            cursor: not-allowed;
+        }
+        
+        /* 斜線背景紋理 (施工中) */
+        .widget.disabled::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 10px,
+                rgba(255, 255, 255, 0.02) 10px,
+                rgba(255, 255, 255, 0.02) 20px
+            );
+        }
+
+        /* 卡片內部文字排版 */
+        .icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            filter: drop-shadow(0 0 5px rgba(255,255,255,0.5));
+        }
+
+        .widget-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            line-height: 1.3;
+            z-index: 2;
+        }
+
+        .widget-subtitle {
+            font-size: 0.8rem;
+            opacity: 0.7;
+            font-family: 'Courier New', Courier, monospace; /* 增加程式碼感 */
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .status-light {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--neon-cyan);
+            box-shadow: 0 0 8px var(--neon-cyan);
+        }
+
+        .widget.pink-mode .status-light {
+            background-color: var(--neon-pink);
+            box-shadow: 0 0 8px var(--neon-pink);
+        }
+
+        .widget.disabled .status-light {
+            background-color: #555;
+            box-shadow: none;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>TEACHING_HUB <span style="font-size:0.5em; opacity:0.6;">v2.0</span></h1>
+        
+        <div class="grid-box">
+
+            <a href="area/inventory.html" class="widget active">
+                <div class="status-light"></div>
+                <div class="icon">📊</div>
+                <div>
+                    <div class="widget-subtitle">SYSTEM 01</div>
+                    <div class="widget-title">點作業系統</div>
+                </div>
+            </a>
+
+            <a href="area/inventory.html" class="widget active pink-mode">
+                <div class="status-light"></div>
+                <div class="icon">📝</div>
+                <div>
+                    <div class="widget-subtitle">SYSTEM 02</div>
+                    <div class="widget-title">社團點名系統</div>
+                </div>
+            </a>
+
+            <a href="area/symmetry01.html" class="widget active">
+                <div class="status-light"></div>
+                <div class="icon">💠</div>
+                <div>
+                    <div class="widget-subtitle">LESSON 01</div>
+                    <div class="widget-title">線對稱教學 01</div>
+                </div>
+            </a>
+
+            <a href="area/symmetry02.html" class="widget active pink-mode">
+                <div class="status-light"></div>
+                <div class="icon">💠</div>
+                <div>
+                    <div class="widget-subtitle">LESSON 02</div>
+                    <div class="widget-title">線對稱教學 02</div>
+                </div>
+            </a>
+
+            <div class="widget disabled">
+                <div class="status-light"></div>
+                <div class="icon">🚧</div>
+                <div>
+                    <div class="widget-subtitle">LOCKED</div>
+                    <div class="widget-title">施工中</div>
+                </div>
+            </div>
+
+            <div class="widget disabled">
+                <div class="status-light"></div>
+                <div class="icon">🚧</div>
+                <div>
+                    <div class="widget-subtitle">LOCKED</div>
+                    <div class="widget-title">施工中</div>
+                </div>
+            </div>
+
+            <div class="widget disabled">
+                <div class="status-light"></div>
+                <div class="icon">🚧</div>
+                <div>
+                    <div class="widget-subtitle">LOCKED</div>
+                    <div class="widget-title">施工中</div>
+                </div>
+            </div>
+
+            <div class="widget disabled">
+                <div class="status-light"></div>
+                <div class="icon">🚧</div>
+                <div>
+                    <div class="widget-subtitle">LOCKED</div>
+                    <div class="widget-title">施工中</div>
+                </div>
+            </div>
+
+            <div class="widget disabled">
+                <div class="status-light"></div>
+                <div class="icon">🚧</div>
+                <div>
+                    <div class="widget-subtitle">LOCKED</div>
+                    <div class="widget-title">施工中</div>
+                </div>
+            </div>
+
+            <div class="widget disabled">
+                <div class="status-light"></div>
+                <div class="icon">🚧</div>
+                <div>
+                    <div class="widget-subtitle">LOCKED</div>
+                    <div class="widget-title">施工中</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</body>
+</html>
