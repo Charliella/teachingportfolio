@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>對稱繪圖 - 平板修正版</title>
+    <style>
+        /* --- 整體夜間模式樣式 --- */
+        body {
+            font-family: 'Arial', sans-serif;
+            text-align: center;
+            padding: 20px;
+            margin: 0;
+            background-color: #1a1a2e; 
+            color: #e9f1f8; 
+            /* 防止手機上長按選取文字 */
+            user-select: none;
+            -webkit-user-select: none;
+            overflow-x: hidden; /* 防止左右滑動 */
+            touch-action: none; /* 關鍵：禁止瀏覽器預設觸控行為 */
+        }
+        h1 {
+            color: #00ffc4; 
+            text-shadow: 0 0 5px #00ffc4;
+            font-size: 1.5rem;
+            margin: 10px 0;
+        }
+        #statusText {
+            color: #99ffff; 
+            font-size: 1rem;
+            font-weight: bold;
+            min-height: 1.2em;
+            margin-bottom: 10px;
+        }
+        #drawingCanvas {
+            width: 95%; 
+            max-width: 800px;
+            height: 500px; /* CSS 顯示高度 */
+            border: 2px solid #00ffc4; 
+            background-color: #0d0d1a; 
+            cursor: crosshair; 
+            margin: 0 auto;
+            display: block; 
+            /* 關鍵：告訴瀏覽器這個區域由程式接管觸控 */
+            touch-action: none; 
+            box-shadow: 0 0 15px rgba(0, 255, 196, 0.5); 
+            border-radius: 8px;
+        }
+        /* --- 按鈕樣式 --- */
+        .controls { 
+            margin-bottom: 15px; 
+            display: flex; 
+            justify-content: center; 
+            flex-wrap: wrap; 
+            gap: 8px; 
+            padding: 0 10px;
+        }
+        .controls button {
+            padding: 10px 20px;
+            font-size: 15px;
+            cursor: pointer;
+            border: 2px solid;
+            border-radius: 4px;
+            transition: all 0.2s;
+            box-shadow: 0 0 5px;
+            font-weight: bold;
+            background-color: rgba(255, 255, 255, 0.1);
+            white-space: nowrap; /* 防止文字換行 */
+        }
+        
+        /* 各階段按鈕顏色 */
+        #setAxisButton { color: #ff9900; border-color: #ff9900; box-shadow: 0 0 5px #ff9900; }
+        #startRedDrawButton { color: #ff33cc; border-color: #ff33cc; box-shadow: 0 0 5px #ff33cc; display: none; }
+        #startBlueDrawButton { color: #33ccff; border-color: #33ccff; box-shadow: 0 0 5px #33ccff; display: none; }
+        #compareButton { color: #00ffc4; border-color: #00ffc4; box-shadow: 0 0 5px #00ffc4; display: none; }
+        #clearButton { color: #ff66ff; border-color: #ff66ff; box-shadow: 0 0 5px #ff66ff; } 
+
+        .controls button:active { transform: scale(0.95); opacity: 0.8; }
+        
+        /* 圖例說明 */
+        .legend {
+            font-size: 1em;
+            margin-top: 15px;
+            color: #aaa;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .legend span { display: flex; align-items: center; gap: 5px; }
+    </style>
+</head>
+<body>
+
+    <h1>對稱繪圖 :: 平板優化版</h1>
+    <p id="statusText">📊 步驟 1：請點擊「設定對稱軸」按鈕。</p>
+
+    <div class="controls">
+        <button id="setAxisButton">📌 設定對稱軸 (1/2)</button>
+        <button id="startRedDrawButton">🖍️ 紅筆：繪製題目</button>
+        <button id="startBlueDrawButton">🖊️ 藍筆：學生作答</button>
+        <button id="compareButton">👀 顯示正確答案比對</button>
+        <button id="clearButton">🗑️ 重設</button>
+    </div>
+
+    <canvas id="drawingCanvas"></canvas>
+    
+    <div class="legend" id="legend" style="display:none;">
+        <span style="color:#ff33cc">🔴 題目</span>
+        <span style="color:#33ccff">🔵 學生作答</span>
+        <span style="color:#ffd700; font-weight:bold; text-shadow: 0 0 5px #ffd700;">🟡 正確答案 (閃爍)</span>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('drawingCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const setAxisButton = document.getElementById('setAxisButton');
+        const startRedDrawButton = document.getElementById('startRedDrawButton');
+        const startBlueDrawButton = document.getElementById('startBlueDrawButton');
+        const compareButton = document.getElementById('compareButton'); 
+        const clearButton = document.getElementById('clearButton');
+        const statusText = document.getElementById('statusText');
+        const legend = document.getElementById('legend');
+
+        // --- 狀態變數 ---
+        let currentMode = 'IDLE'; 
+        let isDrawing = false;
+        let symmetryP1 = null; 
+        let symmetryP2 = null; 
+        let angle = 0;         
+        let lastX = 0, lastY = 0;
+        
+        // --- 繪圖歷史 ---
+        let redDrawingHistory = [];  
+        let blueDrawingHistory = []; 
+        let mirrorDrawingHistory = []; 
+
+        let animationFrameId = null; 
+        let flickerState = 0;        
+
+        // --- 顏色設定 ---
+        const COLORS = {
+            RED: '#ff33cc',   
+            BLUE: '#33ccff',  
+            GOLD: '#ffd700',  
+            AXIS: '#00ffc4',  
+            AXIS_LIGHT: '#99ffff' 
+        };
+
+        // --- 核心：畫布尺寸與解析度設定 (平板修正關鍵) ---
+        function setCanvasSize() {
+            const dpr = window.devicePixelRatio || 1;
+            // 取得 CSS 顯示大小
+            const rect = canvas.getBoundingClientRect();
+            
+            // 設定畫布的實際像素大小 (解決 Retina 模糊問題)
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            
+            // 將 Context 縮放，讓我們可以使用 CSS 像素座標進行繪圖
+            ctx.scale(dpr, dpr);
+            
+            // 因為 Canvas 重設大小會清空狀態，需請求重繪
+            if (symmetryP1 || redDrawingHistory.length > 0) {
+                // 不需要額外呼叫 redraw，因為 animationLoop 會處理
+            }
+        }
+
+        // --- 座標取得 (平板修正關鍵：統一滑鼠與觸控) ---
+        function getCoords(e) {
+            const rect = canvas.getBoundingClientRect();
+            let clientX, clientY;
+
+            // 判斷是觸控事件還是滑鼠事件
+            if (e.touches && e.touches.length > 0) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else if (e.changedTouches && e.changedTouches.length > 0) {
+                // 處理 touchend 有時在 changedTouches 裡
+                clientX = e.changedTouches[0].clientX;
+                clientY = e.changedTouches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+
+            return { 
+                x: clientX - rect.left, 
+                y: clientY - rect.top 
+            };
+        }
+
+        // --- 輔助：重設筆刷 ---
+        function resetContext(color, width = 5, alpha = 1.0, dash = []) {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
+            ctx.globalAlpha = alpha;
+            ctx.setLineDash(dash);
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.shadowBlur = 0;
+        }
+
+        // --- 核心：重繪畫布所有內容 ---
+        function redrawAllStrokes() {
+            // 1. 繪製紅線 (題目)
+            resetContext(COLORS.RED, 5, 1.0);
+            ctx.beginPath();
+            redDrawingHistory.forEach(seg => {
+                ctx.moveTo(seg.x1, seg.y1);
+                ctx.lineTo(seg.x2, seg.y2);
+            });
+            ctx.stroke();
+
+            // 2. 繪製藍線 (學生)
+            resetContext(COLORS.BLUE, 5, 1.0);
+            ctx.beginPath();
+            blueDrawingHistory.forEach(seg => {
+                ctx.moveTo(seg.x1, seg.y1);
+                ctx.lineTo(seg.x2, seg.y2);
+            });
+            ctx.stroke();
+
+            // 3. 比對模式：繪製正確答案 (金色實線 + 呼吸燈)
+            if (currentMode === 'COMPARE' && mirrorDrawingHistory.length > 0) {
+                const time = Date.now() / 800; 
+                const pulse = (Math.sin(time) + 1) / 2; 
+                const currentAlpha = 0.15 + (0.65 * pulse); 
+
+                resetContext(COLORS.GOLD, 6, currentAlpha, []); 
+                
+                ctx.shadowColor = COLORS.GOLD;
+                ctx.shadowBlur = 15 * pulse; 
+                
+                ctx.beginPath();
+                mirrorDrawingHistory.forEach(seg => {
+                    ctx.moveTo(seg.x1, seg.y1); 
+                    ctx.lineTo(seg.x2, seg.y2);
+                });
+                ctx.stroke();
+                ctx.shadowBlur = 0; 
+            }
+        }
+
+        // --- 繪製閃爍軸線 ---
+        function drawSymmetryLine() {
+            if (!symmetryP1 || !symmetryP2) return;
+
+            flickerState = (flickerState + 1) % 60; 
+            const isFlicker = (flickerState % 15 < 3);
+            
+            resetContext(
+                isFlicker ? COLORS.AXIS_LIGHT : COLORS.AXIS,
+                isFlicker ? 2 : 1.5,
+                isFlicker ? 0.9 : 0.6,
+                [(flickerState % 10) + 5, 5]
+            );
+            
+            ctx.beginPath();
+            ctx.moveTo(symmetryP1.x, symmetryP1.y);
+            ctx.lineTo(symmetryP2.x, symmetryP2.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 畫端點
+            const drawPoint = (p, color) => {
+                ctx.globalAlpha = 1.0;
+                ctx.fillStyle = color;
+                ctx.shadowColor = color;
+                ctx.shadowBlur = 10;
+                ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI*2); ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#fff';
+                ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI*2); ctx.fill();
+            };
+            drawPoint(symmetryP1, '#ff33cc');
+            drawPoint(symmetryP2, '#ff9900');
+        }
+
+        // --- 動畫循環 ---
+        function animationLoop() {
+            ctx.clearRect(0, 0, canvas.width / (window.devicePixelRatio || 1), canvas.height / (window.devicePixelRatio || 1));
+            redrawAllStrokes(); 
+            drawSymmetryLine();
+            animationFrameId = requestAnimationFrame(animationLoop);
+        }
+
+        function startAnimation() {
+            if (!animationFrameId) animationLoop();
+        }
+        function stopAnimation() {
+            if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
+        }
+
+        // --- 幾何計算 ---
+        function getMirrorPoint(x, y) {
+            if (!symmetryP1 || !symmetryP2) return {x, y};
+            const x1 = symmetryP1.x, y1 = symmetryP1.y;
+            const cosA = Math.cos(angle), sinA = Math.sin(angle);
+            const tx = x - x1, ty = y - y1;
+            const rx = tx * cosA + ty * sinA;
+            const ry = ty * cosA - tx * sinA;
+            const finalX = (rx * cosA - (-ry) * sinA) + x1;
+            const finalY = (rx * sinA + (-ry) * cosA) + y1;
+            return { x: finalX, y: finalY };
+        }
+
+        // --- 繪圖處理 ---
+        function handleStart(x, y) {
+             if (currentMode === 'SET_P1') {
+                symmetryP1 = {x, y};
+                currentMode = 'SET_P2';
+                setAxisButton.textContent = '設定點 2...';
+                // 立即回饋
+                ctx.fillStyle = '#ff33cc'; ctx.beginPath(); ctx.arc(x,y,5,0,Math.PI*2); ctx.fill();
+            } else if (currentMode === 'SET_P2') {
+                symmetryP2 = {x, y};
+                angle = Math.atan2(symmetryP2.y - symmetryP1.y, symmetryP2.x - symmetryP1.x);
+                currentMode = 'IDLE';
+                setAxisButton.textContent = '✅ 軸線已設定';
+                setAxisButton.style.backgroundColor = '#17a2b8';
+                startAnimation(); 
+                statusText.textContent = '軸線完成！請按「紅筆」開始出題。';
+            } else if (currentMode === 'DRAW_RED' || currentMode === 'DRAW_BLUE') {
+                isDrawing = true;
+                [lastX, lastY] = [x, y];
+            }
+        }
+
+        function handleMove(x, y) {
+            if (!isDrawing) return;
+            let history = (currentMode === 'DRAW_RED') ? redDrawingHistory : blueDrawingHistory;
+            history.push({ x1: lastX, y1: lastY, x2: x, y2: y });
+            [lastX, lastY] = [x, y];
+        }
+
+        function handleEnd() {
+            isDrawing = false;
+        }
+
+        // --- 事件監聽 (整合滑鼠與觸控) ---
+        
+        // Pointer Down (Mouse Down / Touch Start)
+        const onPointerDown = (e) => {
+            // 如果點擊的是按鈕，不要觸發 Canvas 事件
+            if (e.target !== canvas) return;
+            
+            e.preventDefault(); // 防止在平板上捲動或縮放
+            const {x, y} = getCoords(e);
+            handleStart(x, y);
+        };
+
+        // Pointer Move (Mouse Move / Touch Move)
+        const onPointerMove = (e) => {
+             if (e.target !== canvas && !isDrawing) return;
+             
+             e.preventDefault(); // 防止拖曳頁面
+             const {x, y} = getCoords(e);
+             handleMove(x, y);
+        };
+
+        // Pointer Up (Mouse Up / Touch End)
+        const onPointerUp = (e) => {
+            handleEnd();
+        };
+
+        // 註冊監聽器
+        canvas.addEventListener('mousedown', onPointerDown);
+        canvas.addEventListener('touchstart', onPointerDown, {passive: false});
+
+        canvas.addEventListener('mousemove', onPointerMove);
+        canvas.addEventListener('touchmove', onPointerMove, {passive: false});
+
+        window.addEventListener('mouseup', onPointerUp);
+        window.addEventListener('touchend', onPointerUp);
+
+        // --- 按鈕邏輯 ---
+        setAxisButton.onclick = () => {
+            currentMode = 'SET_P1';
+            isDrawing = false;
+            mirrorDrawingHistory = [];
+            legend.style.display = 'none';
+            
+            startRedDrawButton.style.display = 'block';
+            startBlueDrawButton.style.display = 'none';
+            compareButton.style.display = 'none';
+            
+            setAxisButton.textContent = '設定點 1...';
+            statusText.textContent = '步驟 1：請點擊畫布設定第一個軸點。';
+            
+            // 清除並重設尺寸 (解決殘留問題)
+            stopAnimation();
+            ctx.clearRect(0, 0, canvas.width, canvas.height); 
+            // 因為動畫停止了，這裡不強制重繪，等待第一次點擊
+        };
+
+        startRedDrawButton.onclick = () => {
+            if (!symmetryP1 || !symmetryP2) { alert("請先設定軸線！"); return; }
+            currentMode = 'DRAW_RED';
+            statusText.textContent = '🖍️ 紅筆模式：請繪製題目線條 (單側)。';
+            startRedDrawButton.style.display = 'none';
+            startBlueDrawButton.style.display = 'block';
+        };
+
+        startBlueDrawButton.onclick = () => {
+            currentMode = 'DRAW_BLUE';
+            statusText.textContent = '🖊️ 藍筆模式：請繪製鏡像答案。';
+            startBlueDrawButton.style.display = 'none';
+            compareButton.style.display = 'block'; 
+        };
+
+        compareButton.onclick = () => {
+            if (redDrawingHistory.length === 0) { alert("請先畫紅線題目！"); return; }
+            if (blueDrawingHistory.length === 0) { alert("學生還沒作答喔！"); return; }
+
+            currentMode = 'COMPARE';
+            legend.style.display = 'flex';
+            
+            mirrorDrawingHistory = redDrawingHistory.map(seg => {
+                const p1 = getMirrorPoint(seg.x1, seg.y1);
+                const p2 = getMirrorPoint(seg.x2, seg.y2);
+                return { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y };
+            });
+
+            statusText.textContent = '👀 比對模式：金色實線會慢慢閃爍，請檢查學生答案是否重疊。';
+            compareButton.style.display = 'none';
+        };
+
+        clearButton.onclick = () => {
+            location.reload(); 
+        };
+
+        // 初始化與調整視窗
+        window.onload = setCanvasSize;
+        window.onresize = setCanvasSize;
+
+    </script>
+</body>
+</html>

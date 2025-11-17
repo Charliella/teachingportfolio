@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyberpunk 對稱繪圖工具 (已修正)</title>
+    <style>
+        /* --- 整體夜間模式樣式 --- */
+        body {
+            font-family: 'Arial', sans-serif;
+            text-align: center;
+            padding: 20px;
+            margin: 0;
+            background-color: #1a1a2e; 
+            color: #e9f1f8; 
+        }
+        h1 {
+            color: #00ffc4; 
+            text-shadow: 0 0 5px #00ffc4;
+        }
+        p {
+            color: #99ffff; /* 狀態文字改為更柔和的亮藍色 */
+        }
+        #drawingCanvas {
+            width: 90%; 
+            max-width: 800px;
+            height: 500px;
+            border: 2px solid #00ffc4; 
+            background-color: #0d0d1a; 
+            cursor: default; 
+            margin: 10px auto;
+            display: block; 
+            touch-action: none; 
+            box-shadow: 0 0 10px rgba(0, 255, 196, 0.5); 
+        }
+        /* --- 按鈕樣式 (Cyberpunk 風格) --- */
+        .controls { margin-bottom: 20px; }
+        .controls button {
+            padding: 12px 25px;
+            font-size: 16px;
+            cursor: pointer;
+            border: 2px solid;
+            border-radius: 4px;
+            margin: 5px;
+            transition: all 0.2s;
+            box-shadow: 0 0 5px;
+        }
+        #toggleButton { 
+            background-color: #28a74520; 
+            color: #00ffc4; 
+            border-color: #00ffc4;
+            box-shadow: 0 0 5px #00ffc4;
+        } 
+        #setAxisButton { 
+            background-color: #ffc10720; 
+            color: #ff9900; /* 改為較柔和的橘色 */
+            border-color: #ff9900;
+            box-shadow: 0 0 5px #ff9900;
+        } 
+        #clearButton { 
+            background-color: #007bff20; 
+            color: #ff33cc; 
+            border-color: #ff33cc;
+            box-shadow: 0 0 5px #ff33cc;
+        } 
+        .controls button:hover {
+            transform: translateY(-2px);
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>自由直線對稱繪圖工具 :: AXIS_CONTROL</h1>
+    <p id="statusText">請點擊 **設定對稱軸** 按鈕來定義您的鏡像軸（需點擊兩次）。</p>
+
+    <div class="controls">
+        <button id="setAxisButton">📌 設定對稱軸 (1/2)</button>
+        <button id="toggleButton">🖌️ 點此開始繪製</button>
+        <button id="clearButton">🗑️ 清除畫布</button>
+    </div>
+
+    <canvas id="drawingCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('drawingCanvas');
+        const ctx = canvas.getContext('2d');
+        const toggleButton = document.getElementById('toggleButton');
+        const setAxisButton = document.getElementById('setAxisButton');
+        const clearButton = document.getElementById('clearButton');
+        const statusText = document.getElementById('statusText');
+
+        let isDrawing = false;
+        let isDrawingMode = false; 
+        let isSettingAxisP1 = false; 
+        let isSettingAxisP2 = false; 
+
+        let symmetryP1 = null; 
+        let symmetryP2 = null; 
+        let angle = 0;         
+
+        let lastX = 0;
+        let lastY = 0;
+        
+        // 【修正一：繪圖歷史紀錄】
+        // 儲存用戶畫的所有線段，以便在動畫時重繪
+        let drawingHistory = []; 
+
+        // --- 動畫相關變數 ---
+        let animationFrameId = null; 
+        let flickerState = 0;        
+        
+        // --- 繪圖樣式設定 ---
+        const USER_STROKE_COLOR = '#33ccff'; // 用戶繪製線條顏色 (天藍色)
+        const AXIS_PRIMARY_COLOR = '#00ffc4'; // 軸線主色 (霓虹綠)
+        const AXIS_FLICKER_COLOR = '#99ffff'; // 軸線閃爍輔色 (柔和亮白)
+
+        ctx.strokeStyle = USER_STROKE_COLOR; 
+        ctx.lineWidth = 5;           
+        ctx.lineCap = 'round';       
+
+        // --- 核心修正函數：重繪用戶線條 ---
+        function redrawUserStrokes() {
+            ctx.strokeStyle = USER_STROKE_COLOR;
+            ctx.lineWidth = 5;
+            ctx.globalAlpha = 1.0;
+            ctx.setLineDash([]); // 確保用戶繪圖是實線
+
+            drawingHistory.forEach(segment => {
+                ctx.beginPath();
+                ctx.moveTo(segment.x1, segment.y1);
+                ctx.lineTo(segment.x2, segment.y2);
+                ctx.stroke();
+            });
+        }
+        
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            
+            // 由於動畫循環會處理清除和重繪，這裡只確保尺寸正確
+            
+            if (symmetryP1 && symmetryP2) {
+                stopFlickerAnimation();
+                startFlickerAnimation();
+            } else {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                redrawUserStrokes();
+            }
+
+            ctx.strokeStyle = USER_STROKE_COLOR; 
+            ctx.lineWidth = 5; 
+            ctx.lineCap = 'round';
+        }
+
+        // 繪製對稱軸線 (P1 到 P2)
+        function drawSymmetryLine(p1, p2) {
+            
+            // 【修正二：柔和閃爍】
+            flickerState = (flickerState + 1) % 60; // 週期 60 幀
+            
+            // 顏色與透明度柔和變化
+            const isFlicker = (flickerState % 15 < 3); // 降低閃爍頻率
+            ctx.strokeStyle = isFlicker ? AXIS_FLICKER_COLOR : AXIS_PRIMARY_COLOR;
+            ctx.lineWidth = isFlicker ? 2 : 1.5; // 線寬變化較小
+            ctx.globalAlpha = isFlicker ? 0.9 : 0.7; // 透明度變化較小
+            
+            // 虛線長度動態變化
+            ctx.setLineDash([(flickerState % 10) + 5, (flickerState % 5) + 5]); 
+            
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+
+            // 標示 P1 和 P2 (固定樣式) - 在動畫循環中繪製
+            ctx.globalAlpha = 1.0;
+            ctx.fillStyle = '#ff9900';
+            
+            // P1 標記
+            ctx.shadowColor = '#ff33cc'; // P1 使用粉色光
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.arc(p1.x, p1.y, 7, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#e9f1f8';
+            ctx.beginPath();
+            ctx.arc(p1.x, p1.y, 3, 0, 2 * Math.PI);
+            ctx.fill();
+
+            // P2 標記
+            ctx.fillStyle = '#ff9900'; // P2 使用橘色光
+            ctx.shadowColor = '#ff9900';
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.arc(p2.x, p2.y, 7, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#e9f1f8';
+            ctx.beginPath();
+            ctx.arc(p2.x, p2.y, 3, 0, 2 * Math.PI);
+            ctx.fill();
+
+            // 重置陰影，避免影響後續繪圖
+            ctx.shadowBlur = 0;
+        }
+        
+        // --- 閃爍動畫控制 ---
+        function flickerAnimationLoop() {
+            // 【修正一：保留線條的關鍵步驟】
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // 1. 清除畫布
+            redrawUserStrokes();                             // 2. 重繪用戶線條
+            
+            if (symmetryP1 && symmetryP2) {
+                drawSymmetryLine(symmetryP1, symmetryP2);    // 3. 繪製閃爍軸線 (包含 P1, P2 標記)
+            }
+            
+            animationFrameId = requestAnimationFrame(flickerAnimationLoop);
+        }
+
+        function startFlickerAnimation() {
+            if (animationFrameId) stopFlickerAnimation();
+            animationFrameId = requestAnimationFrame(flickerAnimationLoop);
+        }
+
+        function stopFlickerAnimation() {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+        }
+
+        window.addEventListener('load', resizeCanvas);
+        window.addEventListener('resize', resizeCanvas);
+
+        // --- 【新增函數】即時繪製單個點的標記 (設定軸線時用) ---
+        function drawAxisPointMarker(x, y, color = '#ff33cc') {
+            // 清除畫布和重繪用戶線條，以確保點位在最上層
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            redrawUserStrokes(); 
+            
+            // 繪製點位 (Cyberpunk 發光效果)
+            ctx.globalAlpha = 1.0;
+            
+            // 點位外環 (發光效果)
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 8;
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(x, y, 7, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // 點位核心
+            ctx.shadowBlur = 0; // 移除陰影
+            ctx.fillStyle = '#e9f1f8'; // 白色核心
+            ctx.beginPath();
+            ctx.arc(x, y, 3, 0, 2 * Math.PI);
+            ctx.fill();
+
+            // 重置陰影
+            ctx.shadowBlur = 0;
+        }
+
+
+        // --- 核心幾何計算函數 (保持不變) ---
+        function getMirrorPoint(x, y) {
+            // ... (幾何反射計算，保持不變) ...
+            if (!symmetryP1 || !symmetryP2) return {x, y};
+            const x1 = symmetryP1.x;
+            const y1 = symmetryP1.y;
+            const cosA = Math.cos(angle);
+            const sinA = Math.sin(angle);
+            const tx = x - x1;
+            const ty = y - y1;
+            const rx = tx * cosA + ty * sinA;
+            const ry = ty * cosA - tx * sinA;
+            const reflected_ry = -ry;
+            const r2x = rx * cosA - reflected_ry * sinA;
+            const r2y = rx * sinA + reflected_ry * cosA;
+            const finalX = r2x + x1;
+            const finalY = r2y + y1;
+            return { x: finalX, y: finalY };
+        }
+
+
+        // --- 核心繪圖邏輯 (記錄線段) ---
+        function symmetricalDraw(x, y) {
+            if (!isDrawing || !symmetryP1 || !symmetryP2) return; 
+
+            const P_mirror = getMirrorPoint(x, y);
+            const P_mirror_last = getMirrorPoint(lastX, lastY);
+
+            // 【修正一：記錄線段到歷史紀錄】
+            drawingHistory.push({ x1: lastX, y1: lastY, x2: x, y2: y }); // 原始線段
+            drawingHistory.push({ x1: P_mirror_last.x, y1: P_mirror_last.y, x2: P_mirror.x, y2: P_mirror.y }); // 鏡像線段
+
+            // 雖然紀錄了，但為了實時響應，我們仍需立即畫出來
+            
+            // 繪製前重設繪圖樣式
+            ctx.strokeStyle = USER_STROKE_COLOR;
+            ctx.lineWidth = 5;
+            ctx.globalAlpha = 1.0;
+            ctx.setLineDash([]); 
+
+            // 1. 繪製原始線條
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+
+            // 2. 繪製對稱線條
+            ctx.beginPath();
+            ctx.moveTo(P_mirror_last.x, P_mirror_last.y);
+            ctx.lineTo(P_mirror.x, P_mirror.y);
+            ctx.stroke();
+
+            [lastX, lastY] = [x, y];
+        }
+        
+        function startDrawing(x, y) {
+            if (!isDrawingMode || !symmetryP1 || !symmetryP2) return; 
+            isDrawing = true;
+            [lastX, lastY] = [x, y];
+        }
+        
+        function stopDrawing() { isDrawing = false; }
+        
+        function getCanvasCoords(clientX, clientY) {
+            const rect = canvas.getBoundingClientRect();
+            return { x: clientX - rect.left, y: clientY - rect.top };
+        }
+
+        // --- 【修改函數】設定對稱軸邏輯 (加入即時繪製標記) ---
+        function setSymmetryAxisPoint(x, y) {
+            if (isSettingAxisP1) {
+                // 設定 P1
+                symmetryP1 = { x, y };
+                isSettingAxisP1 = false;
+                isSettingAxisP2 = true;
+                
+                // 【新功能】即時繪製 P1 標記 (粉色)
+                drawAxisPointMarker(x, y, '#ff33cc'); 
+                
+                statusText.textContent = '步驟 2/2：請點擊畫布上的 **第二個點** 來定義軸線方向。';
+                setAxisButton.textContent = '🖱️ 設定點 2...';
+            } else if (isSettingAxisP2) {
+                // 設定 P2
+                symmetryP2 = { x, y };
+                isSettingAxisP2 = false;
+                
+                angle = Math.atan2(symmetryP2.y - symmetryP1.y, symmetryP2.x - symmetryP1.x);
+
+                canvas.style.cursor = 'default';
+                setAxisButton.textContent = `✅ AXIS ONLINE`;
+                setAxisButton.style.backgroundColor = '#17a2b8';
+                statusText.textContent = '軸線已鎖定！請點擊「開始繪製」按鈕。';
+                
+                resizeCanvas(); // 啟動閃爍動畫 (會清除畫布並重繪軸線和P1/P2)
+            }
+        }
+
+        // --- 按鈕事件 (清除按鈕需清除歷史紀錄) ---
+        setAxisButton.addEventListener('click', () => {
+            // ... (設定軸線邏輯不變) ...
+            isSettingAxisP1 = true;
+            isSettingAxisP2 = false;
+            isDrawingMode = false;
+            isDrawing = false;
+            
+            toggleButton.textContent = '🖌️ 點此開始繪製';
+            toggleButton.style.backgroundColor = '#28a74520';
+            
+            canvas.style.cursor = 'crosshair';
+            setAxisButton.textContent = '🖱️ 請點擊畫布上的 **第一個點**...';
+            setAxisButton.style.backgroundColor = '#fd7e14';
+            stopFlickerAnimation(); 
+            // 清空畫布以開始新的設定
+            ctx.clearRect(0, 0, canvas.width, canvas.height); 
+            redrawUserStrokes(); // 保留用戶繪圖
+            statusText.textContent = '步驟 1/2：請在畫布上點擊或觸碰第一個點。';
+        });
+
+        toggleButton.addEventListener('click', () => {
+            // ... (切換繪製模式邏輯不變) ...
+            if (!symmetryP1 || !symmetryP2) {
+                alert('ERROR: 請先點擊「設定對稱軸」按鈕來定義鏡像軸！');
+                return;
+            }
+            isDrawingMode = !isDrawingMode;
+            if (isDrawingMode) {
+                isSettingAxisP1 = false; 
+                isSettingAxisP2 = false;
+                
+                toggleButton.textContent = '⏸ 暫停繪製';
+                toggleButton.style.backgroundColor = '#dc3545';
+                canvas.style.cursor = 'crosshair'; 
+                statusText.textContent = 'DRAWING MODE: ACTIVATED';
+            } else {
+                toggleButton.textContent = '🖌️ 點此開始繪製';
+                toggleButton.style.backgroundColor = '#28a74520';
+                canvas.style.cursor = 'default';
+                isDrawing = false; 
+                statusText.textContent = 'DRAWING MODE: PAUSED';
+            }
+        });
+
+        clearButton.addEventListener('click', () => {
+            isDrawingMode = false;
+            isSettingAxisP1 = false;
+            isSettingAxisP2 = false;
+            isDrawing = false;
+            symmetryP1 = null; 
+            symmetryP2 = null; 
+            
+            drawingHistory = []; // 【修正一：清除歷史紀錄】
+            
+            stopFlickerAnimation(); 
+            resizeCanvas(); 
+            
+            // 重設按鈕狀態
+            toggleButton.textContent = '🖌️ 點此開始繪製';
+            toggleButton.style.backgroundColor = '#28a74520';
+            setAxisButton.textContent = '📌 設定對稱軸 (1/2)';
+            setAxisButton.style.backgroundColor = '#ffc10720';
+            canvas.style.cursor = 'default';
+            statusText.textContent = '畫布已清除！請重新設定對稱軸。';
+        });
+        
+        // --- 點擊/觸控處理 (保持不變) ---
+        function handleInteraction(clientX, clientY) {
+            const { x, y } = getCanvasCoords(clientX, clientY);
+            if (isSettingAxisP1 || isSettingAxisP2) {
+                setSymmetryAxisPoint(x, y);
+            } else if (isDrawingMode) {
+                startDrawing(x, y);
+            }
+        }
+
+        canvas.addEventListener('mousedown', (e) => handleInteraction(e.clientX, e.clientY));
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault(); 
+            handleInteraction(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: false });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            const { x, y } = getCanvasCoords(e.clientX, e.clientY);
+            symmetricalDraw(x, y);
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault(); 
+            const touch = e.touches[0];
+            const { x, y } = getCanvasCoords(touch.clientX, touch.clientY);
+            symmetricalDraw(x, y);
+        }, { passive: false });
+
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+        canvas.addEventListener('touchend', stopDrawing);
+        canvas.addEventListener('touchcancel', stopDrawing);
+    </script>
+
+</body>
+</html>
