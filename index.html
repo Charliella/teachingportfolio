@@ -3,14 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>教學檔案傳送門</title>
+    <title>TEACHING HUB</title>
     <style>
         :root {
-            --neon-cyan: #00f3ff;
-            --neon-pink: #bc13fe;
-            --neon-yellow: #fce300;
-            --bg-color: #050505;
-            --card-bg: rgba(20, 20, 25, 0.6);
+            --primary: #0A84FF; /* iOS Blue */
+            --cyan: #5AC8FA;
+            --pink: #FF2D55;
+            --yellow: #FFD60A;
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.15);
+            --glass-highlight: rgba(255, 255, 255, 0.3);
+            --blur-amount: 30px;
         }
 
         * {
@@ -20,288 +23,400 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            /* Cyberpunk 網格背景 */
-            background-image: 
-                linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
-            background-size: 40px 40px;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #000;
             color: white;
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 40px 20px;
+            padding: 60px 20px;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* --- 背景流體特效 (Liquid Background) --- */
+        .ambient-light {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            overflow: hidden;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.6;
+            animation: float 20s infinite ease-in-out alternate;
+        }
+
+        .blob-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: radial-gradient(circle, var(--primary), transparent); animation-delay: 0s; }
+        .blob-2 { bottom: -20%; right: -10%; width: 60vw; height: 60vw; background: radial-gradient(circle, var(--pink), transparent); animation-delay: -5s; }
+        .blob-3 { top: 40%; left: 40%; width: 40vw; height: 40vw; background: radial-gradient(circle, #7000ff, transparent); animation-delay: -10s; }
+
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(50px, 30px) scale(1.1); }
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1280px;
             width: 100%;
+            z-index: 1;
+        }
+
+        /* --- 標題設計 --- */
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+            position: relative;
         }
 
         h1 {
-            text-align: center;
-            margin-bottom: 40px;
-            font-size: 2.5rem;
+            font-size: 3.5rem;
             font-weight: 800;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            color: white;
-            text-shadow: 0 0 10px var(--neon-cyan), 0 0 20px var(--neon-cyan);
+            letter-spacing: -1px;
+            background: linear-gradient(135deg, #fff 0%, #ccc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+            filter: drop-shadow(0 10px 20px rgba(0,0,0,0.5));
         }
 
-        /* 網格佈局：模仿 Apple Widget 排列 */
+        .version-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 20px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            font-size: 0.9rem;
+            font-weight: 500;
+            backdrop-filter: blur(10px);
+            color: rgba(255,255,255,0.9);
+            margin-top: 10px;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        /* --- 網格系統 --- */
         .grid-box {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 25px;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 30px;
         }
 
-        /* 卡片基本樣式 */
+        /* --- 超美液態玻璃卡片 --- */
         .widget {
+            position: relative;
             text-decoration: none;
             color: white;
-            background: var(--card-bg);
-            border-radius: 24px; /* Apple 風格大圓角 */
-            padding: 25px;
-            height: 200px;
+            background: var(--glass-bg);
+            border-radius: 32px; /* iOS squircle */
+            padding: 30px;
+            height: 220px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            position: relative;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px); /* 毛玻璃特效 */
-            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            
+            /* 核心玻璃質感 */
+            backdrop-filter: blur(var(--blur-amount)) saturate(180%);
+            -webkit-backdrop-filter: blur(var(--blur-amount)) saturate(180%);
+            border: 1px solid var(--glass-border);
+            box-shadow: 
+                0 4px 24px -1px rgba(0, 0, 0, 0.2),
+                inset 0 0 20px rgba(255,255,255,0.02); /* 內部微光 */
+            
+            transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
             overflow: hidden;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
         }
 
-        /* 啟用狀態的卡片特效 */
-        .widget.active {
-            border: 1px solid rgba(0, 243, 255, 0.3);
-        }
-
-        .widget.active:hover {
-            transform: translateY(-5px) scale(1.02);
-            border-color: var(--neon-cyan);
-            box-shadow: 0 0 20px rgba(0, 243, 255, 0.4), inset 0 0 20px rgba(0, 243, 255, 0.1);
-        }
-
-        /* 特定卡片顏色變化 (讓版面不無聊) */
-        .widget.pink-mode.active:hover {
-            border-color: var(--neon-pink);
-            box-shadow: 0 0 20px rgba(188, 19, 254, 0.4), inset 0 0 20px rgba(188, 19, 254, 0.1);
-        }
-        
-        .widget.yellow-mode.active:hover {
-             border-color: var(--neon-yellow);
-             box-shadow: 0 0 20px rgba(252, 227, 0, 0.4), inset 0 0 20px rgba(252, 227, 0, 0.1);
-        }
-
-        /* 施工中卡片樣式 */
-        .widget.disabled {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px dashed rgba(255, 255, 255, 0.1);
-            color: rgba(255, 255, 255, 0.3);
-            cursor: not-allowed;
-        }
-        
-        /* 斜線背景紋理 (施工中) */
-        .widget.disabled::before {
+        /* 卡片內部反光掃光特效 */
+        .widget::after {
             content: "";
             position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: repeating-linear-gradient(
-                45deg,
-                transparent,
-                transparent 10px,
-                rgba(255, 255, 255, 0.02) 10px,
-                rgba(255, 255, 255, 0.02) 20px
-            );
+            top: 0; left: -100%;
+            width: 50%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            transform: skewX(-25deg);
+            transition: 0s;
+            pointer-events: none;
         }
 
-        /* 卡片內部文字排版 */
+        .widget:hover::after {
+            left: 200%;
+            transition: 0.7s ease-in-out;
+        }
+
+        /* Hover 動畫 */
+        .widget.active:hover {
+            transform: translateY(-10px) scale(1.03);
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--glass-highlight);
+            box-shadow: 
+                0 20px 40px -5px rgba(0, 0, 0, 0.4),
+                0 0 0 1px rgba(255,255,255,0.1); /* 外發光邊緣 */
+        }
+
+        /* 顏色主題模式 */
+        .widget.blue-mode .status-light { background: var(--cyan); box-shadow: 0 0 15px var(--cyan); }
+        .widget.blue-mode:hover .icon { color: var(--cyan); filter: drop-shadow(0 0 10px var(--cyan)); }
+
+        .widget.pink-mode .status-light { background: var(--pink); box-shadow: 0 0 15px var(--pink); }
+        .widget.pink-mode:hover .icon { color: var(--pink); filter: drop-shadow(0 0 10px var(--pink)); }
+
+        .widget.yellow-mode .status-light { background: var(--yellow); box-shadow: 0 0 15px var(--yellow); }
+        .widget.yellow-mode:hover .icon { color: var(--yellow); filter: drop-shadow(0 0 10px var(--yellow)); }
+
+        /* 內容排版 */
+        .top-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
         .icon {
-            font-size: 2rem;
-            margin-bottom: 10px;
-            filter: drop-shadow(0 0 5px rgba(255,255,255,0.5));
+            font-size: 2.5rem;
+            transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
         }
 
-        .widget-title {
-            font-size: 1.3rem;
-            font-weight: 700;
-            line-height: 1.3;
+        .widget:hover .icon {
+            transform: scale(1.2) rotate(-5deg);
+        }
+
+        .status-light {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+        }
+
+        .text-content {
             z-index: 2;
         }
 
         .widget-subtitle {
-            font-size: 0.8rem;
-            opacity: 0.7;
-            font-family: 'Courier New', Courier, monospace; /* 增加程式碼感 */
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 2px;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 6px;
         }
 
-        .status-light {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background-color: var(--neon-cyan);
-            box-shadow: 0 0 8px var(--neon-cyan);
+        .widget-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            line-height: 1.2;
+            background: linear-gradient(to bottom, #fff, #eee);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
-        .widget.pink-mode .status-light {
-            background-color: var(--neon-pink);
-            box-shadow: 0 0 8px var(--neon-pink);
+        /* Disabled 狀態美化 */
+        .widget.disabled {
+            background: rgba(20, 20, 20, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            cursor: default;
+            opacity: 0.6;
         }
         
-        .widget.yellow-mode .status-light {
-            background-color: var(--neon-yellow);
-            box-shadow: 0 0 8px var(--neon-yellow);
+        .widget.disabled .icon {
+            filter: grayscale(100%);
+            opacity: 0.3;
         }
 
-        .widget.disabled .status-light {
-            background-color: #555;
+        .widget.disabled:hover {
+            transform: none;
             box-shadow: none;
+            border-color: rgba(255, 255, 255, 0.05);
+        }
+
+        /* 手機版適配 */
+        @media (max-width: 600px) {
+            h1 { font-size: 2.5rem; }
+            .grid-box { grid-template-columns: 1fr; }
+            .widget { height: 180px; }
         }
 
     </style>
 </head>
 <body>
 
+    <!-- 背景流體動畫層 -->
+    <div class="ambient-light">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
     <div class="container">
-        <h1>TEACHING_HUB <span style="font-size:0.5em; opacity:0.6;">v2.3</span></h1>
+        <header>
+            <h1>TEACHING HUB</h1>
+            <!-- 已修改此處 -->
+            <div class="version-badge">✨ Designed by 嘉威老師</div>
+        </header>
         
         <div class="grid-box">
 
-            <a href="area/casual.html" class="widget active">
-                <div class="status-light"></div>
-                <div class="icon">🖥️</div>
-                <div>
+            <!-- 工作站 -->
+            <a href="area/casual.html" class="widget active blue-mode">
+                <div class="top-row">
+                    <div class="icon">🖥️</div>
+                    <div class="status-light"></div>
+                </div>
+                <div class="text-content">
                     <div class="widget-subtitle">MAIN HUB</div>
                     <div class="widget-title">工作站</div>
                 </div>
             </a>
 
-            <a href="area/inventory.html" class="widget active">
-                <div class="status-light"></div>
-                <div class="icon">📊</div>
-                <div>
+            <!-- 點作業系統 -->
+            <a href="area/inventory.html" class="widget active blue-mode">
+                <div class="top-row">
+                    <div class="icon">📊</div>
+                    <div class="status-light"></div>
+                </div>
+                <div class="text-content">
                     <div class="widget-subtitle">SYSTEM 01</div>
                     <div class="widget-title">點作業系統</div>
                 </div>
             </a>
 
+            <!-- 社團點名 -->
             <a href="area/clubs.html" class="widget active pink-mode">
-                <div class="status-light"></div>
-                <div class="icon">📝</div>
-                <div>
+                <div class="top-row">
+                    <div class="icon">📝</div>
+                    <div class="status-light"></div>
+                </div>
+                <div class="text-content">
                     <div class="widget-subtitle">SYSTEM 02</div>
                     <div class="widget-title">社團點名系統</div>
                 </div>
             </a>
 
+            <!-- 萬用鐘 -->
             <a href="area/timer.html" class="widget active yellow-mode">
-                <div class="status-light"></div>
-                <div class="icon">⏲️</div>
-                <div>
+                <div class="top-row">
+                    <div class="icon">⏲️</div>
+                    <div class="status-light"></div>
+                </div>
+                <div class="text-content">
                     <div class="widget-subtitle">SYSTEM 03</div>
                     <div class="widget-title">萬用鐘</div>
                 </div>
             </a>
 
+            <!-- 四邊形基本概念 (已啟用) -->
+            <a href="area/rectangle01.html" class="widget active blue-mode">
+                <div class="top-row">
+                    <div class="icon">📐</div>
+                    <div class="status-light"></div>
+                </div>
+                <div class="text-content">
+                    <div class="widget-subtitle">GEOMETRY 01</div>
+                    <div class="widget-title">四邊形基本概念</div>
+                </div>
+            </a>
+
+            <!-- 鎖定區塊 -->
             <div class="widget disabled">
-                <div class="status-light"></div>
-                <div class="icon">🚧</div>
-                <div>
+                <div class="top-row">
+                    <div class="icon">🔒</div>
+                    <div class="status-light" style="background: #444; box-shadow: none;"></div>
+                </div>
+                <div class="text-content">
                     <div class="widget-subtitle">LOCKED</div>
-                    <div class="widget-title">施工中</div>
+                    <div class="widget-title">即將推出</div>
                 </div>
             </div>
 
             <div class="widget disabled">
-                <div class="status-light"></div>
-                <div class="icon">🚧</div>
-                <div>
+                <div class="top-row">
+                    <div class="icon">🔒</div>
+                    <div class="status-light" style="background: #444; box-shadow: none;"></div>
+                </div>
+                <div class="text-content">
                     <div class="widget-subtitle">LOCKED</div>
-                    <div class="widget-title">施工中</div>
+                    <div class="widget-title">即將推出</div>
                 </div>
             </div>
 
             <div class="widget disabled">
-                <div class="status-light"></div>
-                <div class="icon">🚧</div>
-                <div>
+                <div class="top-row">
+                    <div class="icon">🔒</div>
+                    <div class="status-light" style="background: #444; box-shadow: none;"></div>
+                </div>
+                <div class="text-content">
                     <div class="widget-subtitle">LOCKED</div>
-                    <div class="widget-title">施工中</div>
+                    <div class="widget-title">即將推出</div>
                 </div>
             </div>
 
             <div class="widget disabled">
-                <div class="status-light"></div>
-                <div class="icon">🚧</div>
-                <div>
+                <div class="top-row">
+                    <div class="icon">🔒</div>
+                    <div class="status-light" style="background: #444; box-shadow: none;"></div>
+                </div>
+                <div class="text-content">
                     <div class="widget-subtitle">LOCKED</div>
-                    <div class="widget-title">施工中</div>
+                    <div class="widget-title">即將推出</div>
                 </div>
             </div>
 
-            <div class="widget disabled">
-                <div class="status-light"></div>
-                <div class="icon">🚧</div>
-                <div>
-                    <div class="widget-subtitle">LOCKED</div>
-                    <div class="widget-title">施工中</div>
+            <!-- 線對稱系列 -->
+            <a href="area/symmetry01.html" class="widget active blue-mode">
+                <div class="top-row">
+                    <div class="icon">💠</div>
+                    <div class="status-light"></div>
                 </div>
-            </div>
-
-            <a href="area/symmetry01.html" class="widget active">
-                <div class="status-light"></div>
-                <div class="icon">💠</div>
-                <div>
+                <div class="text-content">
                     <div class="widget-subtitle">LESSON 01</div>
                     <div class="widget-title">線對稱教學 01</div>
                 </div>
             </a>
 
             <a href="area/symmetry02.html" class="widget active pink-mode">
-                <div class="status-light"></div>
-                <div class="icon">💠</div>
-                <div>
+                <div class="top-row">
+                    <div class="icon">💠</div>
+                    <div class="status-light"></div>
+                </div>
+                <div class="text-content">
                     <div class="widget-subtitle">LESSON 02</div>
                     <div class="widget-title">線對稱教學 02</div>
                 </div>
             </a>
 
-            <!-- 新增：線對稱教學 03 -->
             <a href="area/symmetry03.html" class="widget active yellow-mode">
-                <div class="status-light"></div>
-                <div class="icon">💠</div>
-                <div>
+                <div class="top-row">
+                    <div class="icon">💠</div>
+                    <div class="status-light"></div>
+                </div>
+                <div class="text-content">
                     <div class="widget-subtitle">LESSON 03</div>
                     <div class="widget-title">線對稱教學 03</div>
                 </div>
             </a>
 
-            <!-- 新增：線對稱教學 04 -->
-            <a href="area/symmetry04.html" class="widget active">
-                <div class="status-light"></div>
-                <div class="icon">💠</div>
-                <div>
+            <a href="area/symmetry04.html" class="widget active blue-mode">
+                <div class="top-row">
+                    <div class="icon">💠</div>
+                    <div class="status-light"></div>
+                </div>
+                <div class="text-content">
                     <div class="widget-subtitle">LESSON 04</div>
                     <div class="widget-title">線對稱教學 04</div>
                 </div>
             </a>
 
-            <!-- 新增：線對稱教學 05 -->
             <a href="area/symmetry05.html" class="widget active pink-mode">
-                <div class="status-light"></div>
-                <div class="icon">💠</div>
-                <div>
+                <div class="top-row">
+                    <div class="icon">💠</div>
+                    <div class="status-light"></div>
+                </div>
+                <div class="text-content">
                     <div class="widget-subtitle">LESSON 05</div>
                     <div class="widget-title">線對稱教學 05</div>
                 </div>
