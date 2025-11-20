@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>線對稱教學工具箱 (iPad 優化版)</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --panel-bg: #1e1e1e;
+            --sidebar-bg: #252525;
+            --canvas-bg: #000;
+            --accent-color: #00ffc4;
+            --text-color: #e0e0e0;
+            /* 按鈕色系 */
+            --btn-primary: linear-gradient(135deg, #667eea, #764ba2);
+            --btn-action: linear-gradient(135deg, #2af598, #009efd);
+            --btn-danger: linear-gradient(135deg, #ff416c, #ff4b2b);
+            --btn-cheat: linear-gradient(135deg, #f093fb, #f5576c);
+            --btn-neon: linear-gradient(135deg, #89f7fe, #66a6ff);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            background-color: var(--bg-color); 
+            color: var(--text-color); 
+            user-select: none;
+            -webkit-user-select: none;
+            /* iPad 修正：允許基本手勢，避免鎖死整個頁面的互動 */
+            touch-action: manipulation; 
+            overflow: hidden;
+            height: 100dvh; 
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- Header --- */
+        header {
+            background: var(--panel-bg);
+            padding: 0 10px;
+            height: 40px;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            z-index: 100;
+            flex-shrink: 0;
+        }
+        h1 { margin: 0; font-size: 1.1rem; color: var(--accent-color); letter-spacing: 1px; }
+
+        /* --- Main Layout --- */
+        #layout-body {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* --- Left Sidebar (Modes) --- */
+        #sidebar-left {
+            width: 80px;
+            background: var(--sidebar-bg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px 5px;
+            gap: 10px;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+            z-index: 90;
+            overflow-y: auto;
+            flex-shrink: 0;
+            /* iPad 修正：讓側邊欄滾動順暢 */
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .mode-btn {
+            width: 100%;
+            background: #333;
+            border: 1px solid #444;
+            color: #aaa;
+            padding: 10px 2px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            /* iPad 修正：確保按鈕可點擊 */
+            touch-action: manipulation; 
+        }
+        .mode-btn i { font-size: 1.5rem; font-style: normal; margin-bottom: 2px; }
+        .mode-btn.active {
+            border-color: var(--accent-color);
+            color: #fff;
+            background: rgba(0, 255, 196, 0.1);
+            box-shadow: 0 0 8px rgba(0, 255, 196, 0.2);
+        }
+
+        /* --- Center (Canvas) --- */
+        #canvas-wrapper {
+            flex: 1;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-image: radial-gradient(#333 1px, transparent 1px);
+            background-size: 30px 30px;
+            overflow: hidden;
+            padding: 10px;
+            /* iPad 修正：只在畫布區禁止預設觸控行為（防止拖曳整個畫面） */
+            touch-action: none; 
+        }
+
+        canvas {
+            background-color: var(--canvas-bg);
+            border-radius: 8px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.7);
+            /* iPad 修正：確保 Canvas 不會攔截捲動但內部邏輯接管 */
+            touch-action: none;
+            display: block;
+        }
+
+        /* --- Right Sidebar (Tools) --- */
+        #sidebar-right {
+            width: 140px;
+            background: var(--panel-bg);
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+            gap: 8px;
+            box-shadow: -2px 0 10px rgba(0,0,0,0.3);
+            z-index: 90;
+            overflow-y: auto;
+            flex-shrink: 0;
+            border-left: 1px solid #333;
+            /* iPad 修正：讓側邊欄滾動順暢 */
+            -webkit-overflow-scrolling: touch;
+        }
+
+        button.tool-btn {
+            width: 100%;
+            padding: 10px 12px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-weight: bold;
+            background: #444;
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            transition: transform 0.1s, opacity 0.2s;
+            white-space: nowrap;
+            min-height: 40px;
+            /* iPad 修正：確保按鈕可點擊 */
+            touch-action: manipulation; 
+        }
+        button.tool-btn:active { transform: scale(0.95); opacity: 0.8; }
+        
+        /* Button Colors */
+        .btn-primary { background: var(--btn-primary) !important; }
+        .btn-action { background: var(--btn-action) !important; color: #00332c !important; }
+        .btn-danger { background: var(--btn-danger) !important; }
+        .btn-cheat { background: var(--btn-cheat) !important; color: #5e0000 !important; }
+        .btn-neon { background: var(--btn-neon) !important; color: #000 !important; }
+
+        /* Cheat Mode Active Effect */
+        .cheat-active {
+            background: #ff416c !important;
+            box-shadow: 0 0 15px #ff416c, inset 0 0 5px #fff;
+            border: 2px solid #fff !important;
+            animation: pulse-cheat 1.5s infinite alternate;
+        }
+        @keyframes pulse-cheat { from { box-shadow: 0 0 10px #ff416c; } to { box-shadow: 0 0 25px #ff416c; } }
+
+        /* --- Status & Overlay --- */
+        #status-msg {
+            position: absolute;
+            top: 10px; left: 50%; transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.85);
+            padding: 6px 20px;
+            border-radius: 24px;
+            font-size: 0.95rem;
+            pointer-events: none;
+            z-index: 10;
+            border: 1px solid #555;
+            color: var(--accent-color);
+            white-space: nowrap;
+        }
+
+        #overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: none;
+            justify-content: center; align-items: center;
+            z-index: 200;
+            backdrop-filter: blur(5px);
+        }
+        #overlay.show { display: flex; animation: fadeIn 0.3s; }
+        
+        .score-card {
+            background: #222; border: 2px solid #ffd700;
+            padding: 30px; border-radius: 15px;
+            text-align: center; min-width: 300px;
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.3);
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #222; }
+        ::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>線對稱教學工具箱 🚀</h1>
+    </header>
+
+    <div id="layout-body">
+        <!-- LEFT SIDEBAR: MODES -->
+        <aside id="sidebar-left">
+            <button class="mode-btn active" id="btn-free" onclick="App.switchMode('FREE')">
+                <i>🎨</i> 自由繪圖
+            </button>
+            <button class="mode-btn" id="btn-grid" onclick="App.switchMode('GRID')">
+                <i>🧩</i> 方格填色
+            </button>
+            <button class="mode-btn" id="btn-dots" onclick="App.switchMode('DOTS')">
+                <i>📐</i> 幾何連線
+            </button>
+            <button class="mode-btn" id="btn-mandala" onclick="App.switchMode('MANDALA')">
+                <i>🌀</i> 萬花筒
+            </button>
+        </aside>
+
+        <!-- CENTER: CANVAS -->
+        <div id="canvas-wrapper">
+            <div id="status-msg">請選擇模式</div>
+            <canvas id="appCanvas"></canvas>
+            
+            <div id="overlay">
+                <div class="score-card">
+                    <h2 id="score-title" style="color:#ffd700; font-size:2rem; margin:0;">100分</h2>
+                    <p id="score-desc" style="color:#ccc; margin:15px 0 25px 0;">完美對稱！</p>
+                    <button class="tool-btn btn-primary" style="margin:0 auto; width:100%; justify-content:center;" onclick="document.getElementById('overlay').classList.remove('show')">關閉</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT SIDEBAR: TOOLS -->
+        <aside id="sidebar-right"></aside>
+    </div>
+
+    <script>
+        /**
+         * APP CORE
+         */
+        const App = {
+            mode: null,
+            canvas: document.getElementById('appCanvas'),
+            ctx: document.getElementById('appCanvas').getContext('2d'),
+            statusEl: document.getElementById('status-msg'),
+            toolbarEl: document.getElementById('sidebar-right'),
+            width: 0, height: 0, dpr: 1,
+            resizeTimer: null,
+
+            init() {
+                // Prevent Double Tap Zoom on iPad
+                document.addEventListener('dblclick', function(event) {
+                    event.preventDefault();
+                }, { passive: false });
+
+                window.addEventListener('resize', () => {
+                    clearTimeout(this.resizeTimer);
+                    this.resizeTimer = setTimeout(() => this.resizeCanvas(), 100);
+                });
+                
+                // --- iPad 觸控修復核心 ---
+                // 修正邏輯：不要無差別地使用 preventDefault，否則會擋住按鈕點擊
+                const handler = (type, e) => {
+                    // 如果觸控目標是按鈕或其內部元素，直接返回，讓瀏覽器處理點擊
+                    if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
+                        return;
+                    }
+
+                    const rect = this.canvas.getBoundingClientRect();
+                    let cx, cy;
+                    
+                    // 判斷事件是否發生在 Canvas 上
+                    const isCanvasEvent = (e.target === this.canvas);
+
+                    if (isCanvasEvent) {
+                        // 只有在 Canvas 上操作時，才阻止預設行為（防止捲動頁面）
+                        if(e.type !== 'touchend') {
+                            e.preventDefault(); 
+                        }
+                    }
+
+                    if (e.touches && e.touches.length) { cx = e.touches[0].clientX; cy = e.touches[0].clientY; }
+                    else if (e.changedTouches && e.changedTouches.length) { cx = e.changedTouches[0].clientX; cy = e.changedTouches[0].clientY; }
+                    else { cx = e.clientX; cy = e.clientY; }
+                    
+                    const pos = { x: cx - rect.left, y: cy - rect.top };
+                    const target = this.getCurrentModeObj();
+                    
+                    if (target) {
+                        if (type === 'start' && target.onStart) target.onStart(pos);
+                        if (type === 'move' && target.onMove) target.onMove(pos);
+                        if (type === 'end' && target.onEnd) target.onEnd();
+                    }
+                };
+
+                // Canvas 專屬監聽：確保繪圖時不會滑動頁面
+                this.canvas.addEventListener('mousedown', e => handler('start', e));
+                this.canvas.addEventListener('mousemove', e => handler('move', e));
+                this.canvas.addEventListener('touchstart', e => handler('start', e), {passive: false});
+                this.canvas.addEventListener('touchmove', e => handler('move', e), {passive: false});
+
+                // Window 級別監聽：處理滑鼠/手指移出 Canvas 結束的情況
+                // 注意：這裡移除了 preventDefault，確保按鈕點擊後的 touchend 能夠正常觸發 click
+                window.addEventListener('mouseup', e => handler('end', e));
+                window.addEventListener('touchend', e => handler('end', e));
+
+                // Initial resize before mode switch
+                this.resizeCanvas();
+                this.switchMode('FREE');
+                this.loop();
+            },
+
+            getCurrentModeObj() {
+                if (this.mode === 'FREE') return FreeMode;
+                if (this.mode === 'GRID') return GridMode;
+                if (this.mode === 'DOTS') return DotsMode;
+                if (this.mode === 'MANDALA') return MandalaMode;
+                return null;
+            },
+
+            switchMode(newMode) {
+                const oldMode = this.getCurrentModeObj();
+                if(oldMode && oldMode.cleanup) oldMode.cleanup();
+
+                this.mode = newMode;
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                document.getElementById(`btn-${newMode.toLowerCase()}`).classList.add('active');
+                document.getElementById('overlay').classList.remove('show');
+
+                this.resizeCanvas(); 
+                const newObj = this.getCurrentModeObj();
+                
+                if (newObj) {
+                    newObj.cheatMode = false;
+                    if (newObj.init) newObj.init();
+                }
+                this.renderToolbar(); 
+            },
+
+            resizeCanvas() {
+                const wrapper = document.getElementById('canvas-wrapper');
+                const rect = wrapper.getBoundingClientRect();
+                // Subtract padding safely
+                const w = rect.width - 20; 
+                const h = rect.height - 20;
+                
+                if (w <= 0 || h <= 0) return; 
+
+                this.dpr = window.devicePixelRatio || 1;
+
+                let finalW = w, finalH = h;
+                if (this.mode !== 'FREE') {
+                    const size = Math.min(w, h);
+                    finalW = size; finalH = size;
+                }
+                
+                if (this.canvas.width !== finalW * this.dpr || this.canvas.height !== finalH * this.dpr) {
+                    this.canvas.style.width = `${finalW}px`;
+                    this.canvas.style.height = `${finalH}px`;
+                    this.canvas.width = finalW * this.dpr;
+                    this.canvas.height = finalH * this.dpr;
+                    this.width = finalW; this.height = finalH;
+                    
+                    this.ctx.resetTransform(); 
+                    this.ctx.scale(this.dpr, this.dpr);
+                } else {
+                    this.ctx.resetTransform();
+                    this.ctx.scale(this.dpr, this.dpr);
+                }
+
+                const obj = this.getCurrentModeObj();
+                if (obj && obj.draw) {
+                    requestAnimationFrame(() => obj.draw());
+                }
+            },
+
+            renderToolbar() {
+                const obj = this.getCurrentModeObj();
+                if (obj && obj.getToolbarHTML) {
+                    this.toolbarEl.innerHTML = obj.getToolbarHTML();
+                } else {
+                    this.toolbarEl.innerHTML = '';
+                }
+            },
+
+            loop() {
+                requestAnimationFrame(() => this.loop());
+                const obj = this.getCurrentModeObj();
+                if (this.mode === 'MANDALA' || this.mode === 'FREE' || (obj && obj.needsLoop)) {
+                    if (obj && obj.draw) obj.draw();
+                }
+            },
+            
+            showScore(score, text) {
+                document.getElementById('score-title').innerText = score + " 分";
+                document.getElementById('score-desc').innerText = text;
+                document.getElementById('overlay').classList.add('show');
+            }
+        };
+
+        /**
+         * =========================================
+         * MODE 1: FREE DRAW
+         * =========================================
+         */
+        const FreeMode = {
+            state: 'IDLE', p1: null, p2: null, strokes: [], currentStroke: [], 
+            isDrawing: false, drawColor: 'RED', showAnswer: false, cheatMode: false, flicker: 0,
+
+            init() { this.reset(); },
+            cleanup() { this.cheatMode = false; },
+
+            reset() {
+                this.strokes = []; this.p1 = null; this.p2 = null; this.currentStroke = [];
+                this.showAnswer = false; this.state = 'IDLE';
+                if (this.cheatMode) this.startCheatFlow();
+                else {
+                    App.statusEl.innerText = "步驟 1：請點擊「📌 設定軸線」";
+                    App.renderToolbar();
+                    this.draw();
+                }
+            },
+
+            toggleCheat() { this.cheatMode = !this.cheatMode; this.reset(); },
+
+            startCheatFlow() {
+                this.strokes = []; this.p1 = null; this.p2 = null;
+                this.state = 'SET_P1'; this.drawColor = 'RED'; 
+                App.statusEl.innerText = "【作弊模式】設定軸線起點";
+                App.renderToolbar(); this.draw();
+            },
+
+            getToolbarHTML() {
+                const cheatBtn = this.cheatMode ? 
+                    `<button class="tool-btn btn-cheat cheat-active" onclick="FreeMode.toggleCheat()">⚡ 結束作弊</button>` :
+                    `<button class="tool-btn btn-cheat" onclick="FreeMode.toggleCheat()">⚡ 作弊模式</button>`;
+
+                if (this.cheatMode) return `${cheatBtn} <div style="color:#ff9a9e; font-weight:bold; margin:5px 0; text-align:center; font-size:0.8rem;">作弊開啟<br>即時鏡像</div> <button class="tool-btn btn-danger" onclick="FreeMode.reset()">🗑️ 清空重畫</button>`;
+                
+                return `
+                    <button class="tool-btn" style="background:#555" onclick="FreeMode.setAxis()">📌 設定軸線</button>
+                    <button class="tool-btn btn-primary" onclick="FreeMode.setColor('RED')">🖍️ 題目(紅)</button>
+                    <button class="tool-btn btn-action" onclick="FreeMode.setColor('BLUE')">🖊️ 作答(藍)</button>
+                    ${cheatBtn}
+                    <button class="tool-btn" onclick="FreeMode.toggleAnswer()">👀 顯示答案</button>
+                    <button class="tool-btn btn-danger" onclick="FreeMode.reset()">🗑️ 重設</button>
+                `;
+            },
+
+            setAxis() { this.state = 'SET_P1'; this.p1 = null; this.p2 = null; this.strokes = []; App.statusEl.innerText = "設定軸線起點"; this.draw(); },
+            setColor(c) { if(!this.p1 || !this.p2) return alert("請先設定並畫出軸線"); this.drawColor = c; this.state = 'DRAWING'; App.statusEl.innerText = c==='RED' ? "繪製題目" : "繪製答案"; },
+            toggleAnswer() { if(!this.p1) return; this.showAnswer = !this.showAnswer; this.draw(); },
+
+            getMirror(x, y) {
+                if (!this.p1 || !this.p2) return {x, y};
+                const dx = this.p2.x - this.p1.x, dy = this.p2.y - this.p1.y;
+                const det = dx*dx + dy*dy; if(det===0) return {x,y};
+                const a = (dx*dx - dy*dy)/det, b = 2*dx*dy/det;
+                return { x: a*(x-this.p1.x) + b*(y-this.p1.y) + this.p1.x, y: b*(x-this.p1.x) - a*(y-this.p1.y) + this.p1.y };
+            },
+
+            onStart(pos) {
+                if (this.state === 'SET_P1') { this.p1 = pos; this.state = 'SET_P2'; App.statusEl.innerText = "設定軸線終點"; }
+                else if (this.state === 'SET_P2') { this.p2 = pos; this.state = 'DRAWING'; App.statusEl.innerText = this.cheatMode ? "【作弊模式】開始繪圖！" : "軸線完成，請選擇畫筆開始"; }
+                else if (this.state === 'DRAWING' || this.state === 'IDLE') { if (!this.p1 || !this.p2) return; this.isDrawing = true; this.currentStroke = [pos]; }
+            },
+            onMove(pos) { if (this.isDrawing) this.currentStroke.push(pos); },
+            onEnd() {
+                if (this.isDrawing) {
+                    this.isDrawing = false; const color = this.drawColor === 'RED' ? '#ff33cc' : '#33ccff';
+                    this.strokes.push({ points: this.currentStroke, color });
+                    if (this.cheatMode && this.p1 && this.p2) { const mirrorPoints = this.currentStroke.map(p => this.getMirror(p.x, p.y)); this.strokes.push({ points: mirrorPoints, color }); }
+                    this.currentStroke = [];
+                }
+            },
+
+            draw() {
+                const ctx = App.ctx; ctx.clearRect(0, 0, App.width, App.height);
+                ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+                this.strokes.forEach(s => {
+                    if(s.points.length<2) return; ctx.strokeStyle = s.color; ctx.lineWidth = 4;
+                    ctx.beginPath(); ctx.moveTo(s.points[0].x, s.points[0].y); for(let i=1; i<s.points.length; i++) ctx.lineTo(s.points[i].x, s.points[i].y); ctx.stroke();
+                });
+                if (this.currentStroke.length > 0) {
+                    ctx.strokeStyle = this.drawColor === 'RED' ? '#ff33cc' : '#33ccff'; ctx.lineWidth = 4;
+                    ctx.beginPath(); ctx.moveTo(this.currentStroke[0].x, this.currentStroke[0].y); for(let i=1; i<this.currentStroke.length; i++) ctx.lineTo(this.currentStroke[i].x, this.currentStroke[i].y); ctx.stroke();
+                    if(this.cheatMode && this.p1 && this.p2) {
+                        ctx.beginPath(); const start = this.getMirror(this.currentStroke[0].x, this.currentStroke[0].y); ctx.moveTo(start.x, start.y);
+                        for(let i=1; i<this.currentStroke.length; i++) { const m = this.getMirror(this.currentStroke[i].x, this.currentStroke[i].y); ctx.lineTo(m.x, m.y); } ctx.stroke();
+                    }
+                }
+                if (this.showAnswer && this.p1 && this.p2) {
+                    ctx.strokeStyle = 'rgba(255,215,0,0.5)'; ctx.lineWidth = 6;
+                    this.strokes.forEach(s => {
+                        if(s.color === '#ff33cc') {
+                            ctx.beginPath(); const p0 = this.getMirror(s.points[0].x, s.points[0].y); ctx.moveTo(p0.x, p0.y);
+                            for(let i=1; i<s.points.length; i++) { const p = this.getMirror(s.points[i].x, s.points[i].y); ctx.lineTo(p.x, p.y); } ctx.stroke();
+                        }
+                    });
+                }
+                if (this.p1) {
+                    this.flicker++; ctx.strokeStyle = '#00ffc4'; ctx.lineWidth = 3; ctx.shadowColor = '#00ffc4'; ctx.shadowBlur = (this.flicker%60 < 30) ? 15 : 5;
+                    ctx.beginPath(); ctx.moveTo(this.p1.x, this.p1.y); if (this.p2) ctx.lineTo(this.p2.x, this.p2.y); ctx.stroke(); ctx.shadowBlur = 0;
+                    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(this.p1.x, this.p1.y, 5, 0, Math.PI*2); ctx.fill(); if(this.p2) { ctx.beginPath(); ctx.arc(this.p2.x, this.p2.y, 5, 0, Math.PI*2); ctx.fill(); }
+                }
+            }
+        };
+
+        /**
+         * =========================================
+         * MODE 2: GRID
+         * =========================================
+         */
+        const GridMode = {
+            size: 12, grid: [], axis: {type:'V', pos:6}, modeState: 'PLAY', cheatMode: false, showAnswer: false, needsLoop: false,
+            init() { this.reset(); }, cleanup() { this.cheatMode = false; }, emptyGrid() { return Array.from({length:this.size}, ()=>Array(this.size).fill(0)); },
+
+            reset() {
+                this.grid = this.emptyGrid(); this.showAnswer = false; this.axis = {type:'V', pos:6};
+                if (this.cheatMode) { this.modeState = 'CHEAT_SETUP'; App.statusEl.innerText = "【作弊模式】步驟 1：設定軸線"; } 
+                else { this.modeState = 'PLAY'; App.statusEl.innerText = "請按「隨機出題」或「自行出題」"; }
+                App.renderToolbar(); this.draw();
+            },
+            toggleCheat() { this.cheatMode = !this.cheatMode; this.reset(); },
+            startCheatPlay() { this.modeState = 'CHEAT_PLAY'; App.statusEl.innerText = "【作弊模式】點擊任意格子，對稱側同步"; App.renderToolbar(); },
+
+            getToolbarHTML() {
+                const cheatBtn = this.cheatMode ? `<button class="tool-btn btn-cheat cheat-active" onclick="GridMode.toggleCheat()">⚡ 結束作弊</button>` : `<button class="tool-btn btn-cheat" onclick="GridMode.toggleCheat()">⚡ 作弊模式</button>`;
+                
+                if (this.cheatMode && this.modeState === 'CHEAT_SETUP') return `${cheatBtn} <button class="tool-btn" onclick="GridMode.toggleAxis()">🔄 轉軸</button> <button class="tool-btn" onclick="GridMode.moveAxis()">↔️ 移軸</button> <button class="tool-btn btn-action" onclick="GridMode.startCheatPlay()">🚀 開始作弊</button>`;
+                if (this.cheatMode && this.modeState === 'CHEAT_PLAY') return `${cheatBtn} <div style="color:#f093fb; margin:5px 0; text-align:center; font-size:0.8rem;">點擊任意處<br>即時同步</div> <button class="tool-btn btn-danger" onclick="GridMode.reset()">🗑️ 清空重來</button>`;
+                if (this.modeState === 'DESIGN') return `<div style="color:#ff9a9e; font-weight:bold; margin-bottom:10px; text-align:center;">✏️ 設計題目中</div> <button class="tool-btn" onclick="GridMode.toggleAxis()">🔄 轉軸</button> <button class="tool-btn" onclick="GridMode.moveAxis()">↔️ 移軸</button> <button class="tool-btn btn-action" onclick="GridMode.finishDesign()">🚀 開始測驗</button>`;
+                
+                return `
+                    <button class="tool-btn btn-primary" onclick="GridMode.randomLevel()">🎲 隨機出題</button>
+                    <button class="tool-btn" style="background:linear-gradient(135deg, #ff9a9e, #fecfef); color:#330;" onclick="GridMode.startDesign()">✏️ 自行出題</button>
+                    ${cheatBtn}
+                    <button class="tool-btn" onclick="GridMode.toggleAnswer()">👀 答案</button>
+                    <button class="tool-btn btn-action" onclick="GridMode.check()">✅ 評分</button>
+                    <button class="tool-btn btn-danger" onclick="GridMode.reset()">🗑️ 重設</button>
+                `;
+            },
+
+            randomLevel() {
+                this.grid = this.emptyGrid(); this.modeState = 'PLAY'; this.showAnswer = false;
+                this.axis.type = Math.random()>0.5?'V':'H'; this.axis.pos = 6 + (Math.floor(Math.random()*5)-2);
+                let count=0; while(count<10) { let r=Math.floor(Math.random()*12), c=Math.floor(Math.random()*12); if(this.isQ(r,c) && this.getMirror(r,c) && this.grid[r][c]===0) { this.grid[r][c]=1; count++; } }
+                App.statusEl.innerText = "填入藍色對稱方塊"; App.renderToolbar(); this.draw();
+            },
+            startDesign() { this.grid = this.emptyGrid(); this.modeState = 'DESIGN'; this.axis = {type:'V', pos:6}; App.statusEl.innerText = "請畫紅色方塊出題，可調整軸線"; App.renderToolbar(); this.draw(); },
+            finishDesign() { if(!this.grid.flat().includes(1)) return alert("請至少畫一格"); this.modeState = 'PLAY'; App.statusEl.innerText = "題目設定完成，請作答"; App.renderToolbar(); this.draw(); },
+            toggleAxis() { this.axis.type = this.axis.type==='V'?'H':'V'; this.draw(); },
+            moveAxis() { this.axis.pos++; if(this.axis.pos>8) this.axis.pos=4; this.draw(); },
+            toggleAnswer() { this.showAnswer = !this.showAnswer; this.draw(); },
+            isQ(r,c) { return this.axis.type==='V' ? c < this.axis.pos : r < this.axis.pos; },
+            getMirror(r,c) { let mr, mc; if(this.axis.type==='V') { mc=(this.axis.pos*2-1)-c; mr=r; } else { mc=c; mr=(this.axis.pos*2-1)-r; } if(mc<0||mc>=12||mr<0||mr>=12) return null; return {r:mr, c:mc}; },
+
+            onStart(pos) {
+                if (this.modeState === 'REVIEW') return; 
+                const cs = App.width / 12; const c = Math.floor(pos.x/cs), r = Math.floor(pos.y/cs); if(c<0||c>=12||r<0||r>=12) return;
+                
+                if (this.modeState === 'DESIGN') { if (this.isQ(r,c)) this.grid[r][c] = this.grid[r][c]===1 ? 0 : 1; }
+                else if (this.modeState === 'CHEAT_SETUP') { return; }
+                // 作弊模式：全雙向，不判斷 isQ
+                else if (this.modeState === 'CHEAT_PLAY') { 
+                    const val = this.grid[r][c]===2 ? 0 : 2; 
+                    this.grid[r][c] = val; 
+                    const m = this.getMirror(r,c); 
+                    if(m) this.grid[m.r][m.c] = val; 
+                }
+                else if (this.modeState === 'PLAY') { if (!this.isQ(r,c)) this.grid[r][c] = (this.grid[r][c]===2) ? 0 : 2; }
+                this.draw();
+            },
+
+            check() {
+                this.modeState = 'REVIEW'; let correct=0, wrong=0, total=0;
+                for(let r=0; r<12; r++) for(let c=0; c<12; c++) {
+                    if(this.grid[r][c]===1) { const m = this.getMirror(r,c); if(m) { total++; if(this.grid[m.r][m.c]===2) correct++; } }
+                    if(this.grid[r][c]===2) { const m = this.getMirror(r,c); if(!m || this.grid[m.r][m.c]!==1) wrong++; }
+                }
+                let score = total===0 ? 0 : Math.max(0, Math.round(((correct-wrong)/total)*100)); App.showScore(score, `答對 ${correct} 格，錯 ${wrong} 格`); this.draw();
+            },
+
+            draw() {
+                const ctx = App.ctx, w=App.width, h=App.height, cs=w/12; 
+                // 確保在繪製前有完全清除，並重建路徑
+                ctx.clearRect(0,0,w,h);
+                
+                // Grid Lines
+                ctx.beginPath();
+                ctx.strokeStyle='#333'; ctx.lineWidth=1; 
+                for(let i=0; i<=12; i++) { 
+                    ctx.moveTo(0,i*cs); ctx.lineTo(w,i*cs); 
+                    ctx.moveTo(i*cs,0); ctx.lineTo(i*cs,h); 
+                }
+                ctx.stroke();
+
+                for(let r=0; r<12; r++) for(let c=0; c<12; c++) {
+                    const v = this.grid[r][c];
+                    if(v===1) { ctx.fillStyle='#ff33cc'; ctx.fillRect(c*cs+1,r*cs+1,cs-2,cs-2); }
+                    if(v===2) { ctx.fillStyle='#33ccff'; ctx.fillRect(c*cs+1,r*cs+1,cs-2,cs-2); }
+                    if(this.showAnswer && v===0 && !this.isQ(r,c)) { const m = this.getMirror(r,c); if(m && this.grid[m.r][m.c]===1) { ctx.fillStyle='rgba(255,215,0,0.4)'; ctx.fillRect(c*cs+1,r*cs+1,cs-2,cs-2); } }
+                    if(this.modeState==='REVIEW' && v===2) { const m = this.getMirror(r,c); if(m && this.grid[m.r][m.c]===1) { ctx.strokeStyle='#ffd700'; ctx.lineWidth=3; ctx.strokeRect(c*cs+3,r*cs+3,cs-6,cs-6); } else { ctx.strokeStyle='#ff4444'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(c*cs+4,r*cs+4); ctx.lineTo((c+1)*cs-4,(r+1)*cs-4); ctx.stroke(); ctx.beginPath(); ctx.moveTo((c+1)*cs-4,r*cs+4); ctx.lineTo(c*cs+4,(r+1)*cs-4); ctx.stroke(); } }
+                }
+                ctx.strokeStyle='#00ffc4'; ctx.lineWidth=4; ctx.shadowColor='#00ffc4'; ctx.shadowBlur=10; ctx.beginPath(); if(this.axis.type==='V') { ctx.moveTo(this.axis.pos*cs,0); ctx.lineTo(this.axis.pos*cs,h); } else { ctx.moveTo(0,this.axis.pos*cs); ctx.lineTo(w,this.axis.pos*cs); } ctx.stroke(); ctx.shadowBlur=0;
+            }
+        };
+
+        /**
+         * =========================================
+         * MODE 3: DOTS
+         * =========================================
+         */
+        const DotsMode = {
+            lines: [], axis: {type:'V', pos:6}, modeState: 'PLAY', cheatMode: false, showAnswer: false, drag: {active:false}, needsLoop: false,
+            init() { this.reset(); }, cleanup() { this.cheatMode = false; },
+            reset() {
+                this.lines = []; this.showAnswer = false; this.axis = {type:'V', pos:6};
+                if (this.cheatMode) { this.modeState = 'CHEAT_SETUP'; App.statusEl.innerText = "【作弊模式】步驟 1：設定軸線"; } else { this.modeState = 'PLAY'; App.statusEl.innerText = "請選擇出題方式"; }
+                App.renderToolbar(); this.draw();
+            },
+            toggleCheat() { this.cheatMode = !this.cheatMode; this.reset(); },
+            startCheatPlay() { this.modeState = 'CHEAT_PLAY'; App.statusEl.innerText = "【作弊模式】連線任意兩點，對面自動生成"; App.renderToolbar(); },
+
+            getToolbarHTML() {
+                const cheatBtn = this.cheatMode ? `<button class="tool-btn btn-cheat cheat-active" onclick="DotsMode.toggleCheat()">⚡ 結束作弊</button>` : `<button class="tool-btn btn-cheat" onclick="DotsMode.toggleCheat()">⚡ 作弊模式</button>`;
+                
+                if (this.cheatMode && this.modeState === 'CHEAT_SETUP') return `${cheatBtn} <button class="tool-btn" onclick="DotsMode.toggleAxis()">🔄 轉軸</button> <button class="tool-btn" onclick="DotsMode.moveAxis()">↔️ 移軸</button> <button class="tool-btn btn-action" onclick="DotsMode.startCheatPlay()">🚀 開始作弊</button>`;
+                if (this.cheatMode && this.modeState === 'CHEAT_PLAY') return `${cheatBtn} <div style="color:#f093fb; margin:5px 0; text-align:center; font-size:0.8rem;">任意連線<br>自動鏡像</div> <button class="tool-btn btn-danger" onclick="DotsMode.reset()">🗑️ 清空重來</button>`;
+                if (this.modeState === 'DESIGN') return `<div style="color:#ff9a9e; font-weight:bold; margin-bottom:10px; text-align:center;">✏️ 設計中</div> <button class="tool-btn" onclick="DotsMode.toggleAxis()">🔄 轉軸</button> <button class="tool-btn" onclick="DotsMode.moveAxis()">↔️ 移軸</button> <button class="tool-btn btn-action" onclick="DotsMode.finishDesign()">🚀 開始測驗</button>`;
+                
+                return `
+                    <button class="tool-btn btn-primary" onclick="DotsMode.randomLevel()">🎲 隨機出題</button>
+                    <button class="tool-btn" style="background:linear-gradient(135deg, #ff9a9e, #fecfef); color:#330;" onclick="DotsMode.startDesign()">✏️ 自行出題</button>
+                    ${cheatBtn}
+                    <button class="tool-btn" onclick="DotsMode.toggleAnswer()">👀 答案</button>
+                    <button class="tool-btn btn-action" onclick="DotsMode.check()">✅ 評分</button>
+                    <button class="tool-btn btn-danger" onclick="DotsMode.reset()">🗑️ 重設</button>
+                `;
+            },
+
+            randomLevel() {
+                this.lines=[]; this.modeState='PLAY'; this.showAnswer=false;
+                this.axis.type=Math.random()>0.5?'V':'H'; this.axis.pos=6+(Math.floor(Math.random()*5)-2);
+                let r, c; while(true) { r=Math.floor(Math.random()*12); c=Math.floor(Math.random()*12); if(this.isQ(r,c) && this.getMirror(r,c)) break; }
+                for(let i=0; i<6; i++) { const dr=Math.floor(Math.random()*3)-1, dc=Math.floor(Math.random()*3)-1; if(dr===0 && dc===0) continue; const nr=r+dr, nc=c+dc; if(nr>=0 && nr<12 && nc>=0 && nc<12 && this.isQ(nr,nc) && this.getMirror(nr,nc)) { this.addLine({r1:r, c1:c, r2:nr, c2:nc, type:1}); r=nr; c=nc; } }
+                App.statusEl.innerText = "連線畫出對稱圖形"; App.renderToolbar(); this.draw();
+            },
+            startDesign() { this.lines=[]; this.modeState='DESIGN'; this.axis={type:'V', pos:6}; App.statusEl.innerText="畫紅線出題"; App.renderToolbar(); this.draw(); },
+            finishDesign() { if(!this.lines.some(l=>l.type===1)) return alert("請畫線"); this.modeState='PLAY'; App.statusEl.innerText="開始作答"; App.renderToolbar(); this.draw(); },
+            toggleAxis() { this.axis.type = this.axis.type==='V'?'H':'V'; this.draw(); },
+            moveAxis() { this.axis.pos++; if(this.axis.pos>8) this.axis.pos=4; this.draw(); },
+            toggleAnswer() { this.showAnswer = !this.showAnswer; this.draw(); },
+            isQ(r,c) { return this.axis.type==='V' ? c < this.axis.pos : r < this.axis.pos; },
+            getMirror(r,c) { let mr, mc; if(this.axis.type==='V') { mc=(this.axis.pos*2-1)-c; mr=r; } else { mc=c; mr=(this.axis.pos*2-1)-r; } if(mc<0||mc>=12||mr<0||mr>=12) return null; return {r:mr, c:mc}; },
+            getDotPos(r,c) { const sp=(App.width-40)/11; return {x:20+c*sp, y:20+r*sp, sp}; },
+            getNearest(x,y) { const sp=(App.width-40)/11; const c=Math.round((x-20)/sp), r=Math.round((y-20)/sp); if(c<0||c>=12||r<0||r>=12) return null; const px=20+c*sp, py=20+r*sp; if(Math.hypot(px-x, py-y)<sp*0.45) return {r,c,x:px,y:py}; return null; },
+            normalize(l) { if(l.r1<l.r2 || (l.r1===l.r2 && l.c1<l.c2)) return l; return {r1:l.r2, c1:l.c2, r2:l.r1, c2:l.c1, type:l.type}; },
+            addLine(l) { const n=this.normalize(l); const idx = this.lines.findIndex(x=>{ const xn=this.normalize(x); return xn.r1===n.r1 && xn.c1===n.c1 && xn.r2===n.r2 && xn.c2===n.c2; }); if(idx>=0) { if(this.lines[idx].type===n.type) this.lines.splice(idx,1); } else this.lines.push(n); },
+
+            onStart(pos) { if(this.modeState==='REVIEW' || this.modeState==='CHEAT_SETUP') return; const dot = this.getNearest(pos.x, pos.y); if(dot) { this.drag={active:true, r:dot.r, c:dot.c, cx:pos.x, cy:pos.y}; this.draw(); } },
+            onMove(pos) { if(this.drag.active) { this.drag.cx=pos.x; this.drag.cy=pos.y; this.draw(); } },
+            onEnd() {
+                if(this.drag.active) {
+                    const end = this.getNearest(this.drag.cx, this.drag.cy);
+                    if(end && (end.r!==this.drag.r || end.c!==this.drag.c)) {
+                        const type = this.modeState==='DESIGN' ? 1 : 2;
+                        const p1Q=this.isQ(this.drag.r, this.drag.c), p2Q=this.isQ(end.r, end.c);
+                        let allow = false; 
+                        if (this.modeState === 'DESIGN' && p1Q && p2Q) allow = true; 
+                        // 修正：作弊模式下，允許任意連接
+                        if (this.modeState === 'CHEAT_PLAY') allow = true;
+                        else if (this.modeState === 'PLAY' && !(p1Q && p2Q)) allow = true;
+
+                        if(allow) { 
+                            this.addLine({r1:this.drag.r, c1:this.drag.c, r2:end.r, c2:end.c, type}); 
+                            if(this.modeState==='CHEAT_PLAY') { 
+                                const m1=this.getMirror(this.drag.r, this.drag.c), m2=this.getMirror(end.r, end.c); 
+                                if(m1 && m2) this.addLine({r1:m1.r, c1:m1.c, r2:m2.r, c2:m2.c, type}); 
+                            } 
+                        }
+                    } this.drag.active=false; this.draw();
+                }
+            },
+
+            check() {
+                this.modeState='REVIEW'; const qL=this.lines.filter(l=>l.type===1), aL=this.lines.filter(l=>l.type===2); let ok=0, err=0, total=0;
+                qL.forEach(q=>{ const m1=this.getMirror(q.r1,q.c1), m2=this.getMirror(q.r2,q.c2); if(m1&&m2) { total++; const t=this.normalize({r1:m1.r,c1:m1.c,r2:m2.r,c2:m2.c,type:2}); if(aL.some(a=>{ const an=this.normalize(a); return an.r1===t.r1&&an.c1===t.c1&&an.r2===t.r2&&an.c2===t.c2; })) ok++; } });
+                aL.forEach(a=>{ const m1=this.getMirror(a.r1,a.c1), m2=this.getMirror(a.r2,a.c2); if(!m1||!m2) { err++; return; } const t=this.normalize({r1:m1.r,c1:m1.c,r2:m2.r,c2:m2.c,type:1}); if(!qL.some(q=>{ const qn=this.normalize(q); return qn.r1===t.r1&&qn.c1===t.c1&&qn.r2===t.r2&&qn.c2===t.c2; })) err++; });
+                let score = total===0?0:Math.max(0,Math.round(((ok-err)/total)*100)); App.showScore(score, `答對 ${ok} 條，錯 ${err} 條`); this.draw();
+            },
+
+            draw() {
+                const ctx=App.ctx, w=App.width, h=App.height; ctx.clearRect(0,0,w,h); const {sp} = this.getDotPos(0,0);
+                ctx.strokeStyle='#00ffc4'; ctx.lineWidth=3; ctx.shadowBlur=10; ctx.shadowColor='#00ffc4'; ctx.beginPath(); if(this.axis.type==='V') { const x=20+(this.axis.pos-0.5)*sp; ctx.moveTo(x,0); ctx.lineTo(x,h); } else { const y=20+(this.axis.pos-0.5)*sp; ctx.moveTo(0,y); ctx.lineTo(w,y); } ctx.stroke(); ctx.shadowBlur=0;
+                const drawL = (l, c) => { const p1={x:20+l.c1*sp, y:20+l.r1*sp}, p2={x:20+l.c2*sp, y:20+l.r2*sp}; ctx.strokeStyle=c; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); ctx.stroke(); if(c==='#ff4444') { const mx=(p1.x+p2.x)/2, my=(p1.y+p2.y)/2; ctx.beginPath(); ctx.moveTo(mx-4,my-4); ctx.lineTo(mx+4,my+4); ctx.moveTo(mx+4,my-4); ctx.lineTo(mx-4,my+4); ctx.stroke(); } };
+                this.lines.forEach(l => { let c = l.type===1 ? '#ff33cc' : '#33ccff'; if(this.modeState==='REVIEW' && l.type===2) { const m1=this.getMirror(l.r1,l.c1), m2=this.getMirror(l.r2,l.c2); if(m1&&m2) { const t=this.normalize({r1:m1.r,c1:m1.c,r2:m2.r,c2:m2.c,type:1}); c = this.lines.some(q=>q.type===1 && this.normalize(q).r1===t.r1 && this.normalize(q).c1===t.c1 && this.normalize(q).r2===t.r2 && this.normalize(q).c2===t.c2) ? '#ffd700' : '#ff4444'; } else c='#ff4444'; } drawL(l, c); });
+                if(this.showAnswer && this.modeState!=='REVIEW') { ctx.strokeStyle='rgba(255,215,0,0.5)'; ctx.lineWidth=4; this.lines.filter(l=>l.type===1).forEach(q=>{ const m1=this.getMirror(q.r1,q.c1), m2=this.getMirror(q.r2,q.c2); if(m1&&m2) { ctx.beginPath(); ctx.moveTo(20+m1.c*sp, 20+m1.r*sp); ctx.lineTo(20+m2.c*sp, 20+m2.r*sp); ctx.stroke(); } }); }
+                if(this.drag.active) { const startX=20+this.drag.c*sp, startY=20+this.drag.r*sp; const snap=this.getNearest(this.drag.cx, this.drag.cy); ctx.strokeStyle= this.modeState==='DESIGN'?'#ff33cc':'#33ccff'; ctx.lineWidth=2; ctx.setLineDash([5,5]); ctx.beginPath(); ctx.moveTo(startX,startY); ctx.lineTo(snap?snap.x:this.drag.cx, snap?snap.y:this.drag.cy); ctx.stroke(); ctx.setLineDash([]); }
+                ctx.fillStyle='#666'; for(let r=0;r<12;r++) for(let c=0;c<12;c++) { ctx.beginPath(); ctx.arc(20+c*sp, 20+r*sp, 3, 0, Math.PI*2); ctx.fill(); }
+            }
+        };
+
+        /**
+         * =========================================
+         * MODE 4: MANDALA
+         * =========================================
+         */
+        const MandalaMode = {
+            segments: 8, strokes: [], currentStroke: [], isDrawing: false, 
+            neonState: 0, // 0: Off, 1: Sync, 2: Individual
+            needsLoop: false, cheatMode: false,
+
+            init() { this.reset(); },
+            cleanup() { this.neonState = 0; },
+            reset() { this.strokes = []; this.neonState = 0; this.needsLoop = false; App.statusEl.innerText = "創造你的萬花筒！"; this.draw(); },
+
+            getToolbarHTML() {
+                let neonText = "🌈 霓虹: 關";
+                let neonClass = "tool-btn btn-neon";
+                if(this.neonState === 1) { neonText = "🌈 霓虹: 同步"; neonClass += " neon-active"; }
+                else if(this.neonState === 2) { neonText = "🌈 霓虹: 獨立"; neonClass += " neon-active"; }
+
+                return `
+                    <span style="font-size:0.8rem; color:#aaa; text-align:center;">鏡像數</span>
+                    <div style="display:flex; gap:5px; width:100%;">
+                        <button class="tool-btn" style="padding:5px;" onclick="MandalaMode.setSeg(4)">4</button>
+                        <button class="tool-btn" style="padding:5px;" onclick="MandalaMode.setSeg(8)">8</button>
+                        <button class="tool-btn" style="padding:5px;" onclick="MandalaMode.setSeg(12)">12</button>
+                    </div>
+                    <button class="${neonClass}" onclick="MandalaMode.toggleNeon()">${neonText}</button>
+                    <button class="tool-btn btn-danger" onclick="MandalaMode.clear()">🗑️ 清除</button>
+                `;
+            },
+
+            setSeg(n) { this.segments = n; this.draw(); },
+            
+            toggleNeon() { 
+                this.neonState = (this.neonState + 1) % 3;
+                this.needsLoop = (this.neonState > 0);
+                App.renderToolbar(); 
+                
+                if (this.neonState === 1) App.statusEl.innerText = "霓虹模式：全體同步呼吸";
+                else if (this.neonState === 2) App.statusEl.innerText = "霓虹模式：獨立時間流動";
+                else App.statusEl.innerText = "普通模式";
+
+                if(this.needsLoop) App.loop(); 
+                else this.draw();
+            },
+            clear() { this.strokes = []; this.draw(); },
+
+            onStart(pos) { this.isDrawing = true; this.currentStroke = [pos]; },
+            onMove(pos) { if (this.isDrawing) this.currentStroke.push(pos); },
+            onEnd() { 
+                if(this.isDrawing) { 
+                    this.isDrawing = false; 
+                    const strokeData = { points: this.currentStroke, timestamp: Date.now() };
+                    this.strokes.push(strokeData); 
+                    this.currentStroke = []; 
+                } 
+            },
+
+            draw() {
+                const ctx = App.ctx, w = App.width, h = App.height, cx = w/2, cy = h/2;
+                ctx.clearRect(0, 0, w, h);
+                const time = Date.now();
+
+                ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1;
+                const angleStep = (Math.PI * 2) / this.segments;
+                for(let i=0; i<this.segments; i++) {
+                    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(i*angleStep)*w, cy + Math.sin(i*angleStep)*w); ctx.stroke();
+                }
+
+                const drawStroke = (pts, col, blur) => {
+                    if(pts.length<2) return;
+                    ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.shadowColor = col; ctx.shadowBlur = blur;
+                    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); for(let i=1; i<pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y); ctx.stroke();
+                    ctx.shadowBlur = 0; 
+                };
+
+                const renderRotated = (pts, timestamp) => {
+                    let col = '#00ffc4'; 
+                    let blur = 0;
+
+                    if (this.neonState > 0) {
+                        let hue = 0;
+                        let blurVal = 0;
+                        if (this.neonState === 1) {
+                            hue = (time / 20) % 360;
+                            blurVal = 10 + Math.sin(time / 200) * 8; 
+                        } else if (this.neonState === 2) {
+                            hue = ((time / 20) + (timestamp / 10)) % 360;
+                            blurVal = 10 + Math.sin((time / 200) + (timestamp / 500)) * 8;
+                        }
+                        col = `hsl(${hue}, 100%, 60%)`;
+                        blur = blurVal;
+                    }
+
+                    for (let i = 0; i < this.segments; i++) {
+                        ctx.save(); ctx.translate(cx, cy); ctx.rotate(i * angleStep); ctx.translate(-cx, -cy);
+                        drawStroke(pts, col, blur);
+                        ctx.translate(cx, cy); ctx.scale(1, -1); ctx.translate(-cx, -cy);
+                        drawStroke(pts, col, blur);
+                        ctx.restore();
+                    }
+                };
+
+                this.strokes.forEach(s => renderRotated(s.points, s.timestamp));
+                if(this.currentStroke.length > 0) renderRotated(this.currentStroke, time);
+            }
+        };
+
+        window.onload = () => App.init();
+
+    </script>
+</body>
+</html>
