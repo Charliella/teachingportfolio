@@ -1,9 +1,8 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
+<html lang="zh-TW"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>線對稱教學工具箱</title>
+    <title>線對稱教學工具箱 v2.2</title>
     <style>
         :root {
             --bg-color: #121212;
@@ -19,6 +18,7 @@
             --btn-cheat: linear-gradient(135deg, #f093fb, #f5576c);
             --btn-neon: linear-gradient(135deg, #89f7fe, #66a6ff);
             --btn-gold: linear-gradient(135deg, #f09819, #edde5d);
+            --btn-race: linear-gradient(135deg, #ff9966, #ff5e62);
         }
 
         * { box-sizing: border-box; }
@@ -48,6 +48,30 @@
             flex-shrink: 0;
         }
         h1 { margin: 0; font-size: 1.1rem; color: var(--accent-color); letter-spacing: 1px; }
+
+        /* --- Status Bar (Moved Out of Canvas) --- */
+        #status-bar-container {
+            background: #2a2a2a;
+            width: 100%;
+            padding: 8px 10px;
+            text-align: center;
+            border-bottom: 1px solid #444;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 95;
+            flex-shrink: 0;
+            min-height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #status-msg {
+            font-size: 1rem;
+            color: var(--accent-color);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
 
         /* --- Main Layout --- */
         #layout-body {
@@ -81,7 +105,7 @@
             padding: 10px 2px;
             border-radius: 8px;
             cursor: pointer;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             transition: 0.2s;
             display: flex;
             flex-direction: column;
@@ -89,12 +113,18 @@
             gap: 5px;
             touch-action: manipulation; 
         }
-        .mode-btn i { font-size: 1.5rem; font-style: normal; margin-bottom: 2px; }
+        .mode-btn i { font-size: 1.4rem; font-style: normal; margin-bottom: 2px; }
         .mode-btn.active {
             border-color: var(--accent-color);
             color: #fff;
             background: rgba(0, 255, 196, 0.1);
             box-shadow: 0 0 8px rgba(0, 255, 196, 0.2);
+        }
+        
+        .mode-btn.race-mode.active {
+             border-color: #ff5e62;
+             background: rgba(255, 94, 98, 0.1);
+             box-shadow: 0 0 8px rgba(255, 94, 98, 0.3);
         }
 
         /* --- Center (Canvas) --- */
@@ -160,8 +190,8 @@
         .btn-cheat { background: var(--btn-cheat) !important; color: #5e0000 !important; }
         .btn-neon { background: var(--btn-neon) !important; color: #000 !important; }
         .btn-gold { background: var(--btn-gold) !important; color: #330 !important; }
+        .btn-race { background: var(--btn-race) !important; color: #fff !important; }
 
-        /* Cheat Mode Active Effect */
         .cheat-active {
             background: #ff416c !important;
             box-shadow: 0 0 15px #ff416c, inset 0 0 5px #fff;
@@ -170,7 +200,6 @@
         }
         @keyframes pulse-cheat { from { box-shadow: 0 0 10px #ff416c; } to { box-shadow: 0 0 25px #ff416c; } }
 
-        /* Breathing Active Effect for Answer Button */
         .answer-active {
             background: var(--btn-gold) !important;
             box-shadow: 0 0 15px #ffd700;
@@ -179,21 +208,7 @@
         }
         @keyframes pulse-gold { from { box-shadow: 0 0 5px #ffd700; transform: scale(1); } to { box-shadow: 0 0 20px #ffd700; transform: scale(1.02); } }
 
-        /* --- Status & Overlay --- */
-        #status-msg {
-            position: absolute;
-            top: 10px; left: 50%; transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.85);
-            padding: 6px 20px;
-            border-radius: 24px;
-            font-size: 0.95rem;
-            pointer-events: none;
-            z-index: 10;
-            border: 1px solid #555;
-            color: var(--accent-color);
-            white-space: nowrap;
-        }
-
+        /* --- Overlay --- */
         #overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.85);
@@ -212,7 +227,18 @@
         }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        /* Scrollbar styling */
+        /* Race Timer Styling */
+        .race-timer {
+            position: absolute; top: 10px; right: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 1.5rem; color: #ff5e62;
+            font-weight: bold;
+            background: rgba(0,0,0,0.6);
+            padding: 5px 10px; border-radius: 5px;
+            border: 1px solid #ff5e62;
+            z-index: 15;
+        }
+
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #222; }
         ::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
@@ -225,8 +251,11 @@
         <h1>線對稱教學工具箱 🚀</h1>
     </header>
 
+    <div id="status-bar-container">
+        <div id="status-msg">步驟 1：請點擊「📌 設定軸線」</div>
+    </div>
+
     <div id="layout-body">
-        <!-- LEFT SIDEBAR: MODES -->
         <aside id="sidebar-left">
             <button class="mode-btn active" id="btn-free" onclick="App.switchMode('FREE')">
                 <i>🎨</i> 自由繪圖
@@ -240,11 +269,16 @@
             <button class="mode-btn" id="btn-mandala" onclick="App.switchMode('MANDALA')">
                 <i>🌀</i> 萬花筒
             </button>
+            <div style="height:1px; width:80%; background:#444; margin:5px 0;"></div>
+            <button class="mode-btn race-mode" id="btn-gridrace" onclick="App.switchMode('GRID_RACE')">
+                <i>🏆</i> 方格競速
+            </button>
+            <button class="mode-btn race-mode" id="btn-dotsrace" onclick="App.switchMode('DOTS_RACE')">
+                <i>⏱️</i> 連線競速
+            </button>
         </aside>
 
-        <!-- CENTER: CANVAS -->
         <div id="canvas-wrapper">
-            <div id="status-msg">請選擇模式</div>
             <canvas id="appCanvas"></canvas>
             
             <div id="overlay">
@@ -256,8 +290,8 @@
             </div>
         </div>
 
-        <!-- RIGHT SIDEBAR: TOOLS -->
-        <aside id="sidebar-right"></aside>
+        <aside id="sidebar-right">
+        </aside>
     </div>
 
     <script>
@@ -319,6 +353,8 @@
                 if (this.mode === 'GRID') return GridMode;
                 if (this.mode === 'DOTS') return DotsMode;
                 if (this.mode === 'MANDALA') return MandalaMode;
+                if (this.mode === 'GRID_RACE') return GridRaceMode;
+                if (this.mode === 'DOTS_RACE') return DotsRaceMode;
                 return null;
             },
 
@@ -328,7 +364,7 @@
 
                 this.mode = newMode;
                 document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-                document.getElementById(`btn-${newMode.toLowerCase()}`).classList.add('active');
+                document.getElementById(`btn-${newMode.toLowerCase().replace('_','')}`).classList.add('active');
                 document.getElementById('overlay').classList.remove('show');
 
                 this.resizeCanvas(); 
@@ -389,19 +425,31 @@
                 }
             },
             
-            showScore(score, text) {
-                document.getElementById('score-title').innerText = score + " 分";
-                document.getElementById('score-desc').innerText = text;
+            showScore(score, text, btnText="關閉", callback=null) {
+                document.getElementById('score-title').innerText = score;
+                document.getElementById('score-desc').innerHTML = text;
+                const btn = document.querySelector('#overlay button');
+                btn.innerText = btnText;
+                btn.onclick = () => {
+                    document.getElementById('overlay').classList.remove('show');
+                    if(callback) callback();
+                };
                 document.getElementById('overlay').classList.add('show');
             }
         };
 
         // --- UTILS ---
-        // 產生唯一的線段 Key
         const getLineUniqueKey = (r1, c1, r2, c2) => {
             let p1 = {r: r1, c: c1}, p2 = {r: r2, c: c2};
             if (p1.r > p2.r || (p1.r === p2.r && p1.c > p2.c)) { [p1, p2] = [p2, p1]; }
             return `${p1.r},${p1.c}-${p2.r},${p2.c}`;
+        };
+
+        const formatTime = (ms) => {
+            const min = Math.floor(ms / 60000);
+            const sec = Math.floor((ms % 60000) / 1000);
+            const centi = Math.floor((ms % 1000) / 10);
+            return `${min}分${sec.toString().padStart(2,'0')}秒.${centi.toString().padStart(2,'0')}`;
         };
 
         /**
@@ -543,7 +591,7 @@
                     if(this.grid[r][c]===1) { const m = this.getMirror(r,c); if(m) { total++; if(this.grid[m.r][m.c]===2) correct++; } }
                     if(this.grid[r][c]===2) { const m = this.getMirror(r,c); if(!m || this.grid[m.r][m.c]!==1) wrong++; }
                 }
-                let score = total===0 ? 0 : Math.max(0, Math.round(((correct-wrong)/total)*100)); App.showScore(score, `答對 ${correct} 格，錯 ${wrong} 格`); this.draw();
+                let score = total===0 ? 0 : Math.max(0, Math.round(((correct-wrong)/total)*100)); App.showScore(score+"分", `答對 ${correct} 格，錯 ${wrong} 格`); this.draw();
             },
             draw() {
                 const ctx = App.ctx, w=App.width, h=App.height, cs=w/12; ctx.clearRect(0,0,w,h);
@@ -562,7 +610,104 @@
 
         /**
          * =========================================
-         * MODE 3: DOTS (Visual Comparison Mode)
+         * NEW MODE 5: GRID RACE (Difficulty Increased)
+         * =========================================
+         */
+        const GridRaceMode = {
+            grid: [], axis: {type:'V', pos:6}, state: 'IDLE', // IDLE, PLAYING, FINISHED
+            level: 1, maxLevels: 3, startTime: 0, needsLoop: true,
+            
+            init() { this.state = 'IDLE'; App.statusEl.innerText = "競賽模式：連續完成三道挑戰題"; this.level=1; App.renderToolbar(); this.draw(); },
+            start() { 
+                this.level = 1; this.startTime = Date.now(); this.state = 'PLAYING'; 
+                this.generateLevel(); 
+                App.renderToolbar();
+            },
+            generateLevel() {
+                this.grid = GridMode.emptyGrid.call(GridMode); // reuse helper
+                this.axis.type = Math.random()>0.5?'V':'H'; this.axis.pos = 6 + (Math.floor(Math.random()*5)-2);
+                let count=0; 
+                // [FIX] Increased count from 8 to 15 for difficulty
+                while(count<15) { 
+                    let r=Math.floor(Math.random()*12), c=Math.floor(Math.random()*12); 
+                    if(GridMode.isQ.call(this,r,c) && GridMode.getMirror.call(this,r,c) && this.grid[r][c]===0) { 
+                        this.grid[r][c]=1; count++; 
+                    } 
+                }
+                App.statusEl.innerText = `第 ${this.level}/3 關：填滿對稱圖形 (15格)`;
+            },
+            check() {
+                if(this.state !== 'PLAYING') return;
+                let correct = true;
+                // Simple validation: All '1's must have a mirror '2', All '2's must mirror '1'
+                for(let r=0; r<12; r++) for(let c=0; c<12; c++) {
+                    const m = GridMode.getMirror.call(this, r, c);
+                    if(!m) continue;
+                    // If this cell is Q(1), mirror must be A(2)
+                    if(this.grid[r][c] === 1 && this.grid[m.r][m.c] !== 2) correct = false;
+                    // If this cell is A(2), mirror must be Q(1)
+                    if(this.grid[r][c] === 2 && this.grid[m.r][m.c] !== 1) correct = false;
+                }
+                
+                if(correct) {
+                    if(this.level >= this.maxLevels) {
+                        this.finish();
+                    } else {
+                        this.level++;
+                        this.generateLevel();
+                    }
+                } else {
+                    App.statusEl.innerText = "答案錯誤，請檢查！";
+                    setTimeout(() => App.statusEl.innerText = `第 ${this.level}/3 關：填滿對稱圖形`, 1000);
+                }
+            },
+            finish() {
+                this.state = 'FINISHED';
+                const totalTime = Date.now() - this.startTime;
+                App.showScore("挑戰成功", `總時間：${formatTime(totalTime)}`);
+                App.renderToolbar();
+            },
+            onStart(pos) {
+                if (this.state !== 'PLAYING') return; 
+                const cs = App.width / 12; const c = Math.floor(pos.x/cs), r = Math.floor(pos.y/cs); 
+                if(c<0||c>=12||r<0||r>=12) return;
+                // Reuse logic: only click on non-question side
+                if (!GridMode.isQ.call(this,r,c)) this.grid[r][c] = (this.grid[r][c]===2) ? 0 : 2;
+                // Auto-check is usually annoying if mid-click, so we rely on manual check button
+            },
+            getToolbarHTML() {
+                if(this.state === 'IDLE') return `<button class="tool-btn btn-race" onclick="GridRaceMode.start()">🏁 開始挑戰</button>`;
+                if(this.state === 'FINISHED') return `<button class="tool-btn btn-primary" onclick="GridRaceMode.init()">🔄 重新開始</button>`;
+                return `<button class="tool-btn btn-action" onclick="GridRaceMode.check()">✅ 完成 (第 ${this.level} 關)</button>`;
+            },
+            draw() {
+                // Reuse GridMode draw logic but add Timer
+                GridMode.draw.call(this);
+                
+                const ctx = App.ctx;
+                // Draw Timer overlay
+                if(this.state === 'PLAYING') {
+                    const elapsed = Date.now() - this.startTime;
+                    ctx.save();
+                    ctx.fillStyle = "rgba(0,0,0,0.6)";
+                    ctx.fillRect(App.width - 220, 10, 210, 50);
+                    ctx.strokeStyle = "#ff5e62";
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(App.width - 220, 10, 210, 50);
+                    
+                    ctx.fillStyle = "#ff5e62";
+                    ctx.font = "bold 30px Courier New";
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.fillText(formatTime(elapsed), App.width - 115, 35);
+                    ctx.restore();
+                }
+            }
+        };
+
+        /**
+         * =========================================
+         * MODE 3 & 6: DOTS (Visual Comparison Mode)
          * =========================================
          */
         const DotsMode = {
@@ -580,8 +725,6 @@
             
             getToolbarHTML() {
                 const cheatBtn = this.cheatMode ? `<button class="tool-btn btn-cheat cheat-active" onclick="DotsMode.toggleCheat()">⚡ 結束作弊</button>` : `<button class="tool-btn btn-cheat" onclick="DotsMode.toggleCheat()">⚡ 作弊模式</button>`;
-                
-                // 呼吸燈按鈕樣式
                 let answerBtnClass = "tool-btn btn-gold";
                 if (this.showAnswer) answerBtnClass += " answer-active";
 
@@ -589,7 +732,6 @@
                 if (this.cheatMode && this.modeState === 'CHEAT_PLAY') return `${cheatBtn} <div style="color:#f093fb; margin:5px 0; text-align:center; font-size:0.8rem;">任意連線<br>自動鏡像</div> <button class="tool-btn btn-danger" onclick="DotsMode.reset()">🗑️ 清空重來</button>`;
                 if (this.modeState === 'DESIGN') return `<div style="color:#ff9a9e; font-weight:bold; margin-bottom:10px; text-align:center;">✏️ 設計中</div> <button class="tool-btn" onclick="DotsMode.toggleAxis()">🔄 轉軸</button> <button class="tool-btn" onclick="DotsMode.moveAxis()">↔️ 移軸</button> <button class="tool-btn btn-action" onclick="DotsMode.finishDesign()">🚀 開始測驗</button>`;
                 
-                // 一般遊玩工具列 - 難度按鈕
                 return `
                     <div style="display:flex; gap:5px; width:100%;">
                         <button class="tool-btn btn-primary" style="padding:5px; font-size:0.8rem;" onclick="DotsMode.randomLevel('EASY')">簡單</button>
@@ -607,12 +749,10 @@
                 this.lines=[]; this.modeState='PLAY'; this.showAnswer=false; this.needsLoop=false;
                 this.axis.type=Math.random()>0.5?'V':'H'; this.axis.pos=6+(Math.floor(Math.random()*5)-2);
                 
-                // 根據難度設定線段數量
                 let targetSegments = 4;
                 if (difficulty === 'MEDIUM') targetSegments = 10;
-                if (difficulty === 'HARD') targetSegments = 56; // 4x of old hard (approx 14)
+                if (difficulty === 'HARD') targetSegments = 56; 
 
-                // Helper: 隨機找一個合法的起點
                 const getRandomStart = () => {
                     let attempts = 0;
                     while (attempts < 100) {
@@ -626,49 +766,28 @@
 
                 let current = getRandomStart();
                 let r = current.r, c = current.c;
-                
                 let segmentsCreated = 0;
                 let totalAttempts = 0;
 
-                // 迴圈嘗試畫線，設定上限防止卡死
                 while(segmentsCreated < targetSegments && totalAttempts < 2000) {
                     totalAttempts++;
-
                     const dr=Math.floor(Math.random()*3)-1, dc=Math.floor(Math.random()*3)-1; 
-                    
-                    // 原地不動，嘗試跳躍到新點
                     if(dr===0 && dc===0) {
-                        if (totalAttempts % 10 === 0) {
-                            let next = getRandomStart();
-                            r = next.r; c = next.c;
-                        }
+                        if (totalAttempts % 10 === 0) { let next = getRandomStart(); r = next.r; c = next.c; }
                         continue;
                     }
-
                     const nr=r+dr, nc=c+dc; 
-                    // 檢查邊界與對稱區
                     if(nr>=0 && nr<12 && nc>=0 && nc<12 && this.isQ(nr,nc) && this.getMirror(nr,nc)) { 
-                        
                         const key = getLineUniqueKey(r, c, nr, nc);
-                        // 如果這條線還沒被畫過，加入
                         if (!this.lines.some(l => getLineUniqueKey(l.r1, l.c1, l.r2, l.c2) === key)) {
                             this.addLine({ r1: r, c1: c, r2: nr, c2: nc, type: 1 });
                             segmentsCreated++;
-                            // 移動到新點繼續畫
                             r = nr; c = nc; 
                         } else {
-                            // 線段已存在 (走回頭路)，稍微增加跳躍機率
-                            if (Math.random() > 0.8) {
-                                let next = getRandomStart();
-                                r = next.r; c = next.c;
-                            }
+                            if (Math.random() > 0.8) { let next = getRandomStart(); r = next.r; c = next.c; }
                         }
                     } else {
-                        // 撞牆或越界，跳躍到新點
-                        if (Math.random() > 0.5) {
-                            let next = getRandomStart();
-                            r = next.r; c = next.c;
-                        }
+                        if (Math.random() > 0.5) { let next = getRandomStart(); r = next.r; c = next.c; }
                     }
                 }
                 
@@ -682,11 +801,9 @@
             finishDesign() { if(!this.lines.some(l=>l.type===1)) return alert("請畫線"); this.modeState='PLAY'; App.statusEl.innerText="開始作答"; App.renderToolbar(); this.draw(); },
             toggleAxis() { this.axis.type = this.axis.type==='V'?'H':'V'; this.draw(); },
             moveAxis() { this.axis.pos++; if(this.axis.pos>8) this.axis.pos=4; this.draw(); },
-            
-            // 切換答案顯示模式
             toggleAnswer() { 
                 this.showAnswer = !this.showAnswer;
-                this.needsLoop = this.showAnswer; // 開啟答案時啟動動畫循環
+                this.needsLoop = this.showAnswer; 
                 App.renderToolbar();
                 if(this.needsLoop) App.loop();
                 else this.draw();
@@ -748,7 +865,8 @@
                 });
 
                 // 呼吸燈答案顯示 (Visual Comparison)
-                if(this.showAnswer && this.modeState!=='DESIGN') {
+                // [MODIFIED] Added explicit check for DotsRaceMode's REVIEW state to force showAnswer logic
+                if((this.showAnswer || (App.mode === 'DOTS_RACE' && DotsRaceMode.state === 'REVIEW')) && this.modeState!=='DESIGN') {
                     const time = Date.now();
                     const pulse = (Math.sin(time / 300) + 1) / 2; // 0 ~ 1
                     const alpha = 0.4 + pulse * 0.6; // 0.4 ~ 1.0
@@ -778,6 +896,142 @@
                 ctx.fillStyle='#666'; for(let r=0;r<12;r++) for(let c=0;c<12;c++) { ctx.beginPath(); ctx.arc(20+c*sp, 20+r*sp, 3, 0, Math.PI*2); ctx.fill(); }
             }
         };
+
+        /**
+         * =========================================
+         * NEW MODE 6: DOTS RACE
+         * =========================================
+         */
+         const DotsRaceMode = {
+            lines: [], axis: {type:'V', pos:6}, state: 'IDLE', // IDLE, PLAYING, REVIEW, WAITING_NEXT, FINISHED
+            level: 1, maxLevels: 3, 
+            accumulatedTime: 0, // Total playing time
+            levelStartTime: 0, // Start time of current level
+            drag: {active:false}, needsLoop: true,
+            reviewEndTime: 0,
+            
+            init() { this.state = 'IDLE'; App.statusEl.innerText = "競賽模式：連續完成三道挑戰題"; this.level=1; App.renderToolbar(); this.draw(); },
+            
+            start() { 
+                this.level = 1; 
+                this.accumulatedTime = 0;
+                this.levelStartTime = Date.now();
+                this.state = 'PLAYING'; 
+                this.generateLevel();
+                App.renderToolbar();
+            },
+
+            generateLevel() {
+                // Reuse DotsMode logic but force "MEDIUM" difficulty roughly
+                DotsMode.randomLevel.call(this, 'MEDIUM'); 
+                this.needsLoop = true; 
+                this.state = 'PLAYING'; 
+                this.levelStartTime = Date.now(); // Reset level timer
+                App.statusEl.innerText = `第 ${this.level}/3 關：畫出對稱線段`;
+                App.renderToolbar();
+            },
+            
+            // User clicks check, we enter review mode for 5 seconds
+            check() {
+                // Add current level time to accumulated time
+                const duration = Date.now() - this.levelStartTime;
+                this.accumulatedTime += duration;
+
+                this.state = 'REVIEW';
+                this.reviewEndTime = Date.now() + 5000; 
+                this.showAnswer = true; // trigger visual gold lines
+                App.statusEl.innerText = "請老師檢查答案 (5秒後出現按鈕)";
+                App.renderToolbar();
+            },
+
+            updateLoop() {
+                if(this.state === 'REVIEW') {
+                    const remaining = Math.ceil((this.reviewEndTime - Date.now())/1000);
+                    if(remaining <= 0) {
+                        this.state = 'WAITING_NEXT'; // Switch to waiting state
+                        App.statusEl.innerText = (this.level >= this.maxLevels) ? "已完成！請按「完成」查看成績" : "請按「進入下一關」";
+                        App.renderToolbar(); // Force button update
+                    } else {
+                        App.statusEl.innerText = `請老師檢查答案 (剩餘 ${remaining} 秒)`;
+                    }
+                }
+            },
+
+            nextLevel() {
+                this.showAnswer = false;
+                this.level++;
+                this.generateLevel();
+            },
+
+            finish() {
+                this.state = 'FINISHED';
+                App.showScore("挑戰完成", `總作答時間：${formatTime(this.accumulatedTime)}`);
+                App.renderToolbar();
+            },
+            
+            // Reuse DotsMode Interaction
+            onStart: DotsMode.onStart,
+            onMove: DotsMode.onMove,
+            onEnd: DotsMode.onEnd,
+            getMirror: DotsMode.getMirror,
+            isQ: DotsMode.isQ,
+            getDotPos: DotsMode.getDotPos,
+            getNearest: DotsMode.getNearest,
+            addLine: DotsMode.addLine,
+
+            getToolbarHTML() {
+                if(this.state === 'IDLE') return `<button class="tool-btn btn-race" onclick="DotsRaceMode.start()">🏁 開始挑戰</button>`;
+                if(this.state === 'FINISHED') return `<button class="tool-btn btn-primary" onclick="DotsRaceMode.init()">🔄 重新開始</button>`;
+                if(this.state === 'REVIEW') return `<div style="text-align:center; color:#ffd700; font-weight:bold; padding:10px;">檢查中...</div>`;
+                
+                if(this.state === 'WAITING_NEXT') {
+                    if (this.level >= this.maxLevels) {
+                        return `<button class="tool-btn btn-race" onclick="DotsRaceMode.finish()">🏁 完成 (查看成績)</button>`;
+                    } else {
+                        return `<button class="tool-btn btn-action" onclick="DotsRaceMode.nextLevel()">➡️ 進入下一關</button>`;
+                    }
+                }
+
+                // PLAYING State
+                return `<button class="tool-btn btn-action" onclick="DotsRaceMode.check()">✅ 完成提交 (進入檢查)</button> <button class="tool-btn btn-danger" onclick="DotsRaceMode.generateLevel()">🗑️ 清空重來</button>`;
+            },
+
+            draw() {
+                // In Review mode, force showAnswer logic
+                const originalShowAnswer = this.showAnswer;
+                if(this.state === 'REVIEW' || this.state === 'WAITING_NEXT') this.showAnswer = true;
+                
+                // Reuse DotsMode draw
+                DotsMode.draw.call(this);
+                this.showAnswer = originalShowAnswer;
+
+                // Logic Loop
+                this.updateLoop();
+
+                const ctx = App.ctx;
+                // Draw Timer overlay
+                let displayTime = this.accumulatedTime;
+                if(this.state === 'PLAYING') {
+                    displayTime += (Date.now() - this.levelStartTime);
+                }
+
+                if(this.state !== 'IDLE' && this.state !== 'FINISHED') {
+                    ctx.save();
+                    ctx.fillStyle = "rgba(0,0,0,0.6)";
+                    ctx.fillRect(App.width - 220, 10, 210, 50);
+                    ctx.strokeStyle = "#ff5e62";
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(App.width - 220, 10, 210, 50);
+                    
+                    ctx.fillStyle = "#ff5e62";
+                    ctx.font = "bold 30px Courier New";
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.fillText(formatTime(displayTime), App.width - 115, 35);
+                    ctx.restore();
+                }
+            }
+         };
 
         /**
          * =========================================
