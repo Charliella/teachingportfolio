@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HEROES GALLERY | 英雄坊</title>
+    <style>
+        :root {
+            --gold: #FFD60A;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.15);
+            --blur-amount: 30px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+            background-color: #000;
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+            overflow-x: hidden;
+        }
+
+        /* --- 背景特效 --- */
+        .ambient-light {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1; pointer-events: none;
+        }
+        .blob {
+            position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.5;
+            animation: float 20s infinite alternate;
+        }
+        .blob-1 { top: -10%; left: -10%; width: 60vw; height: 60vw; background: radial-gradient(circle, var(--gold), transparent); }
+        .blob-2 { bottom: -20%; right: -10%; width: 60vw; height: 60vw; background: radial-gradient(circle, #ff5e00, transparent); animation-delay: -5s; }
+
+        @keyframes float { from { transform: translate(0,0); } to { transform: translate(30px, 20px); } }
+
+        /* --- 導覽列 --- */
+        header {
+            text-align: center; margin-bottom: 40px; position: relative; width: 100%; max-width: 1200px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        
+        .back-btn {
+            text-decoration: none; color: rgba(255,255,255,0.6); font-size: 1rem;
+            padding: 10px 20px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(0,0,0,0.3); transition: 0.3s;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+
+        h1 {
+            font-size: 2.5rem; font-weight: 800; letter-spacing: 2px;
+            background: linear-gradient(to bottom, #fff, #aaa); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+
+        /* --- 相框網格區 --- */
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 25px;
+            width: 100%; max-width: 1280px;
+        }
+
+        /* --- 單一相框設計 --- */
+        .frame-card {
+            position: relative;
+            aspect-ratio: 4 / 3;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            overflow: hidden;
+            backdrop-filter: blur(var(--blur-amount));
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            display: flex; justify-content: center; align-items: center;
+            cursor: pointer;
+        }
+
+        .frame-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(255, 214, 10, 0.15);
+            border-color: rgba(255, 214, 10, 0.4);
+        }
+
+        /* 空狀態 (當讀不到檔案時顯示) */
+        .empty-state {
+            text-align: center; color: rgba(255,255,255,0.3); transition: 0.3s;
+            position: absolute;
+            z-index: 1;
+        }
+        .frame-card:hover .empty-state { color: var(--gold); }
+        .plus-icon { font-size: 3rem; margin-bottom: 10px; display: block; }
+        .hint-text { font-size: 0.8rem; letter-spacing: 1px; text-transform: uppercase; }
+
+        /* 圖片狀態 */
+        .photo-display {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            display: none; /* 預設隱藏，載入成功後 JS 會改成 block */
+            z-index: 2;
+        }
+
+        input[type="file"] { display: none; }
+
+        /* --- 燈箱 (Lightbox) --- */
+        .lightbox {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 999;
+            display: none; justify-content: center; align-items: center;
+            opacity: 0; transition: opacity 0.3s;
+            backdrop-filter: blur(10px);
+        }
+        .lightbox.active { display: flex; opacity: 1; }
+        
+        .lightbox img {
+            max-width: 90%; max-height: 90%;
+            border-radius: 10px;
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+            transform: scale(0.9); transition: transform 0.3s;
+        }
+        .lightbox.active img { transform: scale(1); }
+
+        .close-lightbox {
+            position: absolute; top: 30px; right: 30px;
+            font-size: 2rem; color: white; cursor: pointer;
+            background: none; border: none; opacity: 0.7;
+        }
+        .close-lightbox:hover { opacity: 1; transform: scale(1.1); }
+        
+        /* 載入失敗時 (Broken Image) 確保隱藏圖片圖標 */
+        img[alt]:after {  
+            display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: transparent; content: ''; 
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="ambient-light">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+    </div>
+
+    <header>
+        <a href="../index.html" class="back-btn">← RETURN</a>
+        <h1>HEROES GALLERY</h1>
+        <div style="width: 80px;"></div>
+    </header>
+
+    <div class="gallery-grid" id="grid-container">
+        </div>
+
+    <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+        <button class="close-lightbox">✕</button>
+        <img id="lightbox-img" src="">
+    </div>
+
+    <script>
+        const PASSWORD = "0921";
+        // 設定照片存放路徑 (請在 GitHub 建立 photos 資料夾)
+        // 為了讓您在本機測試也能跑，這裡使用相對路徑
+        // 注意：GitHub 上需要有 photos/1.jpg 到 photos/8.jpg
+        const PHOTO_PATH = "../photos/"; 
+
+        // 動態生成 8 個卡片
+        const gridContainer = document.getElementById('grid-container');
+        
+        for (let i = 1; i <= 8; i++) {
+            const cardHTML = `
+                <div class="frame-card" onclick="handleCardClick(${i})">
+                    <div class="empty-state" id="empty-${i}">
+                        <span class="plus-icon">+</span>
+                        <span class="hint-text">UPLOAD HERO</span>
+                    </div>
+                    
+                    <img id="img-${i}" class="photo-display" 
+                         src="${PHOTO_PATH}${i}.jpg" 
+                         onload="imageLoaded(${i})" 
+                         onerror="imageFailed(${i})"
+                         alt="Hero ${i}">
+                    
+                    <input type="file" id="file-${i}" accept="image/*" onchange="previewImage(this, ${i})">
+                </div>
+            `;
+            gridContainer.innerHTML += cardHTML;
+        }
+
+        // --- 核心邏輯 ---
+
+        // 1. 當圖片成功載入 (代表 GitHub 有檔案)
+        function imageLoaded(id) {
+            document.getElementById(`img-${id}`).style.display = 'block';
+            document.getElementById(`empty-${id}`).style.display = 'none';
+        }
+
+        // 2. 當圖片載入失敗 (代表 GitHub 沒檔案，或還沒上傳)
+        function imageFailed(id) {
+            document.getElementById(`img-${id}`).style.display = 'none';
+            document.getElementById(`empty-${id}`).style.display = 'block';
+        }
+
+        // 3. 點擊卡片處理
+        function handleCardClick(id) {
+            const imgElement = document.getElementById(`img-${id}`);
+            const fileInput = document.getElementById(`file-${id}`);
+            
+            // 如果圖片是顯示的 (無論是來自 GitHub 還是剛上傳的) -> 開燈箱
+            if (imgElement.style.display === 'block') {
+                openLightbox(imgElement.src);
+            } 
+            // 如果是空狀態 -> 問密碼上傳
+            else {
+                let inputPass = prompt("請輸入管理員密碼以啟用此相框 (暫存)：");
+                if (inputPass === PASSWORD) {
+                    fileInput.click();
+                } else if (inputPass !== null) {
+                    alert("🚫 密碼錯誤");
+                }
+            }
+        }
+
+        // 4. 手動上傳預覽 (暫存功能)
+        function previewImage(input, id) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.getElementById(`img-${id}`);
+                    img.src = e.target.result; // 替換成剛上傳的 Base64
+                    // 強制觸發顯示邏輯
+                    img.style.display = 'block';
+                    document.getElementById(`empty-${id}`).style.display = 'none';
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        // --- 燈箱功能 ---
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImg = document.getElementById('lightbox-img');
+
+        function openLightbox(src) {
+            lightboxImg.src = src;
+            lightbox.classList.add('active');
+        }
+
+        function closeLightbox() {
+            lightbox.classList.remove('active');
+            setTimeout(() => { lightboxImg.src = ''; }, 300);
+        }
+    </script>
+
+</body>
+</html>
