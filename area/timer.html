@@ -2,8 +2,8 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CYBERPUNK 戰術指揮台 v2.3</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>CYBERPUNK 戰術指揮台 v2.4 (Tablet Fix)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   
   <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
@@ -13,15 +13,24 @@
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
     
+    /* 設定變數以支援不同瀏覽器的高度計算 */
+    :root {
+      --app-height: 100vh;
+    }
+
     body {
       font-family: 'Noto Sans TC', 'Orbitron', sans-serif;
       background-color: #000;
       color: #e2e8f0;
       background-image: radial-gradient(circle at 50% 50%, #050505 0%, #000 100%);
-      height: 100vh;
+      /* 使用 dvh (Dynamic Viewport Height) 解決移動端工具列遮擋問題，回退方案為 100vh */
+      height: 100vh; 
+      height: 100dvh; 
       width: 100vw;
-      overflow: hidden;
+      overflow: hidden; /* 防止整體頁面捲動 */
       margin: 0;
+      /* 確保在 iOS 上有安全邊距 */
+      padding-bottom: env(safe-area-inset-bottom); 
     }
 
     ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -47,32 +56,32 @@
     }
     .animate-strobe { animation: strobe 0.2s infinite; }
 
-    /* --- 修改：文字與邊框同步呼吸燈 (左側專用) --- */
+    /* 文字與邊框同步呼吸燈 */
     @keyframes cyber-breath {
       0% { 
-        border-color: rgba(0, 229, 255, 0.5); /* Cyan Border */
+        border-color: rgba(0, 229, 255, 0.5);
         box-shadow: inset 0 0 10px rgba(0, 229, 255, 0.1);
         background-color: rgba(0, 0, 0, 0.6);
-        color: #00f3ff; /* Cyan Text */
+        color: #00f3ff;
         text-shadow: 0 0 8px rgba(0, 243, 255, 0.6);
       }
       50% { 
-        border-color: rgba(255, 0, 255, 0.6); /* Pink Border */
+        border-color: rgba(255, 0, 255, 0.6);
         box-shadow: inset 0 0 30px rgba(255, 0, 255, 0.15);
         background-color: rgba(20, 0, 20, 0.7);
-        color: #ff00ff; /* Pink Text */
+        color: #ff00ff;
         text-shadow: 0 0 12px rgba(255, 0, 255, 0.7);
       }
       100% { 
-        border-color: rgba(0, 229, 255, 0.5); /* Cyan Border */
+        border-color: rgba(0, 229, 255, 0.5);
         box-shadow: inset 0 0 10px rgba(0, 229, 255, 0.1);
         background-color: rgba(0, 0, 0, 0.6);
-        color: #00f3ff; /* Cyan Text */
+        color: #00f3ff;
         text-shadow: 0 0 8px rgba(0, 243, 255, 0.6);
       }
     }
     .animate-cyber-breath {
-      animation: cyber-breath 6s infinite ease-in-out; /* 6秒慢速循環 */
+      animation: cyber-breath 6s infinite ease-in-out;
       transition: all 0.5s ease;
     }
 
@@ -83,7 +92,6 @@
       background-size: 20px 20px;
     }
     
-    /* 自訂輸入框 */
     .input-cyber {
       background: rgba(0,0,0,0.6);
       border: 1px solid #334155;
@@ -98,7 +106,6 @@
       outline: none;
     }
 
-    /* 滑桿樣式 */
     input[type=range] { -webkit-appearance: none; background: transparent; }
     input[type=range]::-webkit-slider-thumb {
       -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%;
@@ -110,7 +117,6 @@
       background: #334155; border-radius: 2px;
     }
 
-    /* 強制數字等寬 */
     .font-timer { font-variant-numeric: tabular-nums; }
   </style>
 </head>
@@ -138,7 +144,7 @@
       } catch (e) {}
     };
 
-    // --- 左側：戰術記事本 (呼吸燈特效) ---
+    // --- 左側 (或上方)：戰術記事本 ---
     const MemoPad = () => {
       const [text, setText] = useState("");
       const [fontSize, setFontSize] = useState(24);
@@ -166,17 +172,17 @@
       };
 
       return (
-        <div className="h-full flex flex-col bg-gray-900/90 border-r-2 border-cyan-900 p-2 relative overflow-hidden">
+        <div className="h-full flex flex-col bg-gray-900/90 md:border-r-2 border-b-2 md:border-b-0 border-cyan-900 p-2 relative overflow-hidden">
            {/* Header */}
-           <div className="flex justify-between items-center px-3 py-2 border-b border-cyan-800/50 mb-2 bg-black/60 rounded-t">
-              <div className="flex items-center gap-4">
-                 <span className="text-cyan-500 font-bold tracking-widest text-sm neon-blue">TACTICAL NOTES</span>
+           <div className="flex-shrink-0 flex justify-between items-center px-3 py-2 border-b border-cyan-800/50 mb-2 bg-black/60 rounded-t">
+              <div className="flex items-center gap-2 md:gap-4 overflow-hidden">
+                 <span className="text-cyan-500 font-bold tracking-widest text-xs md:text-sm neon-blue whitespace-nowrap">TACTICAL</span>
                  <div className="flex items-center gap-2 bg-gray-800/50 px-2 py-1 rounded border border-gray-700">
-                    <span className="text-[10px] text-gray-400">SIZE</span>
+                    <span className="text-[10px] text-gray-400 hidden sm:inline">SIZE</span>
                     <input 
                         type="range" min="12" max="80" step="2" 
                         value={fontSize} onChange={handleSizeChange}
-                        className="w-20 md:w-24"
+                        className="w-16 md:w-24"
                     />
                  </div>
               </div>
@@ -185,11 +191,11 @@
               </span>
            </div>
            
-           {/* 輸入區：套用 updated cyber-breath 動畫 */}
+           {/* 輸入區：增加 min-h-0 確保在 flex 容器中正確縮放 */}
            <textarea 
-             className="flex-grow w-full p-4 font-mono resize-none outline-none notepad-bg leading-relaxed custom-scrollbar rounded-b border-2 animate-cyber-breath"
+             className="flex-grow min-h-0 w-full p-4 font-mono resize-none outline-none notepad-bg leading-relaxed custom-scrollbar rounded-b border-2 animate-cyber-breath"
              style={{ fontSize: `${fontSize}px` }}
-             placeholder="/// WAITING FOR COMMANDS..."
+             placeholder="/// COMMANDS..."
              value={text}
              onChange={handleTextChange}
              spellCheck="false"
@@ -198,9 +204,9 @@
       );
     };
 
-    // --- 右側：計時器 ---
+    // --- 右側 (或下方)：計時器 ---
     const TimerPanel = () => {
-      const [mode, setMode] = useState('DURATION'); // 'DURATION', 'TARGET', 'CLOCK'
+      const [mode, setMode] = useState('DURATION');
       const [targetTimeStr, setTargetTimeStr] = useState("");
       const [durationMin, setDurationMin] = useState("5");
       const [durationSec, setDurationSec] = useState("0");
@@ -304,15 +310,16 @@
           textClass = "text-red-600 animate-pulse";
       }
 
+      // 調整字體大小策略，避免在小螢幕撐開容器
       const fontSizeValue = isClockMode 
-          ? 'clamp(2rem, 12vw, 20vh)' 
-          : 'clamp(4rem, 18vw, 35vh)';
+          ? 'clamp(2rem, 15vw, 15vh)' 
+          : 'clamp(4rem, 20vw, 25vh)';
 
       return (
-        <div className={`h-full flex flex-col items-center justify-center relative overflow-hidden transition-all ${containerClass}`}>
+        <div className={`h-full flex flex-col items-center justify-between relative overflow-hidden transition-all ${containerClass}`}>
             
-            {/* 顯示區 */}
-            <div className="flex-grow flex items-center justify-center w-full z-10 px-2">
+            {/* 顯示區：增加 min-h-0 與 flex-grow 確保它佔據剩餘空間但不撐開 */}
+            <div className="flex-grow flex items-center justify-center w-full z-10 px-2 min-h-0 overflow-hidden">
                 <div className={`font-black tracking-tighter leading-none font-timer select-none text-center ${textClass}`}
                      style={{ fontSize: fontSizeValue }} 
                 >
@@ -321,57 +328,57 @@
             </div>
 
             {isTimeUp && <div className="absolute top-10 text-red-500 font-black text-5xl animate-bounce z-20">TIME UP</div>}
-            {isClockMode && <div className="absolute top-4 right-4 text-green-800 font-bold text-xl font-mono border border-green-900 px-2 rounded">REAL TIME</div>}
+            {isClockMode && <div className="absolute top-4 right-4 text-green-800 font-bold text-sm md:text-xl font-mono border border-green-900 px-2 rounded">REAL TIME</div>}
             
-            {/* 控制面板 */}
-            <div className="w-full max-w-4xl bg-gray-900/95 border-t border-gray-700 p-3 z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.8)] shrink-0">
-                <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
+            {/* 控制面板：增加 shrink-0 確保不會被壓縮 */}
+            <div className="flex-shrink-0 w-full max-w-4xl bg-gray-900/95 border-t border-gray-700 p-2 md:p-3 z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.8)] pb-safe">
+                <div className="flex gap-2 mb-2 md:mb-3 overflow-x-auto pb-1 no-scrollbar">
                      {['DURATION', 'TARGET', 'CLOCK'].map(m => (
                         <button key={m} onClick={() => setMode(m)} 
-                                className={`flex-1 py-2 px-4 text-sm font-bold tracking-wider whitespace-nowrap rounded transition-all border 
+                                className={`flex-1 py-2 px-2 md:px-4 text-xs md:text-sm font-bold tracking-wider whitespace-nowrap rounded transition-all border 
                                 ${mode === m ? 'bg-gray-800 text-cyan-400 border-cyan-500 shadow-[0_0_10px_rgba(0,191,255,0.2)]' : 'bg-transparent text-gray-500 border-transparent hover:bg-gray-800'}`}>
                             {m === 'DURATION' ? '倒數計時' : m === 'TARGET' ? '指定時刻' : '目前時間'}
                         </button>
                      ))}
                 </div>
 
-                <div className="h-[80px] flex items-center justify-center"> 
+                <div className="h-[60px] md:h-[80px] flex items-center justify-center"> 
                     {isClockMode ? (
-                        <div className="text-gray-500 font-mono text-xl animate-pulse">
+                        <div className="text-gray-500 font-mono text-base md:text-xl animate-pulse">
                             /// SYSTEM CLOCK SYNCED ///
                         </div>
                     ) : isRunning ? (
                         <button onClick={handleStop} 
-                                className="w-full h-full bg-red-900/80 hover:bg-red-800 border-2 border-red-500 text-red-100 font-bold text-3xl rounded animate-pulse tracking-[0.2em] shadow-[0_0_20px_rgba(255,0,0,0.4)]">
+                                className="w-full h-full bg-red-900/80 hover:bg-red-800 border-2 border-red-500 text-red-100 font-bold text-2xl md:text-3xl rounded animate-pulse tracking-[0.2em] shadow-[0_0_20px_rgba(255,0,0,0.4)]">
                             STOP / RESET
                         </button>
                     ) : (
-                        <div className="flex gap-3 w-full h-full">
-                            <div className="flex-grow bg-black/50 rounded border border-gray-700 flex items-center justify-center px-4 gap-4">
+                        <div className="flex gap-2 md:gap-3 w-full h-full">
+                            <div className="flex-grow bg-black/50 rounded border border-gray-700 flex items-center justify-center px-2 md:px-4 gap-2 md:gap-4">
                                 {mode === 'DURATION' ? (
                                     <>
-                                        <div className="flex flex-col w-24">
-                                            <label className="text-[10px] text-gray-500 text-center">MIN</label>
+                                        <div className="flex flex-col w-16 md:w-24">
+                                            <label className="text-[8px] md:text-[10px] text-gray-500 text-center">MIN</label>
                                             <input type="number" value={durationMin} onChange={e => setDurationMin(e.target.value)} 
-                                                   className="input-cyber text-3xl py-1 rounded w-full" />
+                                                   className="input-cyber text-xl md:text-3xl py-1 rounded w-full" />
                                         </div>
-                                        <span className="text-2xl text-gray-600 pb-2">:</span>
-                                        <div className="flex flex-col w-24">
-                                            <label className="text-[10px] text-gray-500 text-center">SEC</label>
+                                        <span className="text-xl md:text-2xl text-gray-600 pb-2">:</span>
+                                        <div className="flex flex-col w-16 md:w-24">
+                                            <label className="text-[8px] md:text-[10px] text-gray-500 text-center">SEC</label>
                                             <input type="number" value={durationSec} onChange={e => setDurationSec(e.target.value)} 
-                                                   className="input-cyber text-3xl py-1 rounded w-full" />
+                                                   className="input-cyber text-xl md:text-3xl py-1 rounded w-full" />
                                         </div>
                                     </>
                                 ) : (
                                     <div className="flex flex-col w-full max-w-xs">
-                                        <label className="text-[10px] text-gray-500 mb-1 text-center">TARGET (HH:MM)</label>
+                                        <label className="text-[8px] md:text-[10px] text-gray-500 mb-1 text-center">TARGET (HH:MM)</label>
                                         <input type="time" value={targetTimeStr} onChange={e => setTargetTimeStr(e.target.value)}
-                                               className="input-cyber text-3xl py-1 rounded w-full" />
+                                               className="input-cyber text-xl md:text-3xl py-1 rounded w-full" />
                                     </div>
                                 )}
                             </div>
                             <button onClick={handleStart} 
-                                    className="w-32 md:w-40 bg-cyan-700 hover:bg-cyan-600 text-white font-bold text-xl md:text-2xl rounded shadow-[0_0_15px_rgba(0,191,255,0.3)] border border-cyan-400 active:scale-95 transition-transform">
+                                    className="w-24 md:w-40 bg-cyan-700 hover:bg-cyan-600 text-white font-bold text-lg md:text-2xl rounded shadow-[0_0_15px_rgba(0,191,255,0.3)] border border-cyan-400 active:scale-95 transition-transform">
                                 START
                             </button>
                         </div>
@@ -383,12 +390,16 @@
     };
 
     const App = () => {
+      // 使用 flex-col 在手機平板上垂直排列，md:flex-row 在大螢幕水平排列
+      // 使用 h-[100dvh] 確保高度適應實際可視區域
       return (
-        <div className="flex flex-row h-screen w-screen overflow-hidden">
-          <div className="w-[40%] h-full z-10">
+        <div className="flex flex-col md:flex-row h-[100dvh] w-screen overflow-hidden">
+          {/* 左側：在移動端變成上方，高度設為 35% */}
+          <div className="w-full md:w-[40%] h-[35%] md:h-full z-10 flex-shrink-0">
              <MemoPad />
           </div>
-          <div className="w-[60%] h-full border-l-4 border-gray-800 z-0">
+          {/* 右側：在移動端變成下方，高度設為剩餘空間，使用 flex-1 */}
+          <div className="w-full md:w-[60%] flex-1 md:h-full border-t-4 md:border-t-0 md:border-l-4 border-gray-800 z-0 min-h-0">
              <TimerPanel />
           </div>
         </div>
