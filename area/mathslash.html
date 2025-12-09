@@ -13,12 +13,8 @@
             --bg-color: #0b0f14;
             --hud-bg: #1e2531;
             --hud-border: #00ffff; /* 霓虹青色 */
-            --accent-color: #ff00ff;
-/* 霓虹洋紅 */
-            --text-highlight: #fffa50;
-/* 電光黃 */
-            --hp-color: #00ff88;
-/* 綠色健康 */
+            --accent-color: #ff00ff; /* 霓虹洋紅 */
+            --text-highlight: #fffa50; /* 電光黃 */
             --danger-color: #ff3333;
             --font-main: 'Press Start 2P', cursive;
             --font-title: 'Noto Serif TC', serif;
@@ -31,8 +27,7 @@
             overflow: hidden;
             background-color: var(--bg-color);
             font-family: var(--font-main);
-            touch-action: none;
-/* 禁止手機上的預設手勢 */
+            touch-action: none; /* 禁止手機上的預設手勢 */
             user-select: none;
             -webkit-user-select: none;
         }
@@ -45,7 +40,6 @@
             background: var(--bg-color);
             display: flex;
             flex-direction: column; 
-/* 確保內容垂直堆疊 (HUD在上, Canvas在下) */
             box-sizing: border-box;
         }
 
@@ -53,9 +47,9 @@
         #doom-hud {
             width: 100%;
             height: 10vh; /* 基礎高度比例 */
-            max-height: 90px; /* **硬性最大高度**，確保 HUD 不會過高而壓縮 Canvas */
+            max-height: 90px; 
             background: var(--hud-bg);
-            border-bottom: 3px solid var(--hud-border); /* 底部邊界線 */
+            border-bottom: 3px solid var(--hud-border); 
             
             /* 橫向掃描線效果 */
             background-image: linear-gradient(rgba(0,0,0,0.5) 1px, transparent 1px);
@@ -69,16 +63,14 @@
             padding: 2px 0; 
             box-sizing: border-box;
             flex-shrink: 0; 
-/* **關鍵：不允許 HUD 被壓縮** */
         }
 
         /* 🖼️ 區塊二：下層 Canvas 遊戲區 (候選人漂浮區) */
         canvas {
             display: block;
-            flex-grow: 1; /* **關鍵：填滿所有剩餘的垂直空間** */
+            flex-grow: 1; 
             width: 100%;
             cursor: crosshair;
-/* 讓 Canvas 具有細微的發光邊框 */
             box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
         }
         
@@ -109,7 +101,7 @@
 
         .hud-panel > * {
             transform: skewX(5deg);
-/* 將內容反向傾斜，保持垂直 */
+            /* 將內容反向傾斜，保持垂直 */
         }
 
         /* 標籤字體：使用 clamp 確保最小尺寸 */
@@ -146,10 +138,10 @@
             word-break: break-word;
         }
 
-        /* HP 顏色動態調整 */
-        #hp-val {
-            color: var(--hp-color);
-            border-color: var(--hp-color);
+        /* 移除 HP 相關樣式，改用 DANGER 提示 */
+        #fail-indicator {
+            color: var(--danger-color);
+            border-color: var(--danger-color);
         }
 
         /* ---------------------------------------------------- */
@@ -247,12 +239,9 @@
         }
         
         @keyframes popOut {
-            0% { transform: translate(-50%, -50%) scale(0.5);
-opacity: 0; }
-            20% { transform: translate(-50%, -50%) scale(1.2);
-opacity: 1; }
-            100% { transform: translate(-50%, -100%) scale(1);
-opacity: 0; }
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            20% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+            100% { transform: translate(-50%, -100%) scale(1); opacity: 0; }
         }
 
     </style>
@@ -284,16 +273,14 @@ opacity: 0; }
                 <div class="hud-value" id="parry-val">0/3</div>
             </div>
             
-            <div class="hud-panel" id="timer-panel" style="border-color: var(--hp-color);
-color: var(--hp-color);">
+            <div class="hud-panel" id="timer-panel" style="border-color: var(--hud-border); color: var(--hud-border);">
                 <div class="hud-label">TIME</div>
                 <div class="hud-value" id="timer-val">0.0</div>
             </div>
 
-            <div class="hud-panel">
-                <div class="hud-label">HP CORE</div>
-                <div class="hud-value" id="hp-val">100%</div>
-   
+            <div class="hud-panel" id="fail-indicator">
+                <div class="hud-label">STATUS</div>
+                <div class="hud-value" id="status-val" style="color:var(--danger-color);">ACTIVE</div>
             </div>
         </div>
         
@@ -302,10 +289,8 @@ color: var(--hp-color);">
         <div id="damage-overlay"></div>
         
         <div id="start-screen" class="overlay-screen">
-            <div class="doom-title">MATH SLASH<br><span style="font-size:0.6em;
-color:#fff;">數學之刃 V2.3</span></div>
-            <p style="color:#aaa; font-size:clamp(10px, 1.5vw, 14px); margin-bottom: 20px;
-text-align: center;">
+            <div class="doom-title">MATH SLASH<br><span style="font-size:0.6em; color:#fff;">數學之刃 V2.4</span></div>
+            <p style="color:#aaa; font-size:clamp(10px, 1.5vw, 14px); margin-bottom: 20px; text-align: center;">
                 COMBINE NODES TO HIT THE TARGET VALUE.
             </p>
             <button id="start-btn" class="btn" onclick="showModeSelect()" disabled>LOADING...</button>
@@ -314,18 +299,15 @@ text-align: center;">
         <div id="mode-select-screen" class="overlay-screen hidden">
             <div class="doom-title">SELECT INTERFACE MODE</div>
        
-            <p style="color:#fff; font-size:clamp(10px, 1.5vw, 14px); margin-bottom: 20px;
-text-align: center;">
+            <p style="color:#fff; font-size:clamp(10px, 1.5vw, 14px); margin-bottom: 20px; text-align: center;">
                 請選擇您的輸入模式：
             </p>
             <div class="mode-btns-container">
                 <button class="btn" onclick="setInteractionMode('CLICK')">
-                    [PC] CLICK MODE (點擊)<br><span style="font-size:0.7em;
-color:#ffff50;">(滑鼠點擊數字節點進行選中/配對)</span>
+                    [PC] CLICK MODE (點擊)<br><span style="font-size:0.7em; color:#ffff50;">(滑鼠點擊數字節點進行選中/配對)</span>
                 </button>
                 <button class="btn" onclick="setInteractionMode('SLASH')">
-                    [MOBILE] SLASH MODE (斬擊)<br><span style="font-size:0.7em;
-color:#ffff50;">(滑動手指/滑鼠拖曳進行連線斬擊)</span>
+                    [MOBILE] SLASH MODE (斬擊)<br><span style="font-size:0.7em; color:#ffff50;">(滑動手指/滑鼠拖曳進行連線斬擊)</span>
                 </button>
             </div>
         </div>
@@ -334,57 +316,54 @@ color:#ffff50;">(滑動手指/滑鼠拖曳進行連線斬擊)</span>
             <div class="doom-title">SELECT MISSION TYPE</div>
             <div class="level-btns-container">
                 <button class="btn" onclick="selectLevelType('SUM', 'EASY')">
-      
-                    [TYPE 1] SUM PROTOCOL (加法拆分)<br><span style="font-size:0.7em;
-color:#00ffff;">(找出兩數相加等於目標)</span>
+                    [TYPE 1] SUM PROTOCOL (加法拆分)<br><span style="font-size:0.7em; color:#00ffff;">(找出兩數相加等於目標)</span>
                 </button>
                 <button id="factor-btn" class="btn" onclick="showDifficultySelect('FACTOR')">
-                    [TYPE 2] FACTOR PROTOCOL (因數分解)<br><span style="font-size:0.7em;
-color:#00ffff;">(選擇難度)</span>
+                    [TYPE 2] FACTOR PROTOCOL (因數分解)<br><span style="font-size:0.7em; color:#00ffff;">(選擇難度)</span>
                 </button>
-                <button class="btn" onclick="selectLevelType('SEQUENCE', 'EASY')">
-                    [TYPE 3] SEQUENCE PROTOCOL (數列反算)<br><span style="font-size:0.7em;
-color:#00ffff;">(填補算式中的兩個缺口：運算符號與數字)</span>
-                </button>
-            </div>
+                </div>
         </div>
 
         <div id="difficulty-select-screen" class="overlay-screen hidden">
             <div class="doom-title">FACTOR PROTOCOL: DIFFICULTY</div>
-            <p style="color:#fff;
-font-size:clamp(10px, 1.5vw, 14px); margin-bottom: 20px; text-align: center;">
+            <p style="color:#fff; font-size:clamp(10px, 1.5vw, 14px); margin-bottom: 20px; text-align: center;">
                 請選擇因數分解難度：
             </p>
             <div class="difficulty-btns-container">
-                <button class="btn" onclick="selectLevelType('FACTOR', 'EASY')">
-                    NORMAL MODE<br><span style="font-size:0.7em;
-color:#00ffff;">(目標值 $\le 2000$)</span>
+                <button class="btn" onclick="selectLevelType('FACTOR', 'NOVICE')">
+                    NOVICE MODE (新手)<br><span style="font-size:0.7em; color:#00ffff;">(合數 $1\sim100$，因子 $1\sim50$)</span>
                 </button>
-                <button class="btn" onclick="selectLevelType('FACTOR', 'HARD')">
-                    HARDCORE MODE<br><span style="font-size:0.7em;
-color:#fffa50;">(目標值 $\mathbf{300 \sim 10000}$)</span>
+                <button class="btn" onclick="selectLevelType('FACTOR', 'EASY')">
+                    EASY MODE (初階)<br><span style="font-size:0.7em; color:#00ffff;">(合數 $1\sim400$，因子 $1\sim20$)</span>
+                </button>
+                <button class="btn" onclick="selectLevelType('FACTOR', 'MID')">
+                    MIDDLE MODE (中階)<br><span style="font-size:0.7em; color:#fffa50;">(合數 $200\sim1000$，因子 $10\sim50$)</span>
+                </button>
+                <button class="btn" onclick="selectLevelType('FACTOR', 'HIGH')">
+                    HIGH MODE (高階)<br><span style="font-size:0.7em; color:orange;">(合數 $500\sim3000$，因子 $20\sim80$)</span>
+                </button>
+                <button class="btn" onclick="selectLevelType('FACTOR', 'CHALLENGE')">
+                    CHALLENGE MODE (挑戰)<br><span style="font-size:0.7em; color:var(--danger-color);">(合數 $2000\sim10000$，因子 $50\sim100$)</span>
                 </button>
             </div>
         </div>
 
         <div id="ready-screen" class="overlay-screen hidden" style="background: rgba(0,0,0,0.6);">
-            <div class="doom-title" style="color:var(--hp-color);">TARGET LOCKED</div>
-            <div style="color:#fff;
-font-size:clamp(12px, 2vw, 18px); margin-bottom:20px;">INITIATE SEQUENCE?</div>
+            <div class="doom-title" style="color:var(--hud-border);">TARGET LOCKED</div>
+            <div style="color:#fff; font-size:clamp(12px, 2vw, 18px); margin-bottom:20px;">INITIATE SEQUENCE?</div>
             <button class="btn" onclick="startRound()">START SLASHING</button>
         </div>
 
         <div id="clear-screen" class="overlay-screen hidden">
             <div class="doom-title" style="color:var(--hud-border);">PROTOCOL CLEARED</div>
-            <p style="color:#fff;
-font-size:clamp(12px, 2vw, 16px);">TIME BONUS: <span id="clear-time" style="color:var(--hp-color);">0.00</span>s</p>
+            <p style="color:#fff; font-size:clamp(12px, 2vw, 16px);">TIME BONUS: <span id="clear-time" style="color:var(--hud-border);">0.00</span>s</p>
             <button class="btn" onclick="nextStage()">NEXT SECTOR</button>
         </div>
 
         <div id="gameover-screen" class="overlay-screen hidden">
             <div class="doom-title" style="color:var(--danger-color);">MISSION FAILED</div>
-            <p style="color:#fff;
-font-size:clamp(12px, 2vw, 16px);">FINAL SCORE: <span id="final-score">0</span></p>
+            <p style="color:#fff; font-size:clamp(12px, 2vw, 16px);">FINAL SCORE: <span id="final-score">0</span></p>
+            <p style="color:var(--danger-color); font-size:clamp(10px, 1.5vw, 14px); margin-top:10px;">因錯誤操作導致系統核心終止。</p>
             <button class="btn" onclick="showModeSelect()">RETRY</button>
         </div>
 
@@ -392,63 +371,56 @@ font-size:clamp(12px, 2vw, 16px);">FINAL SCORE: <span id="final-score">0</span><
 
     <script>
         /**
-         * Math Slash Cyberpunk V2.3
-         * 最終佈局修正：
-         * 1. 實現 HUD (區塊一) 在上層，固定高度 (max-height: 90px)。
-         * 2. 實現 Canvas (區塊二) 在下層，填滿剩餘高度 (flex-grow: 1)。
-         * 3. 確保 resize 邏輯精確計算 Canvas 區域，以避免任何邊界溢出。
+         * Math Slash Cyberpunk V2.4 - MODIFIED
+         * * 修正項目：
+         * 1. 移除 SEQUENCE PROTOCOL。
+         * 2. 移除 HP 系統，答錯即失敗 (GameOver)。
+         * 3. FACTOR PROTOCOL 擴增至 5 個難度，並依需求調整範圍。
+         * 4. 強化 FACTOR 誘答性 (個位數誤導 + 數值極度鄰近)。
          */
 
         // --- Configuration & Constants ---
         const CONFIG = {
-            BASE_WIDTH: 800,   // Reference resolution width
-            BASE_HEIGHT: 600,  // Reference resolution height
+            BASE_WIDTH: 800,
+            BASE_HEIGHT: 600,
             CANDIDATE_BASE_SIZE: 50,
             PARRY_NEEDED: 3,
-     
+            FINAL_STAGE: 6, 
             SWIPE_TIMEOUT_MS: 2000,
             TRAIL_LENGTH: 15,
             COLORS: {
                 bg: '#0b0f14',
                 trail: '#ff00ff', // Slash color (Magenta)
                 trailShadow: '#00ffff',
-           
                 text: '#ffffff',
                 highlight: '#fffa50',
                 // 數字球的顏色設定
                 part1: '#ff00ff', // First selected part color (Magenta)
                 part2: '#00ffff', // Second selected part color (Cyan)
-              
                 decoys: '#444', 
                 decoysStroke: '#00ffff'
             },
-            // 互動模式: 由使用者選擇後設定
             INTERACTION_MODE: null
         };
-// --- Global State ---
+        // --- Global State ---
         const state = {
             screen: 'START',
             levelType: 'SUM',
-            difficulty: 'EASY', // 追蹤難度
+            difficulty: 'EASY', 
             stage: 1,
             score: 0,
-            hp: 100,
-     
             parryCount: 0,
             startTime: 0,
             targetValue: 0,
             candidates: [],
             particles: [],
-            solutionPair: [], // [val1, val2] 或 [op, num]
-            partialSelection: null, // First hit candidate
-    
+            solutionPair: [], 
+            partialSelection: null, 
             partialTimer: 0,
             scaleFactor: 1,
             pointer: { x: 0, y: 0, isDown: false, trail: [] },
-            // 數列反算特有狀態
-            sequenceFound: { op: false, num: false } 
         };
-// --- DOM Elements ---
+        // --- DOM Elements ---
         const gameContainer = document.getElementById('game-container');
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d', { alpha: false }); 
@@ -460,20 +432,18 @@ font-size:clamp(12px, 2vw, 16px);">FINAL SCORE: <span id="final-score">0</span><
             targetTitle: document.getElementById('target-title'),
             parry: document.getElementById('parry-val'),
             timer: document.getElementById('timer-val'),
-            hp: document.getElementById('hp-val'),
-      
+            status: document.getElementById('status-val'), // 新的狀態指示器
             screens: {
                 start: document.getElementById('start-screen'),
                 mode: document.getElementById('mode-select-screen'),
                 level: document.getElementById('level-select-screen'),
                 difficulty: document.getElementById('difficulty-select-screen'),
                 ready: document.getElementById('ready-screen'),
-        
                 clear: document.getElementById('clear-screen'),
                 gameover: document.getElementById('gameover-screen')
             }
         };
-// --- Background Asset ---
+        // --- Background Asset ---
         const bgImage = new Image();
         bgImage.src = 'https://placehold.co/1024x768/000/00ffff?text=CYBERNETIC+GRID';
         bgImage.onload = () => {
@@ -485,12 +455,12 @@ font-size:clamp(12px, 2vw, 16px);">FINAL SCORE: <span id="final-score">0</span><
         function resize() {
             const w = gameContainer.clientWidth;
             const h = gameContainer.clientHeight;
-            const hudHeight = hud.offsetHeight; // 正確取得 HUD 的實際高度
+            const hudHeight = hud.offsetHeight;
             
             // DPI Scaling (Retina support)
             const dpr = window.devicePixelRatio || 1;
             
-            // Canvas width/height: 完整寬度, 高度為容器高度減去 HUD 高度 (完美填滿下方空間)
+            // Canvas width/height: full container width, height minus HUD height
             canvas.width = w * dpr;
             canvas.height = (h - hudHeight) * dpr;
             
@@ -502,12 +472,11 @@ font-size:clamp(12px, 2vw, 16px);">FINAL SCORE: <span id="final-score">0</span><
             // Calculate Scale Factor based on reference resolution
             state.scaleFactor = Math.min(w / CONFIG.BASE_WIDTH, (h - hudHeight) / CONFIG.BASE_HEIGHT) * 1.2;
             if (w < 600) state.scaleFactor *= 1.2;
-            
-            updateHpDisplay(state.hp);
         }
         window.addEventListener('resize', resize);
         resize();
-// --- Input Handling ---
+        
+        // --- Input Handling ---
 
         function getCanvasPos(evt) {
             const rect = canvas.getBoundingClientRect();
@@ -572,14 +541,13 @@ font-size:clamp(12px, 2vw, 16px);">FINAL SCORE: <span id="final-score">0</span><
         canvas.addEventListener('touchstart', handlePointerDown, {passive: false});
         canvas.addEventListener('touchmove', handlePointerMove, {passive: false});
         window.addEventListener('touchend', handlePointerUp);
-// --- Game Logic Classes (Unchanged) ---
+        // --- Game Logic Classes (Unchanged) ---
         
         class Candidate {
             constructor(val, solutionKey, type='number') {
                 this.text = String(val);
                 this.solutionKey = solutionKey; // 'P1', 'P2', 'DECOY'
-                this.dataType = type;
-                // 'number', 'operator', or 'mix'
+                this.dataType = type; 
                 
                 this.radius = (CONFIG.CANDIDATE_BASE_SIZE / 2) * state.scaleFactor;
                 const w = canvas.width / (window.devicePixelRatio || 1);
@@ -621,14 +589,10 @@ font-size:clamp(12px, 2vw, 16px);">FINAL SCORE: <span id="final-score">0</span><
                 this.x += this.vx;
                 this.y += this.vy;
                 // Boundary bounce
-                if (this.x < this.radius) { this.x = this.radius;
-                this.vx *= -1; }
-                if (this.x > w - this.radius) { this.x = w - this.radius;
-                this.vx *= -1; }
-                if (this.y < this.radius) { this.y = this.radius;
-                this.vy *= -1; }
-                if (this.y > h - this.radius) { this.y = h - this.radius;
-                this.vy *= -1; }
+                if (this.x < this.radius) { this.x = this.radius; this.vx *= -1; }
+                if (this.x > w - this.radius) { this.x = w - this.radius; this.vx *= -1; }
+                if (this.y < this.radius) { this.y = this.radius; this.vy *= -1; }
+                if (this.y > h - this.radius) { this.y = h - this.radius; this.vy *= -1; }
 
                 if (this.selected) {
                     this.scaleAnim = 1 + Math.sin(Date.now() / 100) * 0.1;
@@ -643,20 +607,17 @@ font-size:clamp(12px, 2vw, 16px);">FINAL SCORE: <span id="final-score">0</span><
                 ctx.translate(this.x, this.y);
 
                 // Cyberpunk Glow Effect
-                ctx.shadowBlur = this.highlighted ||
-                this.selected ? 30 : 10;
+                ctx.shadowBlur = this.highlighted || this.selected ? 30 : 10;
                 const glowColor = this.selected ? (this.solutionKey === 'P1' ? CONFIG.COLORS.part1 : CONFIG.COLORS.part2) : CONFIG.COLORS.decoysStroke;
                 ctx.shadowColor = glowColor;
 
                 // Fill
-                ctx.fillStyle = this.selected ?
-                'rgba(0,0,0,0.8)' : CONFIG.COLORS.decoys;
+                ctx.fillStyle = this.selected ? 'rgba(0,0,0,0.8)' : CONFIG.COLORS.decoys;
                 
                 // Border Color based on selection part
                 let strokeColor = CONFIG.COLORS.decoysStroke;
                 if (this.selected) {
-                    strokeColor = this.solutionKey === 'P1' ?
-                    CONFIG.COLORS.part1 : CONFIG.COLORS.part2;
+                    strokeColor = this.solutionKey === 'P1' ? CONFIG.COLORS.part1 : CONFIG.COLORS.part2;
                 } else if (this.highlighted) {
                     strokeColor = CONFIG.COLORS.highlight;
                 }
@@ -723,108 +684,104 @@ font-size:clamp(12px, 2vw, 16px);">FINAL SCORE: <span id="final-score">0</span><
             if (screenName === 'GAMEOVER') ui.screens.gameover.classList.remove('hidden');
         }
 
-        function showModeSelect() { 
+        function showModeSelect() {
+            // Reset game state on full restart
+            state.stage = 1;
+            state.score = 0;
+            ui.stage.innerText = `1 (E)`;
+            ui.parry.innerText = `0/${CONFIG.PARRY_NEEDED}`;
+            ui.score.innerText = '0';
+            ui.timer.innerText = '0.0';
+            ui.status.innerText = 'ACTIVE';
             switchScreen('MODE_SELECT');
         }
-
+        
         function setInteractionMode(mode) {
             CONFIG.INTERACTION_MODE = mode;
-            showLevelSelect();
-        }
-
-        function showLevelSelect() { 
             switchScreen('LEVEL_SELECT');
         }
 
-        function showDifficultySelect(type) {
-            if (type === 'FACTOR') {
-                switchScreen('DIFFICULTY_SELECT');
-            } else {
-                selectLevelType(type, 'EASY');
-            }
-        }
-        
         function selectLevelType(type, difficulty) {
             state.levelType = type;
             state.difficulty = difficulty;
-            startGame();
-        }
-
-        function startGame() {
-            state.stage = 1;
-            state.score = 0;
-            state.hp = 100;
-            ui.score.innerText = '0';
-            updateHpDisplay(100);
             setupStage();
         }
 
+        function showDifficultySelect(type) {
+            state.levelType = type;
+            switchScreen('DIFFICULTY_SELECT');
+        }
+
         function setupStage() {
-            state.parryCount = 0;
-            state.partialSelection = null;
             state.candidates = [];
-            state.particles = [];
-            state.sequenceFound = { op: false, num: false };
-            ui.stage.innerText = `${state.stage} (${state.difficulty.substring(0, 1)})`;
+            state.partialSelection = null;
+            state.parryCount = 0;
+            
+            // 簡化難度代碼顯示
+            let diffCode = state.difficulty.substring(0, 1);
+            if (state.difficulty === 'NOVICE') diffCode = 'N';
+            if (state.difficulty === 'MID') diffCode = 'M';
+            if (state.difficulty === 'HIGH') diffCode = 'H';
+            if (state.difficulty === 'CHALLENGE') diffCode = 'C';
+
+            ui.stage.innerText = `${state.stage} (${diffCode})`;
             ui.parry.innerText = `0/${CONFIG.PARRY_NEEDED}`;
             ui.timer.innerText = "0.0";
+
             // Generate Data
             const data = generateLevelData(state.levelType, state.stage, state.difficulty);
             state.targetValue = data.target;
             state.solutionPair = data.pair;
-            
+
             // Setup UI Display
-            ui.targetTitle.innerText = state.levelType + (state.difficulty === 'HARD' ? ' (HARD)' : ' (NORMAL)');
-            ui.targetVal.innerHTML = formatTargetValue(state.targetValue, state.levelType);
+            ui.targetTitle.innerText = state.levelType + ' (' + state.difficulty + ')';
+            ui.targetVal.innerText = state.targetValue;
 
             // Spawn Candidates
             state.candidates.push(new Candidate(data.pair[0], 'P1', data.type));
             state.candidates.push(new Candidate(data.pair[1], 'P2', data.type));
+            
             // Decoys
             data.decoys.forEach(decoy => {
                 state.candidates.push(new Candidate(decoy, 'DECOY', data.type));
             });
-            switchScreen('READY');
-        }
 
-        function formatTargetValue(target, type) {
-            if (type === 'SEQUENCE') {
-                const parts = target.split(' ');
-                // 替換問號，紅問號 for Op, 藍問號 for Num
-                parts[1] = `<span style="color:${CONFIG.COLORS.part1};">${state.sequenceFound.op ?
-                parts[1] : '?'}</span>`;
-                parts[2] = `<span style="color:${CONFIG.COLORS.part2};">${state.sequenceFound.num ? parts[2] : '?'}</span>`;
-                return parts.join(' ');
-            }
-            return target;
+            switchScreen('READY');
         }
 
         function startRound() {
             switchScreen('PLAYING');
-            state.startTime = performance.now();
+            if (state.stage === 1) {
+                state.startTime = performance.now();
+            }
         }
 
-        function nextStage() {
-            state.stage++;
-            setupStage();
+        function handleClear() { 
+            state.score += 500; 
+            ui.score.innerText = state.score;
+
+            if (state.stage >= CONFIG.FINAL_STAGE) {
+                const time = (performance.now() - state.startTime) / 1000;
+                document.getElementById('clear-time').innerText = time.toFixed(2) + "s";
+                document.getElementById('clear-screen').querySelector('.doom-title').innerText = "MISSION COMPLETE";
+                document.getElementById('clear-screen').querySelector('.btn').innerText = "RESTART (TO MENU)";
+                document.getElementById('clear-screen').querySelector('.btn').onclick = showModeSelect; 
+            } else {
+                document.getElementById('clear-time').innerText = "STAGE " + state.stage + " CLEARED";
+                document.getElementById('clear-screen').querySelector('.doom-title').innerText = "PROTOCOL CLEARED";
+                document.getElementById('clear-screen').querySelector('.btn').innerText = "NEXT SECTOR";
+                document.getElementById('clear-screen').querySelector('.btn').onclick = nextStage; 
+            }
+
+            switchScreen('CLEARED'); 
         }
 
-        function updateHpDisplay(hp) {
-            state.hp = hp;
-            ui.hp.innerText = hp + "%";
-            
-            let color = 'var(--hp-color)'; // Default: Green
-            if (hp <= 50) color = '#ffaa00';
-            // Yellow/Orange
-            if (hp <= 20) color = 'var(--danger-color)';
-            // Red
-            
-            gameContainer.style.setProperty('--hp-color', color);
-            ui.hp.style.color = color;
+        function nextStage() { 
+            state.stage++; 
+            setupStage(); 
         }
 
         // --- Collision & Interaction ---
-
         function getHitCandidate({x, y}) {
             for (let c of state.candidates) {
                 const dx = x - c.x;
@@ -842,39 +799,32 @@ font-size:clamp(12px, 2vw, 16px);">FINAL SCORE: <span id="final-score">0</span><
                 const dist = pointToSegmentDistance(c.x, c.y, x1, y1, x2, y2);
                 if (dist < c.radius) {
                     processHit(c);
-                    return; 
+                    return;
                 }
             }
         }
 
+        // Standard point-line distance function
         function pointToSegmentDistance(px, py, x1, y1, x2, y2) {
-            const l2 = (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2);
-            if (l2 === 0) return Math.hypot(px-x1, py-y1);
-            let t = ((px-x1)*(x2-x1) + (py-y1)*(y2-y1)) / l2;
+            const l2 = (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1);
+            if (l2 == 0) return Math.hypot(px - x1, py - y1);
+            let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
             t = Math.max(0, Math.min(1, t));
-            return Math.hypot(px - (x1 + t * (x2-x1)), py - (y1 + t * (y2-y1)));
+            const nx = x1 + t * (x2 - x1);
+            const ny = y1 + t * (y2 - y1);
+            return Math.hypot(px - nx, py - ny);
         }
 
         function processHit(candidate) {
-            if (candidate.highlighted) return;
-            candidate.highlighted = true;
-            setTimeout(() => candidate.highlighted = false, 150);
             
-            spawnParticles(candidate.x, candidate.y, CONFIG.COLORS.highlight);
-            if (state.levelType === 'SEQUENCE') {
-                handleSequenceHit(candidate);
+            if (candidate.solutionKey === 'DECOY') {
+                // 只要打中誘答數字，立刻失敗
+                handleFail("ERROR: DECOY HIT! MISSION FAILED.", 10);
                 return;
             }
 
-            // --- SUM/FACTOR Logic ---
-            const isSolutionPart = (candidate.solutionKey === 'P1' || candidate.solutionKey === 'P2');
-            if (!isSolutionPart) {
-                handleFail("WRONG NODE!", 20);
-                return;
-            }
-
-            // Deselection
             if (state.partialSelection === candidate) {
+                // Deselecting the first part
                 state.partialSelection.selected = false;
                 state.partialSelection = null;
                 showFloatMsg(candidate.x, candidate.y, "CANCELLED", false);
@@ -889,119 +839,57 @@ font-size:clamp(12px, 2vw, 16px);">FINAL SCORE: <span id="final-score">0</span><
                 showFloatMsg(candidate.x, candidate.y, "NODE LOCKED", true);
             } else {
                 // Second Hit - Check if it's the remaining part
-                const otherKey = state.partialSelection.solutionKey === 'P1' ?
-                'P2' : 'P1';
+                const otherKey = state.partialSelection.solutionKey === 'P1' ? 'P2' : 'P1';
+
                 if (candidate.solutionKey === otherKey) {
                     // Success!
                     scoreSuccess(candidate.x, candidate.y);
                 } else {
-                    // Two correct nodes but same key (impossible with current generation) or already used key
-                    handleFail("PROTOCOL MISMATCH!", 15);
-                }
-            }
-        }
-        
-        function handleSequenceHit(candidate) {
-            const isOp = ['+', '-', 'x', '/'].includes(candidate.text);
-            const isNum = !isOp;
-
-            let solved = false;
-            
-            if (candidate.solutionKey === 'P1' && isOp && !state.sequenceFound.op) {
-                // Correct Operator
-                state.sequenceFound.op = true;
-                solved = true;
-            } else if (candidate.solutionKey === 'P2' && isNum && !state.sequenceFound.num) {
-                // Correct Number
-                state.sequenceFound.num = true;
-                solved = true;
-            } else if (candidate.solutionKey === 'DECOY') {
-                // Decoy hit
-                handleFail("DATA CORRUPTION!", 15);
-                return;
-            } else if (candidate.solutionKey === 'P1' && isOp && state.sequenceFound.op) {
-                // Already found operator
-                showFloatMsg(candidate.x, candidate.y, "ALREADY RESOLVED", false);
-                return;
-            } else if (candidate.solutionKey === 'P2' && isNum && state.sequenceFound.num) {
-                // Already found number
-                showFloatMsg(candidate.x, candidate.y, "ALREADY RESOLVED", false);
-                return;
-            } else {
-                // Hitting wrong type (e.g., hitting operator P1 with a number)
-                handleFail("TYPE MISMATCH!", 15);
-                return;
-            }
-
-            if (solved) {
-                // Successfully found one part
-                showFloatMsg(candidate.x, candidate.y, "RESOLVED!", true);
-                // Remove the candidate node
-                state.candidates = state.candidates.filter(c => c !== candidate);
-                // Update target display
-                ui.targetVal.innerHTML = formatTargetValue(state.targetValue, state.levelType);
-                // Check for completion
-                if (state.sequenceFound.op && state.sequenceFound.num) {
-                    scoreSuccess(candidate.x, candidate.y);
+                    // Two correct nodes but already selected, should not happen in Factor/Sum
+                    handleFail("PROTOCOL MISMATCH! MISSION FAILED.", 10);
                 }
             }
         }
 
         function scoreSuccess(x, y) {
-            state.score += 100 + Math.floor(state.hp / 10);
+            state.score += 100; 
             ui.score.innerText = state.score;
+            spawnParticles(x, y, CONFIG.COLORS.highlight);
+
+            state.partialSelection = null;
             state.parryCount++;
             ui.parry.innerText = `${state.parryCount}/${CONFIG.PARRY_NEEDED}`;
             
-            showFloatMsg(x, y, state.levelType === 'SEQUENCE' ? "COMPLETED!" : "PARRY!", true);
-            spawnParticles(x, y, '#00ff00');
-            if(state.partialSelection) state.partialSelection.selected = false;
-            state.partialSelection = null;
-
+            // Clear the round or respawn
             if (state.parryCount >= CONFIG.PARRY_NEEDED) {
                 handleClear();
             } else {
-                setTimeout(respawnCandidates, 500);
+                respawnCandidates();
             }
         }
 
         function handleFail(msg, damage) {
-            const newHp = state.hp - damage;
-            updateHpDisplay(newHp);
-            
-            const overlay = document.getElementById('damage-overlay');
-            overlay.style.opacity = 0.8;
-            setTimeout(() => overlay.style.opacity = 0, 150);
-            
-            showFloatMsg(canvas.width/2, canvas.height/2, msg, false);
-            if(state.partialSelection) state.partialSelection.selected = false;
-            state.partialSelection = null;
+            ui.status.innerText = 'FAILED';
+            showFloatMsg(canvas.width / 2 / (window.devicePixelRatio || 1), canvas.height / 2 / (window.devicePixelRatio || 1), msg, false);
+            document.getElementById('damage-overlay').style.opacity = 0.8;
+            setTimeout(() => { document.getElementById('damage-overlay').style.opacity = 0; }, 200);
 
-            if (newHp <= 0) {
-                switchScreen('GAMEOVER');
-                document.getElementById('final-score').innerText = state.score;
-            }
+            // 答錯即刻結束遊戲
+            handleGameOver();
         }
 
-        function handleClear() {
-            state.score += 500;
-            const time = (performance.now() - state.startTime) / 1000;
-            document.getElementById('clear-time').innerText = time.toFixed(2);
-            switchScreen('CLEARED');
+        function handleGameOver() {
+            document.getElementById('final-score').innerText = state.score;
+            switchScreen('GAMEOVER');
         }
 
         function respawnCandidates() {
-            const count = state.candidates.length;
+            // Respawn logic remains the same, but it generates data using the selected difficulty
             const data = generateLevelData(state.levelType, state.stage, state.difficulty);
-            
             state.targetValue = data.target;
             state.solutionPair = data.pair;
-            
-            ui.targetVal.innerHTML = formatTargetValue(state.targetValue, state.levelType);
-
+            ui.targetVal.innerText = state.targetValue;
             state.candidates = [];
-            state.sequenceFound = { op: false, num: false }; 
-
             state.candidates.push(new Candidate(data.pair[0], 'P1', data.type));
             state.candidates.push(new Candidate(data.pair[1], 'P2', data.type));
             data.decoys.forEach(decoy => {
@@ -1013,15 +901,11 @@ font-size:clamp(12px, 2vw, 16px);">FINAL SCORE: <span id="final-score">0</span><
             const el = document.createElement('div');
             el.className = 'msg';
             el.innerText = text;
-            
             const canvasRect = canvas.getBoundingClientRect();
-            // 由於 canvasRect.top 是相對於視窗的絕對位置，因此直接使用它和 Canvas 內部座標可以正確定位
             el.style.left = (x + canvasRect.left) + 'px';
-            el.style.top = (y + canvasRect.top) + 'px'; 
-            
-            el.style.color = good ? 'var(--hp-color)' : 'var(--danger-color)';
-            el.style.textShadow = good ?
-            '0 0 5px var(--hp-color)' : '0 0 5px var(--danger-color)';
+            el.style.top = (y + canvasRect.top) + 'px';
+            el.style.color = good ? 'var(--hud-border)' : 'var(--danger-color)';
+            el.style.textShadow = good ? '0 0 5px var(--hud-border)' : '0 0 5px var(--danger-color)';
             el.style.fontSize = (20 * state.scaleFactor) + 'px';
             document.body.appendChild(el);
             setTimeout(() => el.remove(), 800);
@@ -1032,147 +916,193 @@ font-size:clamp(12px, 2vw, 16px);">FINAL SCORE: <span id="final-score">0</span><
                 state.particles.push(new Particle(x, y, color));
             }
         }
-
-        // --- Data Generation (核心修改處) ---
-
+        
+        // --- Data Generation (核心修改) ---
         function generateLevelData(type, stage, difficulty) {
             const baseCount = Math.min(8 + Math.floor(stage / 2), 12);
-            let decoys = [];
-
+            
             if (type === 'SUM') {
-                const base = Math.pow(10, Math.floor(Math.random()*2)+1);
-                const target = Math.floor(Math.random()*8 + 2) * base;
-                let p1 = Math.floor(Math.random() * target * 0.8) + (target*0.1);
-                p1 = Math.floor(p1);
-                let p2 = target - p1;
+                // SUM PROTOCOL (加法拆分) 邏輯保持不變
+                const minTarget = difficulty === 'HARD' ? 100 : 20;
+                const maxTarget = difficulty === 'HARD' ? 500 : 100;
+                const target = Math.floor(Math.random() * (maxTarget - minTarget + 1)) + minTarget;
                 
-                while(decoys.length < baseCount - 2) {
-                    const decoy = Math.floor(Math.random()*target * 1.5);
-                    if (decoy !== p1 && decoy !== p2 && decoy > 0) decoys.push(decoy);
-                }
-                return { target: target, pair: [p1, p2], decoys: decoys, type: 'number' };
-            }
-            else if (type === 'FACTOR') {
-                let minTarget, maxTarget, maxFactor;
-                if (difficulty === 'HARD') {
-                    minTarget = 300;
-                    maxTarget = 10000;
-                    maxFactor = 50;
-                } else {
-                    minTarget = 4;
-                    maxTarget = 2000;
-                    maxFactor = 15;
-                }
+                const p1 = Math.floor(Math.random() * (target - 1)) + 1;
+                const p2 = target - p1;
 
-                let p1, p2, target;
-                let foundPair = false;
-
-                // 1. 確保生成目標值 (target)
-                while(!foundPair) {
-                    // p1 and p2 must be at least 2 for non-trivial factor
-                    p1 = Math.floor(Math.random() * maxFactor) + 2;
-                    p2 = Math.floor(Math.random() * maxFactor) + 2; 
-                    target = p1 * p2;
-                    if (target >= minTarget && target <= maxTarget) {
-                        foundPair = true;
-                    }
-                }
-                
-                // 確保 p1 <= p2
-                const p_min = Math.min(p1, p2);
-                const p_max = Math.max(p1, p2);
-                
-                // 2. 確定所有候選人的最大值限制 (target / 2)
-                const max_val = Math.floor(target / 2);
-                // 3. 根據目標大小動態調整誘答範圍 (proximity_range)
-                const proximity_range = Math.max(5, Math.floor(Math.sqrt(target) / 3));
+                const max_val = target - 1; 
+                const proximity_range = Math.max(3, Math.floor(Math.sqrt(target) / 3)); 
                 const required_decoys_count = baseCount - 2;
-
-                // 4. 生成誘答數字
-                while (decoys.length < required_decoys_count) {
+                
+                const solutions = [p1, p2];
+                const decoysSet = new Set();
+                
+                while (decoysSet.size < required_decoys_count) {
                     let decoy = -1;
                     const rng = Math.random();
 
-                    if (rng < 0.35) {
-                        // 35% chance: 誘答數字接近 p_max (較大的因數)
-                        const min_d = Math.max(2, p_max - proximity_range);
-                        // 最大值不可超過 max_val (target/2)
-                        const max_d = Math.min(max_val, p_max + proximity_range); 
-                        if (min_d >= max_d) { decoy = min_d; } 
-                        else { decoy = Math.floor(Math.random() * (max_d - min_d + 1)) + min_d;
-                        }
-                    } else if (rng < 0.70) {
-                        // 35% chance: 誘答數字接近 p_min (較小的因數)
-                        const min_d = Math.max(2, p_min - proximity_range);
-                        const max_d = Math.min(max_val, p_min + proximity_range);
+                    // 90% 機率選擇接近其中一個答案的數字
+                    const targetPart = solutions[rng < 0.45 ? 0 : (rng < 0.90 ? 1 : -1)];
+                    
+                    if (targetPart !== -1) { 
+                        const min_d = Math.max(1, targetPart - proximity_range);
+                        const max_d = Math.min(max_val, targetPart + proximity_range);
                         
-                        if (min_d >= max_d) { decoy = min_d;
-                        }
-                        else { decoy = Math.floor(Math.random() * (max_d - min_d + 1)) + min_d;
-                        }
-                    } else {
-                        // 30% chance: 隨機選取一個數字，但保證在 [2, max_val] 之間，增加多樣性
-                        const min_d = 2;
+                        if (min_d >= max_d) { decoy = min_d; } 
+                        else { decoy = Math.floor(Math.random() * (max_d - min_d + 1)) + min_d; }
+                    } else { 
+                        const min_d = 1;
                         const max_d = max_val;
-                        if (min_d >= max_d) { decoy = min_d;
+                        decoy = Math.floor(Math.random() * (max_d - min_d + 1)) + min_d;
+                    }
+
+                    if (decoy !== p1 && decoy !== p2 && decoy >= 1 && decoy <= max_val && !decoysSet.has(decoy)) {
+                        decoysSet.add(decoy);
+                    }
+                }
+
+                return { target: String(target), pair: [p1, p2], decoys: Array.from(decoysSet), type: 'number' };
+
+            } else if (type === 'FACTOR') {
+                // FACTOR PROTOCOL (因數分解)
+                
+                // 1. 根據難度設定目標值(Target)和因子(Factor)範圍
+                const difficultySettings = {
+                    'NOVICE': { minTarget: 1, maxTarget: 100, minFactor: 1, maxFactor: 50 },
+                    'EASY': { minTarget: 1, maxTarget: 400, minFactor: 1, maxFactor: 20 },
+                    'MID': { minTarget: 200, maxTarget: 1000, minFactor: 10, maxFactor: 50 },
+                    'HIGH': { minTarget: 500, maxTarget: 3000, minFactor: 20, maxFactor: 80 },
+                    'CHALLENGE': { minTarget: 2000, maxTarget: 10000, minFactor: 50, maxFactor: 100 }
+                };
+                
+                const settings = difficultySettings[difficulty];
+                let target = 0;
+                let p1 = 0;
+                let p2 = 0;
+                let attempts = 0;
+
+                // 2. 產生目標值和因數對 (p1 * p2 = target)
+                while ((p1 <= 1 || p1 === target || p1 === p2 || p2 > settings.maxTarget) && attempts < 200) {
+                    // 隨機選擇兩個符合因數範圍的數字 (f1, f2)
+                    let f1 = Math.floor(Math.random() * (settings.maxFactor - settings.minFactor + 1)) + settings.minFactor;
+                    let f2 = Math.floor(Math.random() * (settings.maxFactor - settings.minFactor + 1)) + settings.minFactor;
+                    
+                    target = f1 * f2;
+                    
+                    // 確保 target 在目標範圍內
+                    if (target >= settings.minTarget && target <= settings.maxTarget) {
+                        p1 = Math.min(f1, f2);
+                        p2 = Math.max(f1, f2);
+                    } else {
+                        target = 0; // 不合格，繼續循環
+                    }
+                    attempts++;
+                }
+                
+                if (p1 <= 1 || p1 === p2 || attempts >= 200) {
+                     // 失敗，遞迴重試 (這在大部分情況下應避免，但作為確保因數對的最終手段)
+                     return generateLevelData(type, stage, difficulty); 
+                }
+
+                const p_min = p1;
+                const p_max = p2;
+
+                // 3. 確定所有候選人的最大值限制 (通常是 p_max + 範圍 或 target / 2)
+                const max_val = Math.max(p_max + 10, Math.floor(target * 0.7)); 
+                
+                // 4. 誘答邏輯配置
+                
+                // 誘答範圍：極度靠近答案 (難度越高，範圍越小)
+                let proximity_range = 0;
+                if (difficulty === 'NOVICE') proximity_range = 10;
+                else if (difficulty === 'EASY') proximity_range = 5;
+                else if (difficulty === 'MID') proximity_range = 3;
+                else if (difficulty === 'HIGH') proximity_range = 2;
+                else if (difficulty === 'CHALLENGE') proximity_range = 1; // 挑戰版：誘答只差 ±1
+                
+                // 個位數誤導機率：挑戰版為 95%，其他為 70%
+                const LURE_PROBABILITY = (difficulty === 'CHALLENGE') ? 0.95 : (difficulty === 'NOVICE' ? 0.3 : 0.7);
+
+                const required_decoys_count = baseCount - 2;
+                let decoys = [];
+
+                // 輔助函式：取得所有「合理的」個位數 (u1 * u2 % 10 == targetUnitDigit)
+                function getPlausibleUnitDigits(targetUnitDigit) {
+                    const plausible = [];
+                    for (let u1 = 0; u1 <= 9; u1++) {
+                        for (let u2 = 0; u2 <= 9; u2++) {
+                            if ((u1 * u2) % 10 === targetUnitDigit) {
+                                plausible.push(u1);
+                                break; 
+                            }
                         }
-                        else { decoy = Math.floor(Math.random() * (max_d - min_d + 1)) + min_d;
+                    }
+                    return [...new Set(plausible)].sort((a, b) => a - b);
+                }
+                
+                let plausible_unit_digits = getPlausibleUnitDigits(target % 10);
+                
+                // 5. 生成誘答數字
+                while (decoys.length < required_decoys_count) {
+                    let decoy = -1;
+                    let rng = Math.random();
+                    let targetDecoyVal = 0; 
+                    let isProximityLure = (rng < 0.95); // 95% 機率是鄰近誘答
+
+                    if (isProximityLure) {
+                        // 選擇靠近 p_min 或 p_max
+                        targetDecoyVal = Math.random() < 0.5 ? p_min : p_max;
+                        
+                        // 鄰近生成
+                        let min_d = Math.max(2, targetDecoyVal - proximity_range);
+                        let max_d = Math.min(max_val, targetDecoyVal + proximity_range);
+                        
+                        // 確保 min < max，否則強制取邊界值
+                        if (min_d >= max_d) { decoy = min_d; } 
+                        else { decoy = Math.floor(Math.random() * (max_d - min_d + 1)) + min_d; }
+                    } else {
+                        // 5% 隨機生成，確保在合理範圍內
+                        decoy = Math.floor(Math.random() * (max_val - 2 + 1)) + 2;
+                    }
+                    
+                    // **強制個位數誘答邏輯 (適用於非 NOVICE)**
+                    if (difficulty !== 'NOVICE' && Math.random() < LURE_PROBABILITY) { 
+                        const currentUnit = decoy % 10;
+                        
+                        if (!plausible_unit_digits.includes(currentUnit)) {
+                            // 必須重新計算個位數
+                            const randomPlausibleUnit = plausible_unit_digits[Math.floor(Math.random() * plausible_unit_digits.length)];
+                            
+                            // 保持大致數量級，只替換個位數
+                            let newDecoy = Math.floor(decoy / 10) * 10 + randomPlausibleUnit;
+                            
+                            // 如果調整後導致數值等於 p1 或 p2，則微調十位數
+                            if (newDecoy === p1 || newDecoy === p2) {
+                                if (Math.random() < 0.5) {
+                                    newDecoy += 10;
+                                } else {
+                                    newDecoy -= 10;
+                                }
+                            }
+                            
+                            // 最終確保 newDecoy 仍在合法範圍 [2, max_val]
+                            if (newDecoy >= 2 && newDecoy <= max_val) {
+                                decoy = newDecoy;
+                            }
                         }
                     }
 
-                    // 驗證條件：
-                    if (decoy > 1 && 
-                        target % decoy !== 0 &&     
-                        // 必須不是目標的因數
-                        decoy !== p_min &&              // 必須不是正確答案 p_min
-                        decoy !== p_max &&              // 必須不是正確答案 p_max
-         
-                        !decoys.includes(decoy)         // 必須是唯一的
-                    ) {
+                    // 確保誘答數字是獨一無二，且不是正確答案
+                    if (decoy !== p1 && decoy !== p2 && decoy >= 2 && decoy <= max_val && !decoys.includes(decoy)) {
                         decoys.push(decoy);
                     }
                 }
 
-                return { target: target, pair: [p_min, p_max], decoys: decoys, type: 'number' };
-            }
-            else {
-                // SEQUENCE 數列反算 (難度維持 EASY)
-                const ops = ['+', '-', 'x', '/'];
-                const op = ops[Math.floor(Math.random()*ops.length)];
-                
-                let n1, n2, res;
-                let valid = false;
-                while(!valid) {
-                    n1 = Math.floor(Math.random()*15) + 5;
-                    n2 = Math.floor(Math.random()*15) + 1;
+                return { target: String(target), pair: [p1, p2], decoys: decoys, type: 'number' };
 
-                    if(op === '+') res = n1 + n2;
-                    if(op === '-') res = n1 - n2;
-                    if(op === 'x') res = n1 * n2;
-                    if (op === '/') {
-                        n1 = n2 * (Math.floor(Math.random()*8) + 2);
-                        res = n1 / n2;
-                    }
-
-                    if (res > 0 && Number.isInteger(res) && n1 > 0 && n2 > 0) {
-                        valid = true;
-                    }
-                }
-                
-                const displayText = `${n1} ? ? = ${res}`; 
-                
-                const solutionOp = op;
-                const solutionNum = n2;
-                
-                const decoyOps = ops.filter(o => o !== solutionOp).slice(0, 2);
-                const decoyNums = [];
-                while(decoyNums.length < 2) {
-                    const decoy = Math.floor(Math.random()*20) + 1;
-                    if (decoy !== solutionNum) decoyNums.push(decoy);
-                }
-
-                const allDecoys = [...decoyOps, ...decoyNums];
-                return { target: displayText, pair: [solutionOp, solutionNum], decoys: allDecoys, type: 'mix' };
+            } else if (type === 'SEQUENCE') {
+                 // 該模式已刪除，在此不做任何處理，若發生表示邏輯錯誤
+                 return { target: "ERROR", pair: [1, 1], decoys: [2, 3], type: 'number' };
             }
         }
 
@@ -1184,37 +1114,23 @@ font-size:clamp(12px, 2vw, 16px);">FINAL SCORE: <span id="final-score">0</span><
             const h = canvas.height / (window.devicePixelRatio || 1);
             ctx.fillStyle = CONFIG.COLORS.bg;
             ctx.fillRect(0, 0, w, h);
-            
+
             // Draw background grid effect
-            ctx.globalAlpha = 0.2;
-            const gridSize = 40 * state.scaleFactor;
-            ctx.strokeStyle = '#00ffff';
-            ctx.lineWidth = 0.5;
-            for(let x = 0; x < w; x += gridSize) {
-                ctx.beginPath();
-                ctx.moveTo(x, 0);
-                ctx.lineTo(x, h);
-                ctx.stroke();
-            }
-            for(let y = 0; y < h; y += gridSize) {
-                ctx.beginPath();
-                ctx.moveTo(0, y);
-                ctx.lineTo(w, y);
-                ctx.stroke();
-            }
-            ctx.globalAlpha = 1.0;
-            if (state.screen === 'PLAYING') {
-                ui.timer.innerText = ((performance.now() - state.startTime)/1000).toFixed(1);
-                state.candidates.forEach(c => {
-                    c.update();
-                    c.draw();
-                });
-                if (state.partialSelection && state.levelType !== 'SEQUENCE') {
-                    if (Date.now() - state.partialTimer > CONFIG.SWIPE_TIMEOUT_MS) {
-                        state.partialSelection.selected = false;
-                        state.partialSelection = null;
-                        handleFail("DATA LINK EXPIRED!", 10); 
-                    }
+            ctx.globalAlpha = 0.1;
+            ctx.drawImage(bgImage, 0, 0, w, h);
+            ctx.globalAlpha = 1;
+
+            // Update and draw candidates
+            state.candidates.forEach(c => c.update());
+            state.candidates.forEach(c => c.draw());
+
+            // Handle partial selection timeout
+            if (state.partialSelection !== null) {
+                if (Date.now() - state.partialTimer > CONFIG.SWIPE_TIMEOUT_MS) {
+                    state.partialSelection.selected = false;
+                    state.partialSelection = null;
+                    // 時間到，視為錯誤，立即失敗
+                    handleFail("DATA LINK EXPIRED! MISSION FAILED.", 10); 
                 }
             }
 
@@ -1230,6 +1146,7 @@ font-size:clamp(12px, 2vw, 16px);">FINAL SCORE: <span id="final-score">0</span><
                 ctx.strokeStyle = CONFIG.COLORS.trail;
                 ctx.shadowBlur = 15;
                 ctx.shadowColor = CONFIG.COLORS.trailShadow;
+                
                 const trail = state.pointer.trail;
                 ctx.moveTo(trail[0].x, trail[0].y);
                 
@@ -1240,13 +1157,23 @@ font-size:clamp(12px, 2vw, 16px);">FINAL SCORE: <span id="final-score">0</span><
                     ctx.quadraticCurveTo(trail[i].x, trail[i].y, xc, yc);
                 }
                 if(trail.length > 2) ctx.lineTo(trail[trail.length-1].x, trail[trail.length-1].y);
+                
                 ctx.stroke();
                 ctx.shadowBlur = 0; 
+                ctx.strokeStyle = CONFIG.COLORS.trailShadow;
+                ctx.lineWidth = 1 * state.scaleFactor;
+                ctx.stroke();
+            }
+
+            // Update Timer Display (in real-time)
+            if (state.screen === 'PLAYING' && state.startTime !== 0) {
+                const timeElapsed = (performance.now() - state.startTime) / 1000;
+                ui.timer.innerText = timeElapsed.toFixed(1);
             }
         }
 
-        // Initialize
         loop();
+
     </script>
 </body>
 </html>
