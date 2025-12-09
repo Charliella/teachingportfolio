@@ -207,14 +207,36 @@
             box-shadow: 0 0 5px var(--accent-color);
         }
 
-        .level-btns-container, .mode-btns-container, .difficulty-btns-container {
+        /* 保持 Mode 和 Level 的垂直排列 */
+        .level-btns-container, .mode-btns-container {
             display: flex;
-            flex-direction: column;
+            flex-direction: column; 
             gap: 15px;
             width: 90%;
             max-width: 450px;
         }
         
+        /* 🎯 難度按鈕容器修正：改為水平排列並允許換行 */
+        .difficulty-btns-container {
+            display: flex;
+            flex-direction: row; /* 水平排列 */
+            flex-wrap: wrap; /* 允許自動換行 */
+            justify-content: center; /* 按鈕居中對齊 */
+            gap: 10px; /* 按鈕之間的間距 */
+            width: 90%;
+            max-width: 700px; /* 增加最大寬度 */
+            padding-bottom: 20px;
+        }
+
+        /* 🎯 難度按鈕個別修正：調整寬度和字體大小以適應橫向排版 */
+        .difficulty-btns-container .btn {
+            /* 設置寬度，確保每行能容納五個按鈕 */
+            width: clamp(100px, 18%, 120px); 
+            padding: 10px 5px; /* 縮小 Padding */
+            font-size: clamp(8px, 1.2vw, 12px); /* 縮小字體 */
+            margin-top: 0; /* 移除原本的 margin-top */
+        }
+
         /* 傷害特效 */
         #damage-overlay {
             position: absolute;
@@ -289,7 +311,7 @@
         <div id="damage-overlay"></div>
         
         <div id="start-screen" class="overlay-screen">
-            <div class="doom-title">MATH SLASH<br><span style="font-size:0.6em; color:#fff;">數學之刃 V2.5.1</span></div>
+            <div class="doom-title">MATH SLASH<br><span style="font-size:0.6em; color:#fff;">數學之刃 V2.8</span></div>
             <p style="color:#aaa; font-size:clamp(10px, 1.5vw, 14px); margin-bottom: 20px; text-align: center;">
                 COMBINE NODES TO HIT THE TARGET VALUE.
             </p>
@@ -315,8 +337,8 @@
         <div id="level-select-screen" class="overlay-screen hidden">
             <div class="doom-title">SELECT MISSION TYPE</div>
             <div class="level-btns-container">
-                <button class="btn" onclick="selectLevelType('SUM', 'EASY')">
-                    [TYPE 1] SUM PROTOCOL (加法拆分)<br><span style="font-size:0.7em; color:#00ffff;">(找出兩數相加等於目標)</span>
+                <button class="btn" onclick="showDifficultySelect('SUM')">
+                    [TYPE 1] SUM PROTOCOL (加法拆分)<br><span style="font-size:0.7em; color:#00ffff;">(選擇難度)</span>
                 </button>
                 <button id="factor-btn" class="btn" onclick="showDifficultySelect('FACTOR')">
                     [TYPE 2] FACTOR PROTOCOL (因數分解)<br><span style="font-size:0.7em; color:#00ffff;">(選擇難度)</span>
@@ -325,11 +347,30 @@
         </div>
 
         <div id="difficulty-select-screen" class="overlay-screen hidden">
-            <div class="doom-title">FACTOR PROTOCOL: DIFFICULTY</div>
+            <div class="doom-title" id="difficulty-title-text">SELECT DIFFICULTY</div>
             <p style="color:#fff; font-size:clamp(10px, 1.5vw, 14px); margin-bottom: 20px; text-align: center;">
-                請選擇因數分解難度：
+                請選擇難度：
             </p>
-            <div class="difficulty-btns-container">
+            
+            <div class="difficulty-btns-container hidden" id="sum-difficulty-btns">
+                <button class="btn" onclick="selectLevelType('SUM', 'NOVICE')">
+                    NOVICE MODE (新手 1)<br><span style="font-size:0.7em; color:#00ffff;">(目標：10 的倍數, 最大 100)</span>
+                </button>
+                <button class="btn" onclick="selectLevelType('SUM', 'EASY')">
+                    EASY MODE (初階 2)<br><span style="font-size:0.7em; color:#00ffff;">(目標：100 的倍數, 最大 1000)</span>
+                </button>
+                <button class="btn" onclick="selectLevelType('SUM', 'MID')">
+                    MIDDLE MODE (中階 3)<br><span style="font-size:0.7em; color:#fffa50;">(目標：1000 的倍數, 最大 10000)</span>
+                </button>
+                <button class="btn" onclick="selectLevelType('SUM', 'HIGH')">
+                    HIGH MODE (進階 4)<br><span style="font-size:0.7em; color:orange;">(目標：100 的倍數, 1000-10000)</span>
+                </button>
+                <button class="btn" onclick="selectLevelType('SUM', 'CHALLENGE')">
+                    CHALLENGE MODE (挑戰 5)<br><span style="font-size:0.7em; color:var(--danger-color);">(目標：10 的倍數, 1000-10000)</span>
+                </button>
+            </div>
+
+            <div class="difficulty-btns-container hidden" id="factor-difficulty-btns">
                 <button class="btn" onclick="selectLevelType('FACTOR', 'NOVICE')">
                     NOVICE MODE (新手)<br><span style="font-size:0.7em; color:#00ffff;">(合數 $1\sim100$，因子 $1\sim50$)</span>
                 </button>
@@ -371,10 +412,10 @@
 
     <script>
         /**
-         * Math Slash Cyberpunk V2.5.1 - 誘答數字唯二解修正
+         * Math Slash Cyberpunk V2.8 - 難度按鈕橫向排列修正
          * * 修正項目：
-         * 1. 確保 FACTOR PROTOCOL 的誘答數字 (DECOY) 絕不是目標值的因數。
-         * 2. 這項修改保障了唯二解的邏輯：場上除了 P1 和 P2 之外，沒有任何其他數字可以相乘得到目標值。
+         * 1. 調整 CSS：`.difficulty-btns-container` 改為 `display: flex` 和 `flex-wrap: wrap`。
+         * 2. 調整 CSS：`.difficulty-btns-container .btn` 調整寬度和 padding，實現橫向排列五個按鈕的效果。
          */
 
         // --- Configuration & Constants ---
@@ -384,7 +425,7 @@
             CANDIDATE_BASE_SIZE: 50,
             PARRY_NEEDED: 3, // 預設值，每關需要完成 3 次配對
             FINAL_STAGE: 6, 
-            SWIPE_TIMEOUT_MS: 2000,
+            SWIPE_TIMEOUT_MS: 20000,
             TRAIL_LENGTH: 15,
             COLORS: {
                 bg: '#0b0f14',
@@ -442,6 +483,10 @@
                 gameover: document.getElementById('gameover-screen')
             }
         };
+        const sumDifficultyBtns = document.getElementById('sum-difficulty-btns');
+        const factorDifficultyBtns = document.getElementById('factor-difficulty-btns');
+        const difficultyTitleText = document.getElementById('difficulty-title-text');
+
         // --- Background Asset ---
         const bgImage = new Image();
         bgImage.src = 'https://placehold.co/1024x768/000/00ffff?text=CYBERNETIC+GRID';
@@ -592,7 +637,7 @@
                 // Boundary bounce
                 if (this.x < this.radius) { this.x = this.radius; this.vx *= -1; }
                 if (this.x > w - this.radius) { this.x = w - this.radius; this.vx *= -1; }
-                if (this.y < this.radius) { this.y = this.radius; this.vy *= -1; }
+                if (this.y < this.radius) { this.y = h - this.radius; this.vy *= -1; }
                 if (this.y > h - this.radius) { this.y = h - this.radius; this.vy *= -1; }
 
                 if (this.selected) {
@@ -673,7 +718,7 @@
             }
         }
 
-        // --- Screen Management (Unchanged) ---
+        // --- Screen Management (Updated for Difficulty Select) ---
         function switchScreen(screenName) {
             state.screen = screenName;
             Object.values(ui.screens).forEach(el => el.classList.add('hidden'));
@@ -714,10 +759,22 @@
 
         function showDifficultySelect(type) {
             state.levelType = type;
+            difficultyTitleText.innerText = type + ' PROTOCOL: DIFFICULTY';
+            
+            // 確保每次呼叫時，將兩個按鈕容器都隱藏
+            sumDifficultyBtns.classList.add('hidden');
+            factorDifficultyBtns.classList.add('hidden');
+
+            if (type === 'SUM') {
+                sumDifficultyBtns.classList.remove('hidden');
+            } else if (type === 'FACTOR') {
+                factorDifficultyBtns.classList.remove('hidden');
+            }
+
             switchScreen('DIFFICULTY_SELECT');
         }
         
-        // --- Setup Stage (已移除 TABLE 模式邏輯) ---
+        // --- Setup Stage (Unchanged) ---
         function setupStage() {
             state.candidates = [];
             state.partialSelection = null;
@@ -787,7 +844,7 @@
             setupStage(); 
         }
 
-        // --- Collision & Interaction ---
+        // --- Collision & Interaction (Unchanged) ---
         function getHitCandidate({x, y}) {
             for (let c of state.candidates) {
                 const dx = x - c.x;
@@ -858,8 +915,6 @@
                 
                 let isCorrectPair = false;
                 
-                // 修正：因為 DECOY 已保證不是因數，所以這裡只需要檢查是否為官方解的另一半
-                // 同時，由於場上只有 P1/P2 是非 DECOY，所以只需確保兩者不同即可。
                 if (state.levelType === 'SUM') {
                      // 必須兩數相加等於目標，且不能選到兩次同一個節點
                      isCorrectPair = (p1 + p2 === target) && (state.partialSelection !== candidate);
@@ -872,7 +927,7 @@
                     // **成功配對：只有當兩數為 P1 和 P2 且相乘/相加等於 Target 時才會執行**
                     scoreSuccess(candidate.x, candidate.y);
                 } else {
-                    // 錯誤配對：立刻失敗 (理論上，在 FACTOR 模式中，如果 DECOY 過濾得當，這只會在選到 P1 和 P1/P2 選到 DECOY 時發生)
+                    // 錯誤配對：立刻失敗
                     handleFail("PROTOCOL MISMATCH! MISSION FAILED. (Pairing Error)", 10);
                 }
             }
@@ -883,15 +938,16 @@
             ui.score.innerText = state.score;
             spawnParticles(x, y, CONFIG.COLORS.highlight);
 
-            // 標記 P1 和 P2 為 USED (在 FACTOR 模式中，我們直接重製關卡)
-            if (state.levelType === 'FACTOR' && state.difficulty === 'EASY') {
-                // 由於 FACTOR/SUM 重製關卡，所以不需要標記 USED
-            } else {
-                state.partialSelection.solutionKey = 'USED'; // 保留此行以應對未來需要
-                state.partialSelection.selected = false;
+            // 標記 P1 和 P2 為 USED
+            state.partialSelection.solutionKey = 'USED';
+            state.partialSelection.selected = false;
+            
+            candidate = state.candidates.find(c => c.value === state.targetValue - state.partialSelection.value);
+            if (candidate) {
+                candidate.solutionKey = 'USED';
+                candidate.selected = false;
             }
             
-            state.partialSelection.selected = false; 
             state.partialSelection = null;
             state.parryCount++;
             ui.parry.innerText = `${state.parryCount}/${state.parryTarget}`;
@@ -952,31 +1008,87 @@
             }
         }
         
-        // --- Data Generation (已移除 TABLE 模式邏輯) ---
+        // --- Data Generation (Unchanged) ---
         function generateLevelData(type, stage, difficulty) {
             const baseCount = Math.min(8 + Math.floor(stage / 2), 12);
             
             if (type === 'SUM') {
-                 // SUM PROTOCOL (加法拆分) 邏輯保持不變
-                const minTarget = difficulty === 'HARD' ? 100 : 20;
-                const maxTarget = difficulty === 'HARD' ? 500 : 100;
-                const target = Math.floor(Math.random() * (maxTarget - minTarget + 1)) + minTarget;
+                 // SUM PROTOCOL (加法拆分) 邏輯
+                const settings = {};
                 
-                const p1 = Math.floor(Math.random() * (target - 1)) + 1;
-                const p2 = target - p1;
+                // 1. 根據難度設定目標值(Target)範圍
+                if (difficulty === 'NOVICE') { // 新手1: 10的倍數 (最大100)
+                    settings.minTarget = 20;
+                    settings.maxTarget = 100;
+                    settings.multiplier = 10;
+                } else if (difficulty === 'EASY') { // 初階2: 100的倍數 (最大1000)
+                    settings.minTarget = 200;
+                    settings.maxTarget = 1000;
+                    settings.multiplier = 100;
+                } else if (difficulty === 'MID') { // 中階3: 1000的倍數 (最大10000)
+                    settings.minTarget = 2000;
+                    settings.maxTarget = 10000;
+                    settings.multiplier = 1000;
+                } else if (difficulty === 'HIGH') { // 進階4: 100的倍數 (1000-10000之間)
+                    settings.minTarget = 1000;
+                    settings.maxTarget = 10000;
+                    settings.multiplier = 100;
+                } else if (difficulty === 'CHALLENGE') { // 挑戰5: 10的倍數 (1000-10000之間)
+                    settings.minTarget = 1000;
+                    settings.maxTarget = 10000;
+                    settings.multiplier = 10;
+                }
+                
+                let target = 0;
+                let p1 = 0;
+                let p2 = 0;
+                let attempts = 0;
 
+                // 2. 生成符合條件的 Target
+                while (attempts < 50) {
+                    const minUnit = Math.ceil(settings.minTarget / settings.multiplier);
+                    const maxUnit = Math.floor(settings.maxTarget / settings.multiplier);
+                    
+                    if (minUnit > maxUnit) { 
+                        // Should not happen with current config, but safe check
+                        target = settings.maxTarget;
+                        break;
+                    }
+                    
+                    const unit = Math.floor(Math.random() * (maxUnit - minUnit + 1)) + minUnit;
+                    target = unit * settings.multiplier;
+                    
+                    if (target > settings.minTarget) break;
+                    attempts++;
+                }
+
+                // 3. 生成唯一的正確解 [p1, p2]
+                // 確保 p1 不是 target/2 以避免平分，除非 target 是奇數倍數
+                while (p1 <= 0 || p1 >= target || p1 === p2) {
+                     // 確保 p1 的數值小於 target
+                    let p1_candidate = Math.floor(Math.random() * (target - 1)) + 1;
+                    let p2_candidate = target - p1_candidate;
+
+                    // 避免平分（例如 50 = 25+25），除非強制要求
+                    if (p1_candidate !== p2_candidate) {
+                        p1 = Math.min(p1_candidate, p2_candidate);
+                        p2 = Math.max(p1_candidate, p2_candidate);
+                    }
+                }
+                
                 const max_val = target - 1; 
-                const proximity_range = Math.max(3, Math.floor(Math.sqrt(target) / 3)); 
+                const proximity_range = Math.max(2, Math.floor(target / 10)); // 誘答範圍
                 const required_decoys_count = baseCount - 2;
                 
                 const solutions = [p1, p2];
                 const decoysSet = new Set();
                 
+                // 4. 生成誘答數字 (DECOY)
                 while (decoysSet.size < required_decoys_count) {
                     let decoy = -1;
                     const rng = Math.random();
 
-                    // 90% 機率選擇接近其中一個答案的數字
+                    // 90% 機率選擇接近其中一個答案的數字 (增加混淆)
                     const targetPart = solutions[rng < 0.45 ? 0 : (rng < 0.90 ? 1 : -1)];
                     
                     if (targetPart !== -1) { 
@@ -991,7 +1103,32 @@
                         decoy = Math.floor(Math.random() * (max_d - min_d + 1)) + min_d;
                     }
 
-                    if (decoy !== p1 && decoy !== p2 && decoy >= 1 && decoy <= max_val && !decoysSet.has(decoy)) {
+                    // 5. 關鍵檢查：確保 DECOY 與場上所有已生成的數字 (包括 P1, P2, 其它 DECOY) 相加，都不會等於 Target
+
+                    // 誘答數字自己也不能是 P1 或 P2
+                    if (decoy !== p1 && decoy !== p2 && 
+                        decoy >= 1 && decoy <= max_val && 
+                        !decoysSet.has(decoy)
+                    ) {
+                        // ** 嚴格唯一解檢查 **
+                        const requiredPartner = target - decoy;
+                        
+                        // 1. 如果 requiredPartner 是 P1 或 P2，那麼這個 decoy 就是個正確答案，必須排除。
+                        if (requiredPartner === p1 || requiredPartner === p2) {
+                            continue;
+                        }
+                        
+                        // 2. 如果 requiredPartner 已經是場上另一個 DECOY，則這兩個 DECOY 會組成一組正確答案，必須排除。
+                        if (decoysSet.has(requiredPartner)) {
+                            continue;
+                        }
+
+                        // 3. 如果 requiredPartner 在數值上等於這個 decoy (即 Target 是偶數，Decoy=Target/2)，則也會構成一組答案，必須排除。
+                        if (requiredPartner === decoy) {
+                            continue;
+                        }
+
+                        // 通過所有檢查，加入誘答數字
                         decoysSet.add(decoy);
                     }
                 }
@@ -999,7 +1136,7 @@
                 return { target: String(target), pair: [p1, p2], decoys: Array.from(decoysSet), type: 'number' };
 
             } else if (type === 'FACTOR') {
-                // FACTOR PROTOCOL (因數分解)
+                // FACTOR PROTOCOL (因數分解) 邏輯保持不變
                 
                 // 1. 根據難度設定目標值(Target)和因子(Factor)範圍
                 const difficultySettings = {
@@ -1018,24 +1155,21 @@
 
                 // 2. 隨機生成唯一的正確因數對 [p1, p2]
                 while ((p1 <= 1 || p1 === target || p1 === p2 || p2 > settings.maxTarget) && attempts < 200) {
-                    // 隨機選擇兩個符合因數範圍的數字 (f1, f2)
                     let f1 = Math.floor(Math.random() * (settings.maxFactor - settings.minFactor + 1)) + settings.minFactor;
                     let f2 = Math.floor(Math.random() * (settings.maxFactor - settings.minFactor + 1)) + settings.minFactor;
                     
                     target = f1 * f2;
                     
-                    // 確保 target 在目標範圍內
                     if (target >= settings.minTarget && target <= settings.maxTarget) {
                         p1 = Math.min(f1, f2);
                         p2 = Math.max(f1, f2);
                     } else {
-                        target = 0; // 不合格，繼續循環
+                        target = 0;
                     }
                     attempts++;
                 }
                 
                 if (p1 <= 1 || p1 === p2 || attempts >= 200) {
-                     // 失敗，遞迴重試
                      return generateLevelData(type, stage, difficulty); 
                 }
 
@@ -1045,7 +1179,7 @@
                 // 3. 確定所有候選人的最大值限制
                 const max_val = Math.max(p_max + 10, Math.floor(target * 0.7)); 
                 
-                // 4. 誘答邏輯配置
+                // 4. 誘答邏輯配置 (保持不變)
                 let proximity_range = 0;
                 if (difficulty === 'NOVICE') proximity_range = 10;
                 else if (difficulty === 'EASY') proximity_range = 5;
@@ -1058,7 +1192,6 @@
                 const required_decoys_count = baseCount - 2;
                 let decoys = [];
 
-                // 輔助函式：取得所有「合理的」個位數 (u1 * u2 % 10 == targetUnitDigit)
                 function getPlausibleUnitDigits(targetUnitDigit) {
                     const plausible = [];
                     for (let u1 = 0; u1 <= 9; u1++) {
@@ -1093,7 +1226,7 @@
                         decoy = Math.floor(Math.random() * (max_val - 2 + 1)) + 2;
                     }
                     
-                    // **強制個位數誘答邏輯**
+                    // **強制個位數誘答邏輯** (保持不變)
                     if (difficulty !== 'NOVICE' && Math.random() < LURE_PROBABILITY) { 
                         const currentUnit = decoy % 10;
                         
