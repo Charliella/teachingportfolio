@@ -36,35 +36,24 @@
             -webkit-user-select: none;
         }
 
-        /* 使用 Flexbox 確保 Canvas 和 HUD 正確分離 */
+        /* 使用 Flexbox 確保 HUD 在上，Canvas 在下 */
         #game-container {
             position: relative;
             width: 100vw;
             height: 100vh;
             background: var(--bg-color);
             display: flex;
-            flex-direction: column;
+            flex-direction: column; 
 /* 讓內容垂直堆疊 */
         }
 
-        /* 畫布佔據剩餘空間 */
-        canvas {
-            display: block;
-            flex-grow: 1; /* 佔據所有可用的垂直空間 */
-            width: 100%;
-            cursor: crosshair;
-/* 讓 Canvas 具有細微的發光邊框 */
-            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
-        }
-
-        /* 🤖 HUD 介面優化 - 確保不溢出介面 */
-        /* 將高度比例進一步縮小，並使用 max-height 限制，確保在任何螢幕上都不會過高 */
+        /* 🤖 HUD 介面優化 - 確保不溢出介面 (現在固定在上方) */
         #doom-hud {
             width: 100%;
-            height: 10vh; /* **調降高度比例** */
-            max-height: 90px; /* **硬性最大高度**，確保不擠壓 Canvas */
+            height: 10vh; /* 調降高度比例 */
+            max-height: 90px; /* 硬性最大高度 */
             background: var(--hud-bg);
-            border-top: 3px solid var(--hud-border);
+            border-bottom: 3px solid var(--hud-border); /* **將邊框移到底部** */
             /* 橫向掃描線效果 */
             background-image: linear-gradient(rgba(0,0,0,0.5) 1px, transparent 1px);
             background-size: 100% 4px; 
@@ -74,21 +63,36 @@
             align-items: center;
             z-index: 10;
             box-shadow: 0 0 15px var(--accent-color);
-            padding: 2px 0; /* **縮小垂直內邊距** */
+            padding: 2px 0; 
             box-sizing: border-box;
-            flex-shrink: 0; /* 防止 HUD 被壓縮 */
+            flex-shrink: 0; 
+/* 不允許 HUD 被壓縮，保持固定高度 */
         }
+
+        /* 畫布佔據剩餘空間 (底部區域) */
+        canvas {
+            display: block;
+            flex-grow: 1; /* 佔據所有可用的垂直空間 */
+            width: 100%;
+            cursor: crosshair;
+/* 讓 Canvas 具有細微的發光邊框 */
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+        
+        /* ---------------------------------------------------- */
+        /* 以下 HUD 內部樣式與輔助螢幕樣式不變，保持緊湊設計 */
+        /* ---------------------------------------------------- */
 
         .hud-panel {
             background: rgba(0, 0, 0, 0.4);
             border: 2px solid var(--hud-border);
             /* 邊框霓虹光暈 */
-            box-shadow: 0 0 6px rgba(0, 255, 255, 0.4), inset 0 0 4px rgba(0, 255, 255, 0.3); /* **略微縮小陰影** */
-            padding: 1px 1px; /* **進一步縮小內邊距** */
+            box-shadow: 0 0 6px rgba(0, 255, 255, 0.4), inset 0 0 4px rgba(0, 255, 255, 0.3);
+            padding: 1px 1px; 
             flex-grow: 1;
             /* 讓面板在空間不足時能伸縮 */
             flex-basis: 0;
-            height: 95%; /* **略為增加高度佔比** */
+            height: 95%; 
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -98,9 +102,8 @@
             position: relative;
             /* 傾斜邊角效果 */
             transform: skewX(-5deg);
-            margin: 0 1px; /* **縮小邊距** */
+            margin: 0 1px; 
             min-width: 0;
-            /* 允許內容縮小 */
         }
 
         .hud-panel > * {
@@ -110,9 +113,9 @@
 
         /* 調整字體大小為響應式，並確保最小尺寸不會過大 */
         .hud-label {
-            font-size: clamp(6px, 1vw, 10px); /* **縮小最大字體** */
+            font-size: clamp(6px, 1vw, 10px); 
             color: #aaa;
-            margin-bottom: 1px; /* **縮小邊距** */
+            margin-bottom: 1px; 
             text-transform: uppercase;
             text-align: center;
             line-height: 1;
@@ -120,25 +123,25 @@
 
         /* 調整字體大小為響應式，並確保最小尺寸不會過大 */
         .hud-value {
-            font-size: clamp(8px, 2.5vw, 16px); /* **縮小最大字體** */
+            font-size: clamp(8px, 2.5vw, 16px); 
             font-weight: bold;
             white-space: nowrap;
         }
 
         /* 目標面板特別樣式 */
         #target-panel {
-            flex-basis: 35%; /* **給予目標面板更多空間** */
+            flex-basis: 35%; 
             background: var(--bg-color);
             border: 3px solid var(--text-highlight);
-            box-shadow: 0 0 12px var(--text-highlight), inset 0 0 8px var(--text-highlight); /* **略微縮小陰影** */
+            box-shadow: 0 0 12px var(--text-highlight), inset 0 0 8px var(--text-highlight); 
             color: var(--text-highlight);
         }
         
         #target-val {
             font-family: var(--font-title);
             font-weight: 900;
-            font-size: clamp(10px, 3.5vw, 22px); /* **縮小最大字體** */
-            line-height: 1.1; /* **縮小行高** */
+            font-size: clamp(10px, 3.5vw, 22px); 
+            line-height: 1.1; 
             word-break: break-word;
         }
 
@@ -148,7 +151,7 @@
             border-color: var(--hp-color);
         }
 
-        /* 疊加層通用樣式 */
+        /* 疊加層通用樣式 (使用絕對定位，覆蓋在整個 #game-container 上方) */
         .overlay-screen {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -167,7 +170,7 @@
         .hidden { 
             opacity: 0;
             pointer-events: none;
-            display: none; /* 使用 display:none 確保不佔用空間 */
+            display: none; 
         }
 
         .doom-title {
@@ -269,14 +272,10 @@ opacity: 0; }
 <body>
 
     <div id="game-container">
-        <canvas id="gameCanvas"></canvas>
-        
-        <div id="damage-overlay"></div>
         
         <div id="doom-hud">
             <div class="hud-panel">
                 <div class="hud-label">STAGE</div>
-        
                 <div class="hud-value" id="stage-val">1</div>
             </div>
             
@@ -309,7 +308,9 @@ color: var(--hp-color);">
    
             </div>
         </div>
-
+        <canvas id="gameCanvas"></canvas>
+        <div id="damage-overlay"></div>
+        
         <div id="start-screen" class="overlay-screen">
             <div class="doom-title">MATH SLASH<br><span style="font-size:0.6em;
 color:#fff;">數學之刃 V2.1</span></div>
@@ -405,6 +406,7 @@ font-size:clamp(12px, 2vw, 16px);">FINAL SCORE: <span id="final-score">0</span><
          * 修正:
          * 1. 確保 FACTOR 模式的所有候選人 (p1, p2, decoys) 都不大於目標值的一半 (target / 2)。
          * 2. 增加 FACTOR 模式誘答數字的「誘惑力」，使其更接近正確的因數。
+         * 3. 調整 HTML/CSS 結構，將 HUD 固定在上層，Canvas 填滿下層空間，以解決溢出問題。
          */
 
         // --- Configuration & Constants ---
@@ -493,13 +495,12 @@ font-size:clamp(12px, 2vw, 16px);">FINAL SCORE: <span id="final-score">0</span><
         function resize() {
             const w = gameContainer.clientWidth;
             const h = gameContainer.clientHeight;
-            const hudHeight = hud.offsetHeight;
+            const hudHeight = hud.offsetHeight; // 正確取得 HUD 的實際高度
             
             // DPI Scaling (Retina support)
-            const dpr = window.devicePixelRatio ||
-            1;
+            const dpr = window.devicePixelRatio || 1;
             
-            // Canvas width/height: full container width, height minus HUD height
+            // Canvas width/height: 完整寬度, 高度為容器高度減去 HUD 高度 (完美填滿下方空間)
             canvas.width = w * dpr;
             canvas.height = (h - hudHeight) * dpr;
             
@@ -1024,8 +1025,10 @@ font-size:clamp(12px, 2vw, 16px);">FINAL SCORE: <span id="final-score">0</span><
             el.innerText = text;
             
             const canvasRect = canvas.getBoundingClientRect();
+            // 注意：這裡使用 canvasRect.top 是因為浮動訊息是相對於整個文檔的
+            // 由於 canvas 已經在 HUD 下方，所以 y 座標會自動加上 HUD 的高度
             el.style.left = (x + canvasRect.left) + 'px';
-            el.style.top = (y + canvasRect.top) + 'px';
+            el.style.top = (y + canvasRect.top) + 'px'; 
             
             el.style.color = good ? 'var(--hp-color)' : 'var(--danger-color)';
             el.style.textShadow = good ?
@@ -1169,8 +1172,7 @@ font-size:clamp(12px, 2vw, 16px);">FINAL SCORE: <span id="final-score">0</span><
                     }
                 }
                 
-                const displayText = `${n1} ?
-                ${res} = ${res}`;
+                const displayText = `${n1} ? ? = ${res}`; // 修正顯示錯誤
                 
                 const solutionOp = op;
                 const solutionNum = n2;
