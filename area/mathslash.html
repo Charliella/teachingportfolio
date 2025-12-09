@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Math Slash - 數學之刃 (Cyberpunk 側邊欄版)</title>
+    <title>Math Slash - 數學之刃 (Cyberpunk 版)</title>
     <style>
         /* 引入點陣字體和繁體中文黑體 */
-        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Serif+TC:wght=900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Serif+TC:wght@900&display=swap');
 
         /* Cyberpunk Color Palette */
         :root {
@@ -15,16 +15,10 @@
             --hud-border: #00ffff; /* 霓虹青色 */
             --accent-color: #ff00ff; /* 霓虹洋紅 */
             --text-highlight: #fffa50; /* 電光黃 */
-            --hp-color: #00ff88; /* 綠色健康 (動態調整) */
+            --hp-color: #00ff88; /* 綠色健康 */
             --danger-color: #ff3333;
             --font-main: 'Press Start 2P', cursive;
             --font-title: 'Noto Serif TC', serif;
-        }
-
-        /* 核心佈局修正：使用 100% 替換 100vh，解決移動設備溢出問題 */
-        html, body {
-            height: 100%; 
-            width: 100%;
         }
 
         /* 確保全螢幕且無捲軸 */
@@ -39,38 +33,43 @@
             -webkit-user-select: none;
         }
 
-        /* 遊戲容器：使用 Flexbox 讓 HUD 和 Canvas 橫向並排 */
+        /* 使用 Flexbox 確保 Canvas 和 HUD 正確分離 */
         #game-container {
             position: relative;
-            width: 100%;
-            height: 100%; 
+            width: 100vw;
+            height: 100vh;
             background: var(--bg-color);
             display: flex;
-            flex-direction: row; /* 讓內容橫向並排 (HUD + CANVAS) */
-            align-items: stretch; /* 確保子元素佔滿垂直高度 */
+            flex-direction: column; /* 讓內容垂直堆疊 */
         }
 
-        /* HUD 介面優化 - 側邊欄佈局 */
+        /* 畫布佔據剩餘空間 */
+        canvas {
+            display: block;
+            flex-grow: 1; /* 佔據所有可用的垂直空間 */
+            width: 100%;
+            cursor: crosshair;
+            /* 讓 Canvas 具有細微的發光邊框 */
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+
+        /* HUD 介面優化 - 確保不溢出介面 */
         #doom-hud {
-            /* 側邊欄固定寬度，佔據 100% 垂直高度 */
-            width: clamp(120px, 15vw, 180px); /* 寬度範圍設定 */
-            height: 100%; 
-            min-width: 100px; /* 確保最小可讀性 */
-            
+            width: 100%;
+            height: 12vh; /* 固定高度比例，保證不超出 */
+            max-height: 120px;
             background: var(--hud-bg);
-            border-right: 3px solid var(--hud-border); /* 邊界線移至右側 */
-            
-            /* 掃描線效果改為垂直 */
-            background-image: linear-gradient(to right, rgba(0,0,0,0.5) 1px, transparent 1px);
-            background-size: 4px 100%; 
+            border-top: 3px solid var(--hud-border);
+            /* 橫向掃描線效果 */
+            background-image: linear-gradient(rgba(0,0,0,0.5) 1px, transparent 1px);
+            background-size: 100% 4px; 
             
             display: flex;
-            flex-direction: column; /* 讓面板在側邊欄內垂直堆疊 */
             justify-content: space-evenly;
             align-items: center;
             z-index: 10;
             box-shadow: 0 0 15px var(--accent-color);
-            padding: 10px 5px; 
+            padding: 5px 0;
             box-sizing: border-box;
             flex-shrink: 0; /* 防止 HUD 被壓縮 */
         }
@@ -80,11 +79,10 @@
             border: 2px solid var(--hud-border);
             /* 邊框霓虹光暈 */
             box-shadow: 0 0 8px rgba(0, 255, 255, 0.4), inset 0 0 5px rgba(0, 255, 255, 0.3);
-            padding: 5px;
-            width: 95%; /* 佔滿側邊欄寬度 */
-            flex-grow: 1; /* 讓面板在垂直方向上平均分配空間 */
-            height: auto;
-            max-height: 120px;
+            padding: 2px 2px; /* 縮小內邊距以節省空間 */
+            flex-grow: 1; /* 讓面板在空間不足時能伸縮 */
+            flex-basis: 0;
+            height: 90%;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -92,18 +90,18 @@
             color: var(--accent-color);
             text-shadow: 1px 1px 0 #000;
             position: relative;
-            /* 移除傾斜效果，讓側邊欄更整齊 */
-            transform: none; 
-            margin: 5px 0;
-            min-height: 50px;
+            /* 傾斜邊角效果 */
+            transform: skewX(-5deg);
+            margin: 0 2px; /* 縮小邊距 */
+            min-width: 0; /* 允許內容縮小 */
         }
 
         .hud-panel > * {
-            transform: none; /* 移除反向傾斜 */
+            transform: skewX(5deg); /* 將內容反向傾斜，保持垂直 */
         }
 
         .hud-label {
-            font-size: clamp(6px, 1vw, 10px); 
+            font-size: clamp(6px, 1vw, 12px); /* 略為縮小 clamp 最小尺寸 */
             color: #aaa;
             margin-bottom: 2px;
             text-transform: uppercase;
@@ -112,14 +110,14 @@
         }
 
         .hud-value {
-            font-size: clamp(8px, 1.8vw, 16px); 
+            font-size: clamp(8px, 2.5vw, 18px); /* 略為縮小 clamp 最小尺寸 */
             font-weight: bold;
             white-space: nowrap;
         }
 
         /* 目標面板特別樣式 */
         #target-panel {
-            flex-grow: 1.5; /* 給予目標面板多一點垂直空間 */
+            flex-basis: 30%; /* 給予目標面板更多空間 */
             background: var(--bg-color);
             border: 3px solid var(--text-highlight);
             box-shadow: 0 0 15px var(--text-highlight), inset 0 0 10px var(--text-highlight);
@@ -129,22 +127,18 @@
         #target-val {
             font-family: var(--font-title);
             font-weight: 900;
-            font-size: clamp(10px, 2.5vw, 20px); 
+            font-size: clamp(10px, 3.5vw, 24px); /* 略為縮小 clamp 最小尺寸 */
             line-height: 1.2;
             word-break: break-word;
         }
 
-        /* 畫布佔據剩餘空間 */
-        canvas {
-            display: block;
-            flex-grow: 1; /* 佔據所有可用的水平空間 */
-            height: 100%; /* 佔據所有垂直空間 */
-            width: auto;
-            cursor: crosshair;
-            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        /* HP 顏色動態調整 */
+        #hp-val {
+            color: var(--hp-color);
+            border-color: var(--hp-color);
         }
 
-        /* 疊加層通用樣式 - 必須覆蓋整個 #game-container */
+        /* 疊加層通用樣式 */
         .overlay-screen {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -163,10 +157,8 @@
         .hidden { 
             opacity: 0;
             pointer-events: none;
-            display: none; 
+            display: none; /* 使用 display:none 確保不佔用空間 */
         }
-
-        /* 以下為介面及特效樣式，保持不變 */
 
         .doom-title {
             font-size: clamp(24px, 7vw, 50px);
@@ -190,6 +182,7 @@
             font-size: clamp(10px, 2vw, 14px);
             cursor: pointer;
             margin-top: 15px;
+            /* 科技感按鈕 */
             box-shadow: 0 0 10px var(--accent-color), 0 0 20px var(--accent-color) inset;
             border-radius: 4px;
             transition: transform 0.1s, box-shadow 0.1s, background 0.1s;
@@ -214,7 +207,7 @@
             box-shadow: none;
         }
 
-        .level-btns-container, .mode-btns-container {
+        .level-btns-container, .mode-btns-container, .difficulty-btns-container {
             display: flex;
             flex-direction: column;
             gap: 15px;
@@ -222,6 +215,14 @@
             max-width: 450px;
         }
 
+        /* 新增：難度選擇 container */
+        .difficulty-btns-container {
+            margin-top: 20px;
+            border-top: 2px dashed #444;
+            padding-top: 20px;
+        }
+        
+        /* 傷害特效 */
         #damage-overlay {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -233,6 +234,7 @@
             transition: opacity 0.1s;
         }
 
+        /* 浮動文字 */
         .msg {
             position: absolute;
             font-family: var(--font-title);
@@ -254,6 +256,9 @@
 <body>
 
     <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="damage-overlay"></div>
         
         <div id="doom-hud">
             <div class="hud-panel">
@@ -287,12 +292,8 @@
             </div>
         </div>
 
-        <canvas id="gameCanvas"></canvas>
-        
-        <div id="damage-overlay"></div>
-        
         <div id="start-screen" class="overlay-screen">
-            <div class="doom-title">MATH SLASH<br><span style="font-size:0.6em; color:#fff;">數學之刃 V2.3 (SIDEBAR)</span></div>
+            <div class="doom-title">MATH SLASH<br><span style="font-size:0.6em; color:#fff;">數學之刃 V2.1</span></div>
             <p style="color:#aaa; font-size:clamp(10px, 1.5vw, 14px); margin-bottom: 20px; text-align: center;">
                 COMBINE NODES TO HIT THE TARGET VALUE.
             </p>
@@ -317,14 +318,29 @@
         <div id="level-select-screen" class="overlay-screen hidden">
             <div class="doom-title">SELECT MISSION TYPE</div>
             <div class="level-btns-container">
-                <button class="btn" onclick="startGame('SUM')">
+                <button class="btn" onclick="selectLevelType('SUM', 'EASY')">
                     [TYPE 1] SUM PROTOCOL (加法拆分)<br><span style="font-size:0.7em; color:#00ffff;">(找出兩數相加等於目標)</span>
                 </button>
-                <button class="btn" onclick="startGame('FACTOR')">
-                    [TYPE 2] FACTOR PROTOCOL (因數分解)<br><span style="font-size:0.7em; color:#00ffff;">(找出兩數相乘等於目標)</span>
+                <button id="factor-btn" class="btn" onclick="showDifficultySelect('FACTOR')">
+                    [TYPE 2] FACTOR PROTOCOL (因數分解)<br><span style="font-size:0.7em; color:#00ffff;">(選擇難度)</span>
                 </button>
-                <button class="btn" onclick="startGame('SEQUENCE')">
+                <button class="btn" onclick="selectLevelType('SEQUENCE', 'EASY')">
                     [TYPE 3] SEQUENCE PROTOCOL (數列反算)<br><span style="font-size:0.7em; color:#00ffff;">(填補算式中的兩個缺口：運算符號與數字)</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="difficulty-select-screen" class="overlay-screen hidden">
+            <div class="doom-title">FACTOR PROTOCOL: DIFFICULTY</div>
+            <p style="color:#fff; font-size:clamp(10px, 1.5vw, 14px); margin-bottom: 20px; text-align: center;">
+                請選擇因數分解難度：
+            </p>
+            <div class="difficulty-btns-container">
+                <button class="btn" onclick="selectLevelType('FACTOR', 'EASY')">
+                    NORMAL MODE<br><span style="font-size:0.7em; color:#00ffff;">(目標值 $\le 2000$)</span>
+                </button>
+                <button class="btn" onclick="selectLevelType('FACTOR', 'HARD')">
+                    HARDCORE MODE<br><span style="font-size:0.7em; color:#fffa50;">(目標值 $\mathbf{300 \sim 10000}$)</span>
                 </button>
             </div>
         </div>
@@ -351,12 +367,10 @@
 
     <script>
         /**
-         * Math Slash Cyberpunk V2.3 (Sidebar Layout Fix)
+         * Math Slash Cyberpunk V2.2
          * 修正:
-         * 1. 修正 CSS 核心佈局，使用 height: 100% 解決 100vh 溢出問題。
-         * 2. 將 #game-container 設置為 flex-direction: row，實現 HUD 側邊欄佈局。
-         * 3. 調整 HUD 內部面板為垂直堆疊，並縮小字體以適應側邊欄。
-         * 4. 調整 resize 邏輯，使其依賴 Flexbox 計算出的 Canvas 客戶端尺寸。
+         * 1. 確保 FACTOR 模式的所有候選人 (p1, p2, decoys) 都不大於目標值的一半 (target / 2)。
+         * 2. 增加 FACTOR 模式誘答數字的「誘惑力」，使其更接近正確的因數。
          */
 
         // --- Configuration & Constants ---
@@ -387,6 +401,7 @@
         const state = {
             screen: 'START',
             levelType: 'SUM',
+            difficulty: 'EASY', // 追蹤難度
             stage: 1,
             score: 0,
             hp: 100,
@@ -421,6 +436,7 @@
                 start: document.getElementById('start-screen'),
                 mode: document.getElementById('mode-select-screen'),
                 level: document.getElementById('level-select-screen'),
+                difficulty: document.getElementById('difficulty-select-screen'),
                 ready: document.getElementById('ready-screen'),
                 clear: document.getElementById('clear-screen'),
                 gameover: document.getElementById('gameover-screen')
@@ -435,26 +451,27 @@
             document.getElementById('start-btn').innerText = "START MISSION";
         };
 
-        // --- Resizing & Responsive Logic (已修正) ---
+        // --- Resizing & Responsive Logic ---
         function resize() {
+            const w = gameContainer.clientWidth;
+            const h = gameContainer.clientHeight;
+            const hudHeight = hud.offsetHeight;
+            
             // DPI Scaling (Retina support)
             const dpr = window.devicePixelRatio || 1;
             
-            // 取得 Flexbox 佈局後，Canvas 實際佔據的 CSS 尺寸
-            const canvasCssWidth = canvas.clientWidth;
-            const canvasCssHeight = canvas.clientHeight;
+            // Canvas width/height: full container width, height minus HUD height
+            canvas.width = w * dpr;
+            canvas.height = (h - hudHeight) * dpr;
             
-            // 設置內部畫布的繪圖緩衝區尺寸
-            canvas.width = canvasCssWidth * dpr;
-            canvas.height = canvasCssHeight * dpr;
-            
-            // 歸一化坐標系
+            // Normalize coordinate system
             ctx.scale(dpr, dpr);
-            
-            // 根據新的畫布尺寸重新計算縮放因子
-            // 此處使用 Canvas 的尺寸，因為 Flexbox 已經處理了 HUD 的寬度
-            state.scaleFactor = Math.min(canvasCssWidth / CONFIG.BASE_WIDTH, canvasCssHeight / CONFIG.BASE_HEIGHT) * 1.2; 
-            if (canvasCssWidth < 600) state.scaleFactor *= 1.2;
+            canvas.style.width = `${w}px`;
+            canvas.style.height = `${h - hudHeight}px`;
+
+            // Calculate Scale Factor based on reference resolution
+            state.scaleFactor = Math.min(w / CONFIG.BASE_WIDTH, (h - hudHeight) / CONFIG.BASE_HEIGHT) * 1.2; 
+            if (w < 600) state.scaleFactor *= 1.2;
             
             updateHpDisplay(state.hp);
         }
@@ -462,7 +479,7 @@
         resize(); 
 
 
-        // --- Input Handling (保持不變) ---
+        // --- Input Handling ---
 
         function getCanvasPos(evt) {
             const rect = canvas.getBoundingClientRect();
@@ -530,7 +547,7 @@
         window.addEventListener('touchend', handlePointerUp);
 
 
-        // --- Game Logic Classes (保持不變) ---
+        // --- Game Logic Classes (Unchanged) ---
         
         class Candidate {
             constructor(val, solutionKey, type='number') {
@@ -663,7 +680,7 @@
             }
         }
 
-        // --- Screen Management (保持不變) ---
+        // --- Screen Management ---
 
         function switchScreen(screenName) {
             state.screen = screenName;
@@ -672,6 +689,7 @@
             if (screenName === 'START') ui.screens.start.classList.remove('hidden');
             if (screenName === 'MODE_SELECT') ui.screens.mode.classList.remove('hidden');
             if (screenName === 'LEVEL_SELECT') ui.screens.level.classList.remove('hidden');
+            if (screenName === 'DIFFICULTY_SELECT') ui.screens.difficulty.classList.remove('hidden');
             if (screenName === 'READY') ui.screens.ready.classList.remove('hidden');
             if (screenName === 'CLEARED') ui.screens.clear.classList.remove('hidden');
             if (screenName === 'GAMEOVER') ui.screens.gameover.classList.remove('hidden');
@@ -690,9 +708,21 @@
             switchScreen('LEVEL_SELECT'); 
         }
 
-
-        function startGame(type) {
+        function showDifficultySelect(type) {
+            if (type === 'FACTOR') {
+                switchScreen('DIFFICULTY_SELECT');
+            } else {
+                selectLevelType(type, 'EASY');
+            }
+        }
+        
+        function selectLevelType(type, difficulty) {
             state.levelType = type;
+            state.difficulty = difficulty;
+            startGame();
+        }
+
+        function startGame() {
             state.stage = 1;
             state.score = 0;
             state.hp = 100;
@@ -706,23 +736,22 @@
             state.partialSelection = null;
             state.candidates = [];
             state.particles = [];
-            state.sequenceFound = { op: false, num: false }; // Reset sequence state
+            state.sequenceFound = { op: false, num: false };
             
-            ui.stage.innerText = state.stage;
+            ui.stage.innerText = `${state.stage} (${state.difficulty.substring(0, 1)})`;
             ui.parry.innerText = `0/${CONFIG.PARRY_NEEDED}`;
             ui.timer.innerText = "0.0";
             
             // Generate Data
-            const data = generateLevelData(state.levelType, state.stage);
+            const data = generateLevelData(state.levelType, state.stage, state.difficulty);
             state.targetValue = data.target;
             state.solutionPair = data.pair;
             
             // Setup UI Display
-            ui.targetTitle.innerText = state.levelType;
+            ui.targetTitle.innerText = state.levelType + (state.difficulty === 'HARD' ? ' (HARD)' : ' (NORMAL)');
             ui.targetVal.innerHTML = formatTargetValue(state.targetValue, state.levelType);
 
             // Spawn Candidates
-            // P1 and P2 are always the first two candidates
             state.candidates.push(new Candidate(data.pair[0], 'P1', data.type));
             state.candidates.push(new Candidate(data.pair[1], 'P2', data.type));
             // Decoys
@@ -766,7 +795,7 @@
             ui.hp.style.color = color;
         }
 
-        // --- Collision & Interaction (保持不變) ---
+        // --- Collision & Interaction ---
 
         function getHitCandidate({x, y}) {
             for (let c of state.candidates) {
@@ -943,7 +972,7 @@
 
         function respawnCandidates() {
             const count = state.candidates.length;
-            const data = generateLevelData(state.levelType, state.stage);
+            const data = generateLevelData(state.levelType, state.stage, state.difficulty);
             
             state.targetValue = data.target;
             state.solutionPair = data.pair;
@@ -982,14 +1011,14 @@
             }
         }
 
-        // --- Data Generation (保持不變) ---
+        // --- Data Generation (核心修改處) ---
 
-        function generateLevelData(type, stage) {
+        function generateLevelData(type, stage, difficulty) {
             const baseCount = Math.min(8 + Math.floor(stage / 2), 12);
             let decoys = [];
 
             if (type === 'SUM') {
-                const base = Math.pow(10, Math.floor(Math.random()*2)+1); 
+                const base = Math.pow(10, Math.floor(Math.random()*2)+1);
                 const target = Math.floor(Math.random()*8 + 2) * base;
                 let p1 = Math.floor(Math.random() * target * 0.8) + (target*0.1);
                 p1 = Math.floor(p1);
@@ -1002,20 +1031,90 @@
                 return { target: target, pair: [p1, p2], decoys: decoys, type: 'number' };
             }
             else if (type === 'FACTOR') {
-                let p1 = Math.floor(Math.random()*15) + 2; 
-                let p2 = Math.floor(Math.random()*15) + 2;
-                let target = p1 * p2;
+                let minTarget, maxTarget, maxFactor;
+
+                if (difficulty === 'HARD') {
+                    minTarget = 300;
+                    maxTarget = 10000;
+                    maxFactor = 50;
+                } else {
+                    minTarget = 4; 
+                    maxTarget = 2000;
+                    maxFactor = 15;
+                }
+
+                let p1, p2, target;
+                let foundPair = false;
+
+                // 1. 確保生成目標值 (target)
+                while(!foundPair) {
+                    // p1 and p2 must be at least 2 for non-trivial factor
+                    p1 = Math.floor(Math.random() * maxFactor) + 2; 
+                    p2 = Math.floor(Math.random() * maxFactor) + 2; 
+                    target = p1 * p2;
+
+                    if (target >= minTarget && target <= maxTarget) {
+                        foundPair = true;
+                    }
+                }
                 
-                while(decoys.length < baseCount - 2) {
-                    const decoy = Math.floor(Math.random()*target*0.8) + 1; 
-                    if (target % decoy !== 0 && decoy !== p1 && decoy !== p2 && decoy > 1) { 
+                // 確保 p1 <= p2
+                const p_min = Math.min(p1, p2);
+                const p_max = Math.max(p1, p2);
+                
+                // 2. 確定所有候選人的最大值限制 (target / 2)
+                // 由於 p_min >= 2，p_max 一定 <= target / 2
+                const max_val = Math.floor(target / 2);
+
+                // 3. 根據目標大小動態調整誘答範圍 (proximity_range)
+                // 困難模式下目標大，範圍可以寬一點，普通模式目標小，範圍窄一點。
+                const proximity_range = Math.max(5, Math.floor(Math.sqrt(target) / 3)); 
+                
+                const required_decoys_count = baseCount - 2;
+
+                // 4. 生成誘答數字
+                while (decoys.length < required_decoys_count) {
+                    let decoy = -1;
+                    const rng = Math.random();
+
+                    if (rng < 0.35) {
+                        // 35% chance: 誘答數字接近 p_max (較大的因數)
+                        const min_d = Math.max(2, p_max - proximity_range);
+                        // 最大值不可超過 max_val (target/2)，也不能超過 p_max + range
+                        const max_d = Math.min(max_val, p_max + proximity_range);
+                        
+                        if (min_d >= max_d) { decoy = min_d; } 
+                        else { decoy = Math.floor(Math.random() * (max_d - min_d + 1)) + min_d; }
+                    } else if (rng < 0.70) {
+                        // 35% chance: 誘答數字接近 p_min (較小的因數)
+                        const min_d = Math.max(2, p_min - proximity_range);
+                        const max_d = Math.min(max_val, p_min + proximity_range);
+                        
+                        if (min_d >= max_d) { decoy = min_d; }
+                        else { decoy = Math.floor(Math.random() * (max_d - min_d + 1)) + min_d; }
+                    } else {
+                        // 30% chance: 隨機選取一個數字，但保證在 [2, max_val] 之間，增加多樣性
+                        const min_d = 2;
+                        const max_d = max_val;
+                        if (min_d >= max_d) { decoy = min_d; }
+                        else { decoy = Math.floor(Math.random() * (max_d - min_d + 1)) + min_d; }
+                    }
+
+                    // 驗證條件：
+                    if (decoy > 1 && 
+                        target % decoy !== 0 &&         // 必須不是目標的因數
+                        decoy !== p_min &&              // 必須不是正確答案 p_min
+                        decoy !== p_max &&              // 必須不是正確答案 p_max
+                        !decoys.includes(decoy)         // 必須是唯一的
+                    ) {
                         decoys.push(decoy);
                     }
                 }
-                return { target: target, pair: [p1, p2], decoys: decoys, type: 'number' };
+
+                return { target: target, pair: [p_min, p_max], decoys: decoys, type: 'number' };
             }
             else {
-                // SEQUENCE
+                // SEQUENCE 數列反算 (難度維持 EASY)
                 const ops = ['+', '-', 'x', '/'];
                 const op = ops[Math.floor(Math.random()*ops.length)];
                 
@@ -1059,7 +1158,7 @@
         }
 
 
-        // --- Main Loop (保持不變) ---
+        // --- Main Loop ---
         function loop() {
             requestAnimationFrame(loop);
             
