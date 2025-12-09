@@ -53,11 +53,10 @@
             box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
         }
 
-        /* HUD 介面優化 - 確保不溢出介面 (Requirement 1) */
+        /* HUD 介面優化 - 確保不溢出介面 */
         #doom-hud {
             width: 100%;
             height: 12vh; /* 固定高度比例，保證不超出 */
-            min-height: 70px;
             max-height: 120px;
             background: var(--hud-bg);
             border-top: 3px solid var(--hud-border);
@@ -80,8 +79,9 @@
             border: 2px solid var(--hud-border);
             /* 邊框霓虹光暈 */
             box-shadow: 0 0 8px rgba(0, 255, 255, 0.4), inset 0 0 5px rgba(0, 255, 255, 0.3);
-            padding: 2px 5px;
-            width: 15%; 
+            padding: 2px 2px; /* 縮小內邊距以節省空間 */
+            flex-grow: 1; /* 讓面板在空間不足時能伸縮 */
+            flex-basis: 0;
             height: 90%;
             display: flex;
             flex-direction: column;
@@ -92,7 +92,8 @@
             position: relative;
             /* 傾斜邊角效果 */
             transform: skewX(-5deg);
-            margin: 0 5px;
+            margin: 0 2px; /* 縮小邊距 */
+            min-width: 0; /* 允許內容縮小 */
         }
 
         .hud-panel > * {
@@ -100,22 +101,23 @@
         }
 
         .hud-label {
-            font-size: clamp(8px, 1.2vw, 12px);
+            font-size: clamp(6px, 1vw, 12px); /* 略為縮小 clamp 最小尺寸 */
             color: #aaa;
             margin-bottom: 2px;
             text-transform: uppercase;
             text-align: center;
+            line-height: 1;
         }
 
         .hud-value {
-            font-size: clamp(10px, 2.5vw, 18px);
+            font-size: clamp(8px, 2.5vw, 18px); /* 略為縮小 clamp 最小尺寸 */
             font-weight: bold;
             white-space: nowrap;
         }
 
         /* 目標面板特別樣式 */
         #target-panel {
-            width: 25%;
+            flex-basis: 30%; /* 給予目標面板更多空間 */
             background: var(--bg-color);
             border: 3px solid var(--text-highlight);
             box-shadow: 0 0 15px var(--text-highlight), inset 0 0 10px var(--text-highlight);
@@ -125,8 +127,9 @@
         #target-val {
             font-family: var(--font-title);
             font-weight: 900;
-            font-size: clamp(14px, 3.5vw, 24px);
+            font-size: clamp(10px, 3.5vw, 24px); /* 略為縮小 clamp 最小尺寸 */
             line-height: 1.2;
+            word-break: break-word;
         }
 
         /* HP 顏色動態調整 */
@@ -204,12 +207,19 @@
             box-shadow: none;
         }
 
-        .level-btns-container, .mode-btns-container {
+        .level-btns-container, .mode-btns-container, .difficulty-btns-container {
             display: flex;
             flex-direction: column;
             gap: 15px;
             width: 90%;
             max-width: 450px;
+        }
+
+        /* 新增：難度選擇 container */
+        .difficulty-btns-container {
+            margin-top: 20px;
+            border-top: 2px dashed #444;
+            padding-top: 20px;
         }
         
         /* 傷害特效 */
@@ -246,13 +256,10 @@
 <body>
 
     <div id="game-container">
-        <!-- 畫布區 -->
         <canvas id="gameCanvas"></canvas>
         
-        <!-- 全屏傷害特效 -->
         <div id="damage-overlay"></div>
         
-        <!-- HUD 儀表板 -->
         <div id="doom-hud">
             <div class="hud-panel">
                 <div class="hud-label">STAGE</div>
@@ -285,16 +292,14 @@
             </div>
         </div>
 
-        <!-- 畫面：開始 -->
         <div id="start-screen" class="overlay-screen">
-            <div class="doom-title">MATH SLASH<br><span style="font-size:0.6em; color:#fff;">數學之刃 V2.0</span></div>
+            <div class="doom-title">MATH SLASH<br><span style="font-size:0.6em; color:#fff;">數學之刃 V2.1</span></div>
             <p style="color:#aaa; font-size:clamp(10px, 1.5vw, 14px); margin-bottom: 20px; text-align: center;">
                 COMBINE NODES TO HIT THE TARGET VALUE.
             </p>
             <button id="start-btn" class="btn" onclick="showModeSelect()" disabled>LOADING...</button>
         </div>
         
-        <!-- 畫面：模式選擇 -->
         <div id="mode-select-screen" class="overlay-screen hidden">
             <div class="doom-title">SELECT INTERFACE MODE</div>
             <p style="color:#fff; font-size:clamp(10px, 1.5vw, 14px); margin-bottom: 20px; text-align: center;">
@@ -310,37 +315,48 @@
             </div>
         </div>
 
-        <!-- 畫面：選關 -->
         <div id="level-select-screen" class="overlay-screen hidden">
             <div class="doom-title">SELECT MISSION TYPE</div>
             <div class="level-btns-container">
-                <button class="btn" onclick="startGame('SUM')">
+                <button class="btn" onclick="selectLevelType('SUM', 'EASY')">
                     [TYPE 1] SUM PROTOCOL (加法拆分)<br><span style="font-size:0.7em; color:#00ffff;">(找出兩數相加等於目標)</span>
                 </button>
-                <button class="btn" onclick="startGame('FACTOR')">
-                    [TYPE 2] FACTOR PROTOCOL (因數分解)<br><span style="font-size:0.7em; color:#00ffff;">(找出兩數相乘等於目標)</span>
+                <button id="factor-btn" class="btn" onclick="showDifficultySelect('FACTOR')">
+                    [TYPE 2] FACTOR PROTOCOL (因數分解)<br><span style="font-size:0.7em; color:#00ffff;">(選擇難度)</span>
                 </button>
-                <button class="btn" onclick="startGame('SEQUENCE')">
+                <button class="btn" onclick="selectLevelType('SEQUENCE', 'EASY')">
                     [TYPE 3] SEQUENCE PROTOCOL (數列反算)<br><span style="font-size:0.7em; color:#00ffff;">(填補算式中的兩個缺口：運算符號與數字)</span>
                 </button>
             </div>
         </div>
 
-        <!-- 畫面：準備開斬 -->
+        <div id="difficulty-select-screen" class="overlay-screen hidden">
+            <div class="doom-title">FACTOR PROTOCOL: DIFFICULTY</div>
+            <p style="color:#fff; font-size:clamp(10px, 1.5vw, 14px); margin-bottom: 20px; text-align: center;">
+                請選擇因數分解難度：
+            </p>
+            <div class="difficulty-btns-container">
+                <button class="btn" onclick="selectLevelType('FACTOR', 'EASY')">
+                    NORMAL MODE<br><span style="font-size:0.7em; color:#00ffff;">(目標值 $\le 2000$)</span>
+                </button>
+                <button class="btn" onclick="selectLevelType('FACTOR', 'HARD')">
+                    HARDCORE MODE<br><span style="font-size:0.7em; color:#fffa50;">(目標值 $\mathbf{300 \sim 10000}$)</span>
+                </button>
+            </div>
+        </div>
+
         <div id="ready-screen" class="overlay-screen hidden" style="background: rgba(0,0,0,0.6);">
             <div class="doom-title" style="color:var(--hp-color);">TARGET LOCKED</div>
             <div style="color:#fff; font-size:clamp(12px, 2vw, 18px); margin-bottom:20px;">INITIATE SEQUENCE?</div>
             <button class="btn" onclick="startRound()">START SLASHING</button>
         </div>
 
-        <!-- 畫面：過關結算 -->
         <div id="clear-screen" class="overlay-screen hidden">
             <div class="doom-title" style="color:var(--hud-border);">PROTOCOL CLEARED</div>
             <p style="color:#fff; font-size:clamp(12px, 2vw, 16px);">TIME BONUS: <span id="clear-time" style="color:var(--hp-color);">0.00</span>s</p>
             <button class="btn" onclick="nextStage()">NEXT SECTOR</button>
         </div>
 
-        <!-- 畫面：死亡 -->
         <div id="gameover-screen" class="overlay-screen hidden">
             <div class="doom-title" style="color:var(--danger-color);">MISSION FAILED</div>
             <p style="color:#fff; font-size:clamp(12px, 2vw, 16px);">FINAL SCORE: <span id="final-score">0</span></p>
@@ -351,12 +367,10 @@
 
     <script>
         /**
-         * Math Slash Cyberpunk V2
+         * Math Slash Cyberpunk V2.2
          * 修正:
-         * 1. HUD RWD 優化，確保不溢出視窗。
-         * 2. 因數分解 (FACTOR) 誘答數字修正。
-         * 3. 數列反算 (SEQUENCE) 修正為兩個問號 (運算符號/數字)，且數字為正整數。
-         * 4. 採用 Cyberpunk 風格 UI/UX。
+         * 1. 確保 FACTOR 模式的所有候選人 (p1, p2, decoys) 都不大於目標值的一半 (target / 2)。
+         * 2. 增加 FACTOR 模式誘答數字的「誘惑力」，使其更接近正確的因數。
          */
 
         // --- Configuration & Constants ---
@@ -387,6 +401,7 @@
         const state = {
             screen: 'START',
             levelType: 'SUM',
+            difficulty: 'EASY', // 追蹤難度
             stage: 1,
             score: 0,
             hp: 100,
@@ -421,6 +436,7 @@
                 start: document.getElementById('start-screen'),
                 mode: document.getElementById('mode-select-screen'),
                 level: document.getElementById('level-select-screen'),
+                difficulty: document.getElementById('difficulty-select-screen'),
                 ready: document.getElementById('ready-screen'),
                 clear: document.getElementById('clear-screen'),
                 gameover: document.getElementById('gameover-screen')
@@ -435,7 +451,7 @@
             document.getElementById('start-btn').innerText = "START MISSION";
         };
 
-        // --- Resizing & Responsive Logic (Requirement 1) ---
+        // --- Resizing & Responsive Logic ---
         function resize() {
             const w = gameContainer.clientWidth;
             const h = gameContainer.clientHeight;
@@ -455,7 +471,7 @@
 
             // Calculate Scale Factor based on reference resolution
             state.scaleFactor = Math.min(w / CONFIG.BASE_WIDTH, (h - hudHeight) / CONFIG.BASE_HEIGHT) * 1.2; 
-            if (w < 600) state.scaleFactor *= 1.2; // Increase scale slightly for mobile
+            if (w < 600) state.scaleFactor *= 1.2;
             
             updateHpDisplay(state.hp);
         }
@@ -531,8 +547,8 @@
         window.addEventListener('touchend', handlePointerUp);
 
 
-        // --- Game Logic ---
-
+        // --- Game Logic Classes (Unchanged) ---
+        
         class Candidate {
             constructor(val, solutionKey, type='number') {
                 this.text = String(val);
@@ -673,6 +689,7 @@
             if (screenName === 'START') ui.screens.start.classList.remove('hidden');
             if (screenName === 'MODE_SELECT') ui.screens.mode.classList.remove('hidden');
             if (screenName === 'LEVEL_SELECT') ui.screens.level.classList.remove('hidden');
+            if (screenName === 'DIFFICULTY_SELECT') ui.screens.difficulty.classList.remove('hidden');
             if (screenName === 'READY') ui.screens.ready.classList.remove('hidden');
             if (screenName === 'CLEARED') ui.screens.clear.classList.remove('hidden');
             if (screenName === 'GAMEOVER') ui.screens.gameover.classList.remove('hidden');
@@ -691,9 +708,21 @@
             switchScreen('LEVEL_SELECT'); 
         }
 
-
-        function startGame(type) {
+        function showDifficultySelect(type) {
+            if (type === 'FACTOR') {
+                switchScreen('DIFFICULTY_SELECT');
+            } else {
+                selectLevelType(type, 'EASY');
+            }
+        }
+        
+        function selectLevelType(type, difficulty) {
             state.levelType = type;
+            state.difficulty = difficulty;
+            startGame();
+        }
+
+        function startGame() {
             state.stage = 1;
             state.score = 0;
             state.hp = 100;
@@ -707,23 +736,22 @@
             state.partialSelection = null;
             state.candidates = [];
             state.particles = [];
-            state.sequenceFound = { op: false, num: false }; // Reset sequence state
+            state.sequenceFound = { op: false, num: false };
             
-            ui.stage.innerText = state.stage;
+            ui.stage.innerText = `${state.stage} (${state.difficulty.substring(0, 1)})`;
             ui.parry.innerText = `0/${CONFIG.PARRY_NEEDED}`;
             ui.timer.innerText = "0.0";
             
             // Generate Data
-            const data = generateLevelData(state.levelType, state.stage);
+            const data = generateLevelData(state.levelType, state.stage, state.difficulty);
             state.targetValue = data.target;
             state.solutionPair = data.pair;
             
             // Setup UI Display
-            ui.targetTitle.innerText = state.levelType;
+            ui.targetTitle.innerText = state.levelType + (state.difficulty === 'HARD' ? ' (HARD)' : ' (NORMAL)');
             ui.targetVal.innerHTML = formatTargetValue(state.targetValue, state.levelType);
 
             // Spawn Candidates
-            // P1 and P2 are always the first two candidates
             state.candidates.push(new Candidate(data.pair[0], 'P1', data.type));
             state.candidates.push(new Candidate(data.pair[1], 'P2', data.type));
             // Decoys
@@ -944,7 +972,7 @@
 
         function respawnCandidates() {
             const count = state.candidates.length;
-            const data = generateLevelData(state.levelType, state.stage);
+            const data = generateLevelData(state.levelType, state.stage, state.difficulty);
             
             state.targetValue = data.target;
             state.solutionPair = data.pair;
@@ -983,14 +1011,14 @@
             }
         }
 
-        // --- Data Generation (Logic Corrections for Requirement 2 & 3) ---
+        // --- Data Generation (核心修改處) ---
 
-        function generateLevelData(type, stage) {
+        function generateLevelData(type, stage, difficulty) {
             const baseCount = Math.min(8 + Math.floor(stage / 2), 12);
             let decoys = [];
 
             if (type === 'SUM') {
-                const base = Math.pow(10, Math.floor(Math.random()*2)+1); // 10, 100, 1000
+                const base = Math.pow(10, Math.floor(Math.random()*2)+1);
                 const target = Math.floor(Math.random()*8 + 2) * base;
                 let p1 = Math.floor(Math.random() * target * 0.8) + (target*0.1);
                 p1 = Math.floor(p1);
@@ -1003,28 +1031,96 @@
                 return { target: target, pair: [p1, p2], decoys: decoys, type: 'number' };
             }
             else if (type === 'FACTOR') {
-                // Requirement 2: FACTOR - Ensures decoy numbers are relevant but wrong.
-                let p1 = Math.floor(Math.random()*15) + 2; // Max factor is around 17
-                let p2 = Math.floor(Math.random()*15) + 2;
-                let target = p1 * p2;
+                let minTarget, maxTarget, maxFactor;
+
+                if (difficulty === 'HARD') {
+                    minTarget = 300;
+                    maxTarget = 10000;
+                    maxFactor = 50;
+                } else {
+                    minTarget = 4; 
+                    maxTarget = 2000;
+                    maxFactor = 15;
+                }
+
+                let p1, p2, target;
+                let foundPair = false;
+
+                // 1. 確保生成目標值 (target)
+                while(!foundPair) {
+                    // p1 and p2 must be at least 2 for non-trivial factor
+                    p1 = Math.floor(Math.random() * maxFactor) + 2; 
+                    p2 = Math.floor(Math.random() * maxFactor) + 2; 
+                    target = p1 * p2;
+
+                    if (target >= minTarget && target <= maxTarget) {
+                        foundPair = true;
+                    }
+                }
                 
-                while(decoys.length < baseCount - 2) {
-                    const decoy = Math.floor(Math.random()*target*0.8) + 1; // Decoys < target
-                    if (target % decoy !== 0 && decoy !== p1 && decoy !== p2 && decoy > 1) { 
+                // 確保 p1 <= p2
+                const p_min = Math.min(p1, p2);
+                const p_max = Math.max(p1, p2);
+                
+                // 2. 確定所有候選人的最大值限制 (target / 2)
+                // 由於 p_min >= 2，p_max 一定 <= target / 2
+                const max_val = Math.floor(target / 2);
+
+                // 3. 根據目標大小動態調整誘答範圍 (proximity_range)
+                // 困難模式下目標大，範圍可以寬一點，普通模式目標小，範圍窄一點。
+                const proximity_range = Math.max(5, Math.floor(Math.sqrt(target) / 3)); 
+                
+                const required_decoys_count = baseCount - 2;
+
+                // 4. 生成誘答數字
+                while (decoys.length < required_decoys_count) {
+                    let decoy = -1;
+                    const rng = Math.random();
+
+                    if (rng < 0.35) {
+                        // 35% chance: 誘答數字接近 p_max (較大的因數)
+                        const min_d = Math.max(2, p_max - proximity_range);
+                        // 最大值不可超過 max_val (target/2)，也不能超過 p_max + range
+                        const max_d = Math.min(max_val, p_max + proximity_range);
+                        
+                        if (min_d >= max_d) { decoy = min_d; } 
+                        else { decoy = Math.floor(Math.random() * (max_d - min_d + 1)) + min_d; }
+                    } else if (rng < 0.70) {
+                        // 35% chance: 誘答數字接近 p_min (較小的因數)
+                        const min_d = Math.max(2, p_min - proximity_range);
+                        const max_d = Math.min(max_val, p_min + proximity_range);
+                        
+                        if (min_d >= max_d) { decoy = min_d; }
+                        else { decoy = Math.floor(Math.random() * (max_d - min_d + 1)) + min_d; }
+                    } else {
+                        // 30% chance: 隨機選取一個數字，但保證在 [2, max_val] 之間，增加多樣性
+                        const min_d = 2;
+                        const max_d = max_val;
+                        if (min_d >= max_d) { decoy = min_d; }
+                        else { decoy = Math.floor(Math.random() * (max_d - min_d + 1)) + min_d; }
+                    }
+
+                    // 驗證條件：
+                    if (decoy > 1 && 
+                        target % decoy !== 0 &&         // 必須不是目標的因數
+                        decoy !== p_min &&              // 必須不是正確答案 p_min
+                        decoy !== p_max &&              // 必須不是正確答案 p_max
+                        !decoys.includes(decoy)         // 必須是唯一的
+                    ) {
                         decoys.push(decoy);
                     }
                 }
-                return { target: target, pair: [p1, p2], decoys: decoys, type: 'number' };
+
+                return { target: target, pair: [p_min, p_max], decoys: decoys, type: 'number' };
             }
             else {
-                // Requirement 3: SEQUENCE - A ? ? = C (Red ? for Op, Blue ? for Num)
+                // SEQUENCE 數列反算 (難度維持 EASY)
                 const ops = ['+', '-', 'x', '/'];
                 const op = ops[Math.floor(Math.random()*ops.length)];
                 
                 let n1, n2, res;
                 let valid = false;
                 
-                // Ensure n1, n2, and res are positive integers
                 while(!valid) {
                     n1 = Math.floor(Math.random()*15) + 5; 
                     n2 = Math.floor(Math.random()*15) + 1;
@@ -1034,25 +1130,20 @@
                     if(op === 'x') res = n1 * n2;
                     
                     if (op === '/') {
-                        // Ensure division results in a positive integer
-                        n1 = n2 * (Math.floor(Math.random()*8) + 2); // n1 is a multiple of n2
+                        n1 = n2 * (Math.floor(Math.random()*8) + 2); 
                         res = n1 / n2;
                     }
 
-                    // Check if all are positive integers
                     if (res > 0 && Number.isInteger(res) && n1 > 0 && n2 > 0) {
                         valid = true;
                     }
                 }
                 
-                // Target display uses placeholders for the two unknowns
-                const displayText = `${n1} ? ${res} = ${res}`; // The second '?' is the number node
+                const displayText = `${n1} ? ${res} = ${res}`;
                 
-                // Solution: [Operator, Number]
                 const solutionOp = op;
                 const solutionNum = n2;
                 
-                // Generate decoys (2 Op, 2 Num)
                 const decoyOps = ops.filter(o => o !== solutionOp).slice(0, 2);
                 const decoyNums = [];
                 while(decoyNums.length < 2) {
@@ -1060,8 +1151,6 @@
                     if (decoy !== solutionNum) decoyNums.push(decoy);
                 }
 
-                // Total candidates: 1 Op (P1), 1 Num (P2), 2 Op Decoys, 2 Num Decoys (Total 6)
-                // The two solution parts must be the first two candidates.
                 const allDecoys = [...decoyOps, ...decoyNums];
                 
                 return { target: displayText, pair: [solutionOp, solutionNum], decoys: allDecoys, type: 'mix' };
