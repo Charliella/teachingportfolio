@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>世界人物課抽卡系統</title>
+    <title>世界人物課抽卡系統 - 登入認證</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
+        /* 基礎樣式 (從 card.html 繼承) */
         body {
             display: flex;
             flex-direction: column;
@@ -26,8 +29,10 @@
             color: transparent;
             text-shadow: 0 0 8px #ff00ff, 0 0 16px #00ffff;
         }
+        
+        /* 抽卡主介面佈局樣式 */
         .main-layout {
-            display: flex;
+            display: none; /* 預設隱藏，登入後才顯示 */
             justify-content: center;
             align-items: flex-start;
             width: 95%;
@@ -36,236 +41,250 @@
             gap: 20px;
             flex-wrap: wrap;
         }
-        .column {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            padding: 10px;
-            box-sizing: border-box;
-            flex: 1;
-            min-width: 300px;
-            max-height: calc(100vh - 100px);
-            overflow-y: auto;
-        }
+        
+        /* 列寬度 (從 card.html 繼承) */
+        .column { display: flex; flex-direction: column; gap: 20px; padding: 10px; box-sizing: border-box; flex: 1; min-width: 300px; max-height: calc(100vh - 100px); overflow-y: auto; }
+        .column-1 { flex: 0 0 25%; min-width: 250px; max-width: 350px; }
+        .column-2 { flex: 0 0 35%; min-width: 380px; max-width: 420px; display: flex; justify-content: center; align-items: center; }
+        .column-3 { flex: 1; min-width: 300px; max-width: 500px; }
 
-        .column-1 {
-            flex: 0 0 25%;
-            min-width: 250px;
-            max-width: 350px;
-        }
-        .column-2 {
-            flex: 0 0 35%;
-            min-width: 380px;
-            max-width: 420px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .column-3 {
-            flex: 1;
-            min-width: 300px;
-            max-width: 500px;
-        }
+        /* 按鈕樣式 (從 card.html 繼承) */
+        button { padding: 12px 24px; font-size: 16px; background-color: #00ff00; color: white; border: 2px solid #00ff00; border-radius: 10px; cursor: pointer; box-shadow: 0 0 8px #00ff00, 0 0 16px #00ff00; transition: all 0.3s ease; width: 100%; }
+        button:hover { background-color: #00cc00; box-shadow: 0 0 12px #00ff00, 0 0 20px #00ff00; }
+        .clear-button { background-color: #ff0000; border-color: #ff0000; box-shadow: 0 0 8px #ff0000, 0 0 16px #ff0000; }
+        .clear-button:hover { background-color: #cc0000; box-shadow: 0 0 12px #ff0000, 0 0 20px #ff0000; }
+        .copy-button { background-color: #007bff; border-color: #007bff; box-shadow: 0 0 8px #007bff, 0 0 16px #007bff; }
+        .copy-button:hover { background-color: #0056b3; box-shadow: 0 0 12px #007bff, 0 0 20px #007bff; }
+        .csv-button { background-color: #9b4dca; border-color: #9b4dca; box-shadow: 0 0 8px #9b4dca, 0 0 16px #9b4dca; }
+        .csv-button:hover { background-color: #6f2c91; box-shadow: 0 0 12px #9b4dca, 0 0 20px #9b4dca; }
+        
+        /* 新增登出按鈕樣式 */
+        .logout-button { background-color: #ff9900; border-color: #ff9900; margin-top: 10px; box-shadow: 0 0 8px #ff9900; }
+        .logout-button:hover { background-color: #cc7a00; box-shadow: 0 0 12px #ff9900; }
+        
+        /* 卡片容器、機率顯示、記錄顯示... (從 card.html 繼承) */
+        #card-container { width: 400px; height: 600px; border: 4px solid #ff00ff; display: flex; justify-content: center; align-items: center; position: relative; overflow: hidden; background-color: #222; border-radius: 12px; box-shadow: 0 0 15px #ff00ff, 0 0 25px #ff00ff; flex-shrink: 0; flex-grow: 0; }
+        #card-container img { width: 100%; max-height: 100%; object-fit: contain; display: none; }
+        .card-animate { animation: draw-animation 1s ease-out forwards, glow-animation 1s infinite alternate; }
+        @keyframes draw-animation { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        @keyframes glow-animation { 0% { filter: brightness(1); } 100% { filter: brightness(1.5); } }
+        #probability-display, #draw-log { font-size: 16px; color: #ffcc00; background-color: #222; border-radius: 8px; padding: 15px; box-shadow: 0 0 10px rgba(0,255,255,0.3); width: 100%; }
+        #probability-display h2, #draw-log h2 { margin-top: 0; margin-bottom: 10px; color: #ff00ff; }
+        #probability-display p { color: #ffff00; margin: 5px 0; }
+        #draw-log p { color: #00ffff; margin: 5px 0; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 5px; word-break: break-all; }
+        .draw-controls { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
+        .draw-controls label { margin-bottom: 5px; font-size: 18px; color: #00ffff; }
+        .draw-controls input[type="number"] { padding: 8px; font-size: 16px; width: 80px; text-align: center; border: 2px solid #00ffff; background-color: #333; color: white; border-radius: 5px; box-shadow: 0 0 5px #00ffff; }
 
-        button {
-            padding: 12px 24px;
-            font-size: 16px;
-            background-color: #00ff00;
-            color: white;
-            border: 2px solid #00ff00;
+        /* 從 boardpassword.html 移植的登入表單樣式 */
+        #login-container {
+            background-color: #222;
+            padding: 40px;
             border-radius: 10px;
-            cursor: pointer;
-            box-shadow: 0 0 8px #00ff00, 0 0 16px #00ff00;
-            transition: all 0.3s ease;
-            width: 100%;
-        }
-        button:hover {
-            background-color: #00cc00;
-            box-shadow: 0 0 12px #00ff00, 0 0 20px #00ff00;
-        }
-        .clear-button {
-            background-color: #ff0000;
-            border-color: #ff0000;
-            box-shadow: 0 0 8px #ff0000, 0 0 16px #ff0000;
-        }
-        .clear-button:hover {
-            background-color: #cc0000;
-            box-shadow: 0 0 12px #ff0000, 0 0 20px #ff0000;
-        }
-        .copy-button {
-            background-color: #007bff;
-            border-color: #007bff;
-            box-shadow: 0 0 8px #007bff, 0 0 16px #007bff;
-        }
-        .copy-button:hover {
-            background-color: #0056b3;
-            box-shadow: 0 0 12px #007bff, 0 0 20px #007bff;
-        }
-        .csv-button {
-            background-color: #9b4dca;
-            border-color: #9b4dca;
-            box-shadow: 0 0 8px #9b4dca, 0 0 16px #9b4dca;
-        }
-        .csv-button:hover {
-            background-color: #6f2c91;
-            box-shadow: 0 0 12px #9b4dca, 0 0 20px #9b4dca;
-        }
-
-        #card-container {
-            width: 400px;
-            height: 600px;
-            border: 4px solid #ff00ff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            position: relative;
-            overflow: hidden;
-            background-color: #222;
-            border-radius: 12px;
-            box-shadow: 0 0 15px #ff00ff, 0 0 25px #ff00ff;
-            flex-shrink: 0;
-            flex-grow: 0;
-        }
-        #card-container img {
-            width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-            display: none;
-        }
-        .card-animate {
-            animation: draw-animation 1s ease-out forwards, glow-animation 1s infinite alternate;
-        }
-        @keyframes draw-animation {
-            0% { transform: scale(0.5); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-        @keyframes glow-animation {
-            0% { filter: brightness(1); }
-            100% { filter: brightness(1.5); }
-        }
-
-        #probability-display, #draw-log {
-            font-size: 16px;
-            color: #ffcc00;
-            background-color: #222;
-            border-radius: 8px;
-            padding: 15px;
-            box-shadow: 0 0 10px rgba(0,255,255,0.3);
-            width: 100%;
-        }
-        #probability-display h2, #draw-log h2 {
-            margin-top: 0;
-            margin-bottom: 10px;
-            color: #ff00ff;
-        }
-        #probability-display p {
-            color: #ffff00;
-            margin: 5px 0;
-        }
-        #draw-log p {
-            color: #00ffff;
-            margin: 5px 0;
-            border-bottom: 1px dashed rgba(255,255,255,0.1);
-            padding-bottom: 5px;
-            word-break: break-all;
-        }
-        #draw-log p:last-child {
-            border-bottom: none;
-        }
-        .draw-controls {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-            width: 100%;
-        }
-        .draw-controls label {
-            margin-bottom: 5px;
-            font-size: 18px;
-            color: #00ffff;
-        }
-        .draw-controls input[type="number"] {
-            padding: 8px;
-            font-size: 16px;
-            width: 80px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+            width: 350px;
             text-align: center;
-            border: 2px solid #00ffff;
+            margin-top: 50px;
+        }
+        #login-container h2 {
+            color: #ff00ff;
+            margin-bottom: 25px;
+        }
+        #login-container input {
+            width: 90%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #00ffff;
+            border-radius: 5px;
             background-color: #333;
             color: white;
-            border-radius: 5px;
-            box-shadow: 0 0 5px #00ffff;
+            font-size: 16px;
         }
-
+        #login-container button {
+            margin-top: 10px;
+            width: 100%;
+        }
+        #auth-error {
+            color: #ff6347;
+            margin-top: 15px;
+            font-size: 14px;
+            height: 20px; /* 佔位 */
+        }
+        
+        /* 響應式設計 (從 card.html 繼承) */
         @media (max-width: 1200px) {
-            .main-layout {
-                flex-direction: column;
-                align-items: center;
-            }
-            .column {
-                flex: 0 0 90%;
-                min-width: unset;
-                max-width: 600px;
-            }
-            .column-1, .column-2, .column-3 {
-                flex: 0 0 100%;
-                min-width: unset;
-                max-width: 600px;
-            }
-            #card-container {
-                width: 90%;
-                height: 500px;
-            }
+            .main-layout { flex-direction: column; align-items: center; }
+            .column { flex: 0 0 90%; min-width: unset; max-width: 600px; }
+            .column-1, .column-2, .column-3 { flex: 0 0 100%; min-width: unset; max-width: 600px; }
+            #card-container { width: 90%; height: 500px; }
+            #login-container { width: 90%; max-width: 400px; }
         }
-
         @media (max-width: 768px) {
-            h1 {
-                font-size: 28px;
-            }
-            button {
-                padding: 10px 20px;
-                font-size: 14px;
-            }
-            #card-container {
-                height: 400px;
-            }
+            h1 { font-size: 28px; }
+            button { padding: 10px 20px; font-size: 14px; }
+            #card-container { height: 400px; }
         }
     </style>
 </head>
 <body>
-    <h1>基礎卡池</h1>
-    <div class="main-layout">
-        <!-- 第一直欄位：按鈕、座號欄位、機率顯示 -->
+    <h1>世界人物課抽卡系統</h1>
+
+    <div id="login-container">
+        <h2>請登入</h2>
+        <input type="email" id="auth-email" placeholder="Email (帳號)" required>
+        <input type="password" id="auth-password" placeholder="密碼 (Access Code)" required>
+        <button onclick="login()"><i class="fa-solid fa-lock-open"></i> 登入</button>
+        <div id="auth-error"></div>
+    </div>
+
+    <div class="main-layout" id="main-app">
         <div class="column column-1">
             <div class="draw-controls">
                 <label for="student-id">抽選者座號 (1-30):</label>
                 <input type="number" id="student-id" min="1" max="30" value="1">
-                <button onclick="drawCard()">Draw a Card</button>
-                <button class="clear-button" onclick="clearDrawLog()">清除抽選記錄</button>
-                <button class="copy-button" onclick="copyDrawLogToClipboard()">一鍵複製抽選記錄</button>
-                <button class="csv-button" onclick="exportToCSV()">匯出 CSV 結果表</button>
-            </div>
+                <button onclick="drawCard()"><i class="fa-solid fa-dice"></i> Draw a Card</button>
+                <button class="clear-button" onclick="clearDrawLog()"><i class="fa-solid fa-broom"></i> 清除抽選記錄</button>
+                <button class="copy-button" onclick="copyDrawLogToClipboard()"><i class="fa-solid fa-copy"></i> 一鍵複製抽選記錄</button>
+                <button class="csv-button" onclick="exportToCSV()"><i class="fa-solid fa-file-csv"></i> 匯出 CSV 結果表</button>
+                <button class="logout-button" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> 登出</button> </div>
             <div id="probability-display">
                 <h2>Card Probability Levels</h2>
-                <!--機率顯示區域會在這裡動態更新-->
-            </div>
+                </div>
         </div>
 
-        <!-- 第二直欄位：抽到的卡片 -->
         <div class="column column-2">
             <div id="card-container">
                 <img id="card-image" src="" alt="Drawn card">
             </div>
         </div>
 
-        <!-- 第三直欄位：抽卡記錄 -->
         <div class="column column-3">
             <div id="draw-log">
                 <h2>抽選記錄</h2>
-                <!--抽選記錄會在這裡動態更新-->
-            </div>
+                </div>
         </div>
     </div>
-    <script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+        
+        // 【重要】使用您 boardpassword.html 中的 Firebase 配置！
+        const firebaseConfig = {
+            apiKey: "AIzaSyArIXMKMd1zLVVgcNn8KdUNbv3XEZxA1OQ",
+            authDomain: "teachinportfolio-1f100.firebaseapp.com",
+            projectId: "teachinportfolio-1f100",
+            storageBucket: "teachinportfolio-1f100.firebasestorage.app",
+            messagingSenderId: "367006551150",
+            appId: "1:367006551150:web:d8bb677fa08de192beea7f",
+            measurementId: "G-PMLXDSYL28"
+        };
+
+        // 初始化 Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        
+        // DOM 元素
+        const mainApp = document.getElementById('main-app');
+        const loginContainer = document.getElementById('login-container');
+        const authError = document.getElementById('auth-error');
+        const authEmail = document.getElementById('auth-email');
+        const authPassword = document.getElementById('auth-password');
+        
+        // 將登入/登出函數掛載到 window，以便 HTML 中的 onclick 能夠呼叫
+        window.login = async function() {
+            const email = authEmail.value;
+            const password = authPassword.value;
+            authError.textContent = ''; 
+
+            if (!email || !password) {
+                authError.textContent = "請輸入 Email 和密碼。";
+                return;
+            }
+
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                // 登入成功，onAuthStateChanged 會處理介面切換
+                console.log("登入成功:", auth.currentUser.email);
+            } catch (error) {
+                const errorMessage = translateAuthError(error.code);
+                authError.textContent = "登入失敗：" + errorMessage;
+                console.error("登入錯誤:", error.code, error.message);
+            }
+        }
+        
+        // 註冊功能 (如果需要的話)
+        window.register = async function() {
+            const email = authEmail.value;
+            const password = authPassword.value;
+            authError.textContent = ''; 
+
+            if (!email || !password) {
+                authError.textContent = "請輸入 Email 和密碼。";
+                return;
+            }
+            if (password.length < 6) {
+                authError.textContent = "密碼長度需至少為 6 位數。";
+                return;
+            }
+
+            try {
+                await createUserWithEmailAndPassword(auth, email, password);
+                alert("註冊成功！帳號: " + auth.currentUser.email + "。您現在已自動登入。");
+            } catch (error) {
+                authError.textContent = "註冊失敗：" + translateAuthError(error.code);
+                console.error("註冊錯誤:", error.code, error.message);
+            }
+        }
+
+        window.logout = async function() {
+            try {
+                await signOut(auth);
+                console.log("已登出");
+            } catch(error) {
+                alert("登出失敗: " + translateAuthError(error.code));
+            }
+        }
+
+        // Firebase 狀態監聽器：核心邏輯
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // 用戶已登入
+                loginContainer.style.display = 'none';
+                mainApp.style.display = 'flex'; 
+                document.title = "世界人物課抽卡系統 - 基礎卡池";
+                // 登入成功後才初始化抽卡相關資訊
+                displayProbabilities();
+                updateDrawLogDisplay();
+            } else {
+                // 用戶未登入 (或已登出)
+                loginContainer.style.display = 'block';
+                mainApp.style.display = 'none';
+                document.title = "世界人物課抽卡系統 - 登入認證";
+                // 清空密碼，確保下次登入需要重新輸入
+                authPassword.value = '';
+                authError.textContent = '';
+            }
+        });
+
+        // 錯誤碼翻譯
+        function translateAuthError(code) {
+            switch (code) {
+                case 'auth/invalid-email': return 'Email 格式不正確。';
+                case 'auth/user-disabled': return '此帳號已被停用。';
+                case 'auth/user-not-found': return '找不到此 Email 帳號。';
+                case 'auth/wrong-password': return '密碼錯誤。';
+                case 'auth/email-already-in-use': return '此 Email 已被註冊。';
+                case 'auth/weak-password': return '密碼強度不足，請使用至少 6 個字元。';
+                case 'auth/operation-not-allowed': return '不允許使用 Email/密碼登入，請檢查 Firebase 設定。';
+                default: return '發生未知錯誤。';
+            }
+        }
+        
+        // ===================================
+        // 【原有的抽卡相關函數 (掛載到 window)】
+        // ===================================
+
         const cardPool = [
             { name: "10 號R卡", image: "10.png", probability: 25.9, level: "R級普卡" },
             { name: "11 號R卡", image: "11.png", probability: 25.9, level: "R級普卡" },
@@ -283,7 +302,7 @@
 
         let drawLog = JSON.parse(localStorage.getItem('drawLog')) || [];
 
-        function displayProbabilities() {
+        window.displayProbabilities = function() {
             const probabilityDisplay = document.getElementById('probability-display');
             probabilityDisplay.innerHTML = '<h2>Card Probability Levels</h2>';
             const levels = {};
@@ -298,7 +317,7 @@
             }
         }
 
-        function updateDrawLogDisplay() {
+        window.updateDrawLogDisplay = function() {
             const drawLogDisplay = document.getElementById('draw-log');
             drawLogDisplay.innerHTML = '<h2>抽選記錄</h2>';
             for (let i = drawLog.length - 1; i >= 0; i--) { 
@@ -307,7 +326,11 @@
             }
         }
 
-        function drawCard() {
+        window.drawCard = function() {
+            if (!auth.currentUser) {
+                alert("請先登入才能進行抽選！");
+                return;
+            }
             const studentIdInput = document.getElementById('student-id');
             const studentId = parseInt(studentIdInput.value);
 
@@ -345,7 +368,8 @@
                     studentId: studentId,
                     cardName: drawnCard.name,
                     cardLevel: drawnCard.level,
-                    time: timeString
+                    time: timeString,
+                    operator: auth.currentUser.email // 記錄操作者
                 });
 
                 localStorage.setItem('drawLog', JSON.stringify(drawLog));
@@ -353,7 +377,11 @@
             }
         }
 
-        function clearDrawLog() {
+        window.clearDrawLog = function() {
+            if (!auth.currentUser) {
+                alert("請先登入才能執行此操作！");
+                return;
+            }
             if (confirm("確定要清除所有抽選記錄嗎？此操作無法復原。")) {
                 drawLog = []; 
                 localStorage.removeItem('drawLog'); 
@@ -370,7 +398,11 @@
             }
         }
 
-        function copyDrawLogToClipboard() {
+        window.copyDrawLogToClipboard = function() {
+            if (!auth.currentUser) {
+                alert("請先登入才能執行此操作！");
+                return;
+            }
             if (drawLog.length === 0) {
                 alert("目前沒有抽選記錄可以複製。");
                 return;
@@ -378,7 +410,7 @@
 
             let logText = "世界人物課抽卡記錄:\n";
             drawLog.forEach(log => {
-                logText += `座號 ${log.studentId} 抽到: ${log.cardName} (${log.cardLevel}) - ${log.time}\n`;
+                logText += `座號 ${log.studentId} 抽到: ${log.cardName} (${log.cardLevel}) - ${log.time} [操作者: ${log.operator || 'N/A'}]\n`;
             });
 
             navigator.clipboard.writeText(logText)
@@ -391,14 +423,17 @@
                 });
         }
 
-        // 新增與修改：匯出 CSV 的功能 (行列交換)
-        function exportToCSV() {
+        window.exportToCSV = function() {
+            if (!auth.currentUser) {
+                alert("請先登入才能執行此操作！");
+                return;
+            }
             if (drawLog.length === 0) {
                 alert("目前沒有記錄可供匯出！");
                 return;
             }
 
-            // 1. 定義卡片顯示順序 (這將會是橫列標題，由 12 到 1)
+            // ... (CSV 匯出邏輯不變)
             const orderedCardNames = [
                 "12 號R卡", "11 號R卡", "10 號R卡",
                 "9  號SR卡", "8  號SR卡", "7  號SR卡",
@@ -406,45 +441,32 @@
                 "3  號UR卡", "2  號UR卡", "1  號UR卡"
             ];
 
-            // 2. 初始化數據矩陣 [StudentId][CardName]
-            // 這樣我們可以快速透過「座號」找到他的所有「卡片計數」
             let studentStats = {};
             for (let i = 1; i <= 30; i++) {
                 studentStats[i] = {};
                 orderedCardNames.forEach(cardName => {
-                    studentStats[i][cardName] = 0; // 預設數量為 0
+                    studentStats[i][cardName] = 0; 
                 });
             }
 
-            // 3. 填入數據
             drawLog.forEach(log => {
                 const name = log.cardName;
                 const id = log.studentId;
-                // 確保數據有效
                 if (studentStats[id] && studentStats[id][name] !== undefined) {
                     studentStats[id][name]++;
                 }
             });
 
-            // 4. 構建 CSV 字串
-            // 加入 BOM (\uFEFF) 讓 Excel 能正確識別中文
             let csvContent = "\uFEFF";
-            
-            // 表頭 (橫列)：座號, 12號卡, 11號卡... 1號卡
             csvContent += "座號," + orderedCardNames.join(",") + "\n";
 
-            // 表內容 (直行)：1 到 30 號
             for (let i = 1; i <= 30; i++) {
-                let row = i + ","; // 該行第一格是座號
-                
-                // 依序取出該座號的各張卡片數量
+                let row = i + ","; 
                 let counts = orderedCardNames.map(cardName => studentStats[i][cardName]);
-                
                 row += counts.join(",");
                 csvContent += row + "\n";
             }
 
-            // 5. 觸發下載
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
@@ -459,9 +481,6 @@
             document.body.removeChild(link);
         }
 
-        // 頁面載入時初始化
-        displayProbabilities();
-        updateDrawLogDisplay(); 
     </script>
 </body>
 </html>
