@@ -60,15 +60,13 @@
             100% { transform: translate(50px, 30px) scale(1.1); }
         }
 
-        /* --- 核心容器 --- */
         .container {
             max-width: 1280px;
             width: 100%;
             z-index: 1;
-            transition: transform 0.3s; /* 平滑復原 */
+            transition: transform 0.3s;
         }
 
-        /* --- 標題設計 --- */
         header {
             text-align: center;
             margin-bottom: 50px;
@@ -99,7 +97,6 @@
             margin-bottom: 20px;
         }
 
-        /* --- 迷你控制列 (Mini Control Bar) --- */
         .control-bar {
             display: flex;
             justify-content: center;
@@ -131,18 +128,12 @@
             box-shadow: 0 10px 20px rgba(0,0,0,0.3);
         }
 
-        .mini-btn:active {
-            transform: scale(0.9);
-        }
-
-        /* --- 網格系統 --- */
         .grid-box {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
             gap: 30px;
         }
 
-        /* --- 液態玻璃卡片 --- */
         .widget {
             position: relative;
             text-decoration: none;
@@ -200,80 +191,32 @@
         .widget:hover .icon { transform: scale(1.2) rotate(-5deg); }
 
         .status-light { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.3); }
-        .text-content { z-index: 2; }
         .widget-subtitle { font-size: 0.75rem; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.5); margin-bottom: 6px; }
         .widget-title { font-size: 1.4rem; font-weight: 700; line-height: 1.2; background: linear-gradient(to bottom, #fff, #eee); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
         .widget.disabled { background: rgba(20, 20, 20, 0.4); border: 1px solid rgba(255, 255, 255, 0.05); cursor: default; opacity: 0.6; }
         .widget.disabled .icon { filter: grayscale(100%); opacity: 0.3; }
-        .widget.disabled:hover { transform: none; box-shadow: none; border-color: rgba(255, 255, 255, 0.05); }
 
-        /* =========================================
-           GLOBAL EFFECT ANIMATIONS (全域特效)
-           ========================================= */
-
-        /* 1. 全域 Neon Surge (閃光) */
-        .flash-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: white; pointer-events: none; opacity: 0; z-index: 9999;
-            transition: opacity 0.1s;
-        }
-        body.mode-neon .flash-overlay {
-            animation: flash-anim 0.8s ease-out;
-        }
-        @keyframes flash-anim {
-            0% { opacity: 0.8; }
-            100% { opacity: 0; }
-        }
-
-        /* 2. 全域 Jelly (整個介面Q彈) */
-        body.mode-jelly .container {
-            animation: jelly-all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-        }
-        @keyframes jelly-all {
-            0% { transform: scale(1); }
-            30% { transform: scale(1.05, 0.95); }
-            40% { transform: scale(0.95, 1.05); }
-            50% { transform: scale(1.02, 0.98); }
-            65% { transform: scale(0.99, 1.01); }
-            100% { transform: scale(1); }
-        }
-
-        /* 3. 全域 Glitch (畫面錯位故障) */
-        body.mode-glitch .container {
-            animation: glitch-shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
-            filter: url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\'><filter id=\'glitch\'><feTurbulence type=\'turbulence\' baseFrequency=\'0.05\' numOctaves=\'2\' result=\'noise\'/><feDisplacementMap in=\'SourceGraphic\' in2=\'noise\' scale=\'20\' /></filter></svg>#glitch");
-        }
-        /* 簡單版 Glitch Shake */
-        @keyframes glitch-shake {
-            10%, 90% { transform: translate3d(-2px, 0, 0); filter: hue-rotate(90deg); }
-            20%, 80% { transform: translate3d(4px, 0, 0); filter: invert(1); }
-            30%, 50%, 70% { transform: translate3d(-6px, 0, 0); filter: hue-rotate(180deg); }
-            40%, 60% { transform: translate3d(6px, 0, 0); }
-        }
-
-        /* 4. 全域 Spin (瘋狂旋轉) */
-        body.mode-spin .container {
-            animation: container-spin 1s ease-in-out;
-        }
-        @keyframes container-spin {
-            0% { transform: rotate(0deg) scale(1); }
-            50% { transform: rotate(180deg) scale(0.2); opacity: 0.5; }
-            100% { transform: rotate(360deg) scale(1); opacity: 1; }
-        }
+        /* 全域特效動畫 */
+        .flash-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; pointer-events: none; opacity: 0; z-index: 9999; }
+        body.mode-neon .flash-overlay { animation: flash-anim 0.8s ease-out; }
+        @keyframes flash-anim { 0% { opacity: 0.8; } 100% { opacity: 0; } }
+        body.mode-jelly .container { animation: jelly-all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+        @keyframes jelly-all { 0%, 100% { transform: scale(1); } 30% { transform: scale(1.05, 0.95); } 50% { transform: scale(1.02, 0.98); } }
+        body.mode-glitch .container { animation: glitch-shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes glitch-shake { 10%, 90% { transform: translate3d(-2px, 0, 0); } 20%, 80% { transform: translate3d(4px, 0, 0); } 40%, 60% { transform: translate3d(6px, 0, 0); } }
+        body.mode-spin .container { animation: container-spin 1s ease-in-out; }
+        @keyframes container-spin { 0% { transform: rotate(0deg) scale(1); } 50% { transform: rotate(180deg) scale(0.2); } 100% { transform: rotate(360deg) scale(1); } }
 
         @media (max-width: 600px) {
             h1 { font-size: 2.5rem; }
             .grid-box { grid-template-columns: 1fr; }
-            .widget { height: 180px; }
         }
-
     </style>
 </head>
 <body>
 
     <div class="flash-overlay"></div>
-
     <div class="ambient-light">
         <div class="blob blob-1"></div>
         <div class="blob blob-2"></div>
@@ -284,7 +227,6 @@
         <header>
             <h1>TEACHING HUB</h1>
             <div class="version-badge">✨ Designed by 嘉威老師</div>
-
             <div class="control-bar">
                 <div class="mini-btn" onclick="triggerGlobal('neon')" title="Neon Surge">⚡</div>
                 <div class="mini-btn" onclick="triggerGlobal('jelly')" title="Jelly Bounce">💧</div>
@@ -294,32 +236,26 @@
         </header>
         
         <div class="grid-box">
-
             <a href="area/casual.html" class="widget active blue-mode">
                 <div class="top-row"><div class="icon">🖥️</div><div class="status-light"></div></div>
                 <div class="text-content"><div class="widget-subtitle">MAIN HUB</div><div class="widget-title">工作站</div></div>
             </a>
-
             <a href="area/inventory.html" class="widget active blue-mode">
                 <div class="top-row"><div class="icon">📊</div><div class="status-light"></div></div>
                 <div class="text-content"><div class="widget-subtitle">SYSTEM 01</div><div class="widget-title">點作業系統</div></div>
             </a>
-
             <a href="area/clubs.html" class="widget active pink-mode">
                 <div class="top-row"><div class="icon">📝</div><div class="status-light"></div></div>
                 <div class="text-content"><div class="widget-subtitle">SYSTEM 02</div><div class="widget-title">社團點名系統</div></div>
             </a>
-
             <a href="area/timer.html" class="widget active yellow-mode">
                 <div class="top-row"><div class="icon">⏲️</div><div class="status-light"></div></div>
                 <div class="text-content"><div class="widget-subtitle">SYSTEM 03</div><div class="widget-title">萬用鐘</div></div>
             </a>
-
             <a href="area/rectangle01.html" class="widget active blue-mode">
                 <div class="top-row"><div class="icon">📐</div><div class="status-light"></div></div>
                 <div class="text-content"><div class="widget-subtitle">GEOMETRY 01</div><div class="widget-title">四邊形基本概念</div></div>
             </a>
-            
             <a href="area/storytree.html" class="widget active pink-mode">
                 <div class="top-row"><div class="icon">📚</div><div class="status-light"></div></div>
                 <div class="text-content"><div class="widget-subtitle">STORY</div><div class="widget-title">故事樹</div></div>
@@ -328,36 +264,32 @@
                 <div class="top-row"><div class="icon">💠</div><div class="status-light"></div></div>
                 <div class="text-content"><div class="widget-subtitle">LESSON</div><div class="widget-title">線對稱教學</div></div>
             </a>
-
             <a href="area/heroes.html" class="widget active yellow-mode">
                 <div class="top-row"><div class="icon">🏆</div><div class="status-light"></div></div>
                 <div class="text-content"><div class="widget-subtitle">SHOWCASE</div><div class="widget-title">英雄坊</div></div>
             </a>
-
             <a href="area/boardpassword.html" class="widget active blue-mode">
                 <div class="top-row"><div class="icon">☁️</div><div class="status-light"></div></div>
                 <div class="text-content"><div class="widget-subtitle">INTERACTIVE</div><div class="widget-title">互動雲</div></div>
             </a>
-            
             <a href="area/mathslash.html" class="widget active pink-mode">
                 <div class="top-row"><div class="icon">🗡️</div><div class="status-light"></div></div>
                 <div class="text-content"><div class="widget-subtitle">GAME ZONE</div><div class="widget-title">數滅之刃</div></div>
             </a>
-
             <a href="area/card.html" class="widget active yellow-mode">
                 <div class="top-row"><div class="icon">🃏</div><div class="status-light"></div></div>
                 <div class="text-content"><div class="widget-subtitle">GAME ZONE</div><div class="widget-title">抽卡系統</div></div>
             </a>
-            <div class="widget disabled">
-                <div class="top-row"><div class="icon">🔒</div><div class="status-light" style="background: #444; box-shadow: none;"></div></div>
-                <div class="text-content"><div class="widget-subtitle">LOCKED</div><div class="widget-title">即將推出</div></div>
-            </div>
+
+            <a href="area/table.html" class="widget active blue-mode">
+                <div class="top-row"><div class="icon">📈</div><div class="status-light"></div></div>
+                <div class="text-content"><div class="widget-subtitle">DATA ANALYTICS</div><div class="widget-title">卡片統計</div></div>
+            </a>
 
             <div class="widget disabled">
                 <div class="top-row"><div class="icon">🔒</div><div class="status-light" style="background: #444; box-shadow: none;"></div></div>
                 <div class="text-content"><div class="widget-subtitle">LOCKED</div><div class="widget-title">即將推出</div></div>
             </div>
-
         </div>
     </div>
 
@@ -365,26 +297,16 @@
         function triggerGlobal(effect) {
             const body = document.body;
             const modeClass = 'mode-' + effect;
-            
-            // 如果動畫正在進行中，先重置
             if (body.classList.contains(modeClass)) {
                 body.classList.remove(modeClass);
-                void body.offsetWidth; // 觸發 Reflow，允許動畫重新開始
+                void body.offsetWidth;
             }
-
-            // 添加特效 class
             body.classList.add(modeClass);
-
-            // 設定計時器移除 class (配合 CSS 動畫時間)
             let duration = 800;
             if (effect === 'glitch') duration = 400;
             if (effect === 'spin') duration = 1000;
-
-            setTimeout(() => {
-                body.classList.remove(modeClass);
-            }, duration);
+            setTimeout(() => { body.classList.remove(modeClass); }, duration);
         }
     </script>
-
 </body>
 </html>
