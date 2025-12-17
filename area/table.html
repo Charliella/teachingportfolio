@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>世界人物課 - 學生資產管理系統</title>
+    <title>學生卡片管理系統</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
@@ -39,17 +39,20 @@
         
         .table-container { width: 100%; overflow-x: auto; max-width: 1400px; }
         table { width: 100%; border-collapse: collapse; background: var(--card-bg); margin-top: 20px; font-size: 13px; }
-        th, td { border: 1px solid var(--border-color); padding: 8px; text-align: center; white-space: nowrap; }
+        th, td { border: 1px solid var(--border-color); padding: 12px; text-align: center; white-space: nowrap; }
         th { background-color: #333; color: var(--accent-color); position: sticky; top: 0; }
         tr:hover { background-color: #2a2a2a; }
 
-        .btn { padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; transition: 0.3s; font-weight: bold; }
+        /* 登入後的儲存格樣式 */
+        .editable { cursor: pointer; transition: background 0.2s; }
+        .editable:hover { background: #444; border: 1px solid var(--accent-color); }
+
+        .btn { padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; transition: 0.3s; font-weight: bold; display: inline-flex; align-items: center; gap: 5px; }
         .btn-login { background: #00ff00; color: #000; }
         .btn-logout { background: #ff4444; color: white; }
         .btn-upload { background: #9b4dca; color: white; }
-        .btn-calc { padding: 2px 6px; margin: 0 2px; font-size: 11px; }
-        .btn-plus { background: #28a745; color: white; }
-        .btn-minus { background: #dc3545; color: white; }
+        .btn-export { background: #007bff; color: white; }
+        .btn-reset { background: #ff4444; color: white; }
         
         .ur-column { color: #ffcc00; font-weight: bold; border-left: 2px solid #555; }
         .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 1000; }
@@ -57,7 +60,7 @@
 </head>
 <body>
 
-    <h1><i class="fa-solid fa-gem"></i> 學生卡片資產管理</h1>
+    <h1><i class="fa-solid fa-gem"></i> 學生卡片管理</h1>
 
     <div id="auth-section">
         <div id="login-form">
@@ -74,6 +77,9 @@
     <div class="admin-controls" id="admin-controls">
         <label for="csv-file" class="btn btn-upload"><i class="fa-solid fa-file-import"></i> 匯入並合併 CSV</label>
         <input type="file" id="csv-file" accept=".csv" style="display:none;" onchange="handleCSV(event)">
+        
+        <button class="btn btn-export" onclick="exportCurrentData()"><i class="fa-solid fa-file-export"></i> 匯出目前資料 CSV</button>
+        <button class="btn btn-reset" onclick="resetAllData()"><i class="fa-solid fa-trash-can"></i> 刪除所有資料 (歸零)</button>
     </div>
 
     <div class="table-container">
@@ -92,7 +98,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
-        import { getFirestore, doc, setDoc, updateDoc, increment, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, updateDoc, increment, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyArIXMKMd1zLVVgcNn8KdUNbv3XEZxA1OQ",
@@ -107,23 +113,22 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // 卡片清單
         const cardNames = [
             "12 號R卡", "11 號R卡", "10 號R卡",
             "9  號SR卡", "8  號SR卡", "7  號SR卡",
             "6  號SSR卡", "5  號SSR卡", "4  號SSR卡",
             "3  號UR卡", "2  號UR卡", "1  號UR卡"
         ];
-        const extraColumn = "用過UR次數"; // 新增的欄位
+        const extraColumn = "用過UR次數";
 
         let isAdmin = false;
+        let currentDBData = {}; // 儲存目前的快照資料以便匯出
 
-        // 初始化表格
         function initTable() {
             const header = document.getElementById('table-header');
             let headerHTML = '<th>座號</th>';
             cardNames.forEach(name => headerHTML += `<th>${name}</th>`);
-            headerHTML += `<th class="ur-column">${extraColumn}</th>`; // 加入最後一列標題
+            headerHTML += `<th class="ur-column">${extraColumn}</th>`;
             header.innerHTML = headerHTML;
             
             const tbody = document.getElementById('table-body');
@@ -131,57 +136,89 @@
             for (let i = 1; i <= 30; i++) {
                 let row = `<tr id="row-${i}"><td>${i}</td>`;
                 cardNames.forEach((name, idx) => {
-                    row += `<td id="cell-${i}-${idx}">0</td>`;
+                    row += `<td id="cell-${i}-${idx}" data-student="${i}" data-field="${name}">0</td>`;
                 });
-                row += `<td id="cell-${i}-ur" class="ur-column">0</td>`; // 加入最後一列內容單元格
+                row += `<td id="cell-${i}-ur" class="ur-column" data-student="${i}" data-field="${extraColumn}">0</td>`;
                 row += '</tr>';
                 tbody.innerHTML += row;
             }
         }
 
-        // 監聽 Firebase 數據
         function listenToAssets() {
             for (let i = 1; i <= 30; i++) {
                 onSnapshot(doc(db, "studentAssets", i.toString()), (docSnap) => {
-                    if (docSnap.exists()) {
-                        const data = docSnap.data();
-                        // 更新普通卡片
-                        cardNames.forEach((name, idx) => {
-                            const cell = document.getElementById(`cell-${i}-${idx}`);
-                            updateCellUI(cell, i, name, data[name] || 0);
-                        });
-                        // 更新「用過UR次數」
-                        const urCell = document.getElementById(`cell-${i}-ur`);
-                        updateCellUI(urCell, i, extraColumn, data[extraColumn] || 0);
-                    }
+                    const data = docSnap.exists() ? docSnap.data() : {};
+                    currentDBData[i] = data;
+                    
+                    cardNames.forEach((name, idx) => {
+                        const cell = document.getElementById(`cell-${i}-${idx}`);
+                        updateCellUI(cell, data[name] || 0);
+                    });
+                    const urCell = document.getElementById(`cell-${i}-ur`);
+                    updateCellUI(urCell, data[extraColumn] || 0);
                 });
             }
         }
 
-        function updateCellUI(cell, studentId, fieldName, count) {
+        function updateCellUI(cell, count) {
+            cell.textContent = count;
             if (isAdmin) {
-                cell.innerHTML = `
-                    <button class="btn btn-calc btn-minus" onclick="adjust('${studentId}', '${fieldName}', -1)">-</button>
-                    <span style="display:inline-block; min-width:15px">${count}</span>
-                    <button class="btn btn-calc btn-plus" onclick="adjust('${studentId}', '${fieldName}', 1)">+</button>
-                `;
+                cell.classList.add('editable');
+                cell.onclick = () => editValue(cell.dataset.student, cell.dataset.field, count);
             } else {
-                cell.textContent = count;
+                cell.classList.remove('editable');
+                cell.onclick = null;
             }
         }
 
-        // 手動增減邏輯
-        window.adjust = async (studentId, fieldName, val) => {
+        // 直接編輯數值
+        window.editValue = async (studentId, fieldName, currentVal) => {
+            const newVal = prompt(`修改座號 ${studentId} 的 [${fieldName}]\n目前數值: ${currentVal}`, currentVal);
+            if (newVal === null || newVal === "" || isNaN(newVal)) return;
+
             const docRef = doc(db, "studentAssets", studentId);
             try {
-                await updateDoc(docRef, { [fieldName]: increment(val) });
+                await setDoc(docRef, { [fieldName]: parseInt(newVal) }, { merge: true });
             } catch (e) {
-                const initialData = {};
-                cardNames.forEach(n => initialData[n] = 0);
-                initialData[extraColumn] = 0;
-                initialData[fieldName] = val < 0 ? 0 : val;
-                await setDoc(docRef, initialData);
+                alert("更新失敗: " + e.message);
             }
+        };
+
+        // 匯出 CSV 功能
+        window.exportCurrentData = () => {
+            let csvContent = "\uFEFF座號," + cardNames.join(",") + "," + extraColumn + "\n";
+            for (let i = 1; i <= 30; i++) {
+                const data = currentDBData[i] || {};
+                let row = [i];
+                cardNames.forEach(name => row.push(data[name] || 0));
+                row.push(data[extraColumn] || 0);
+                csvContent += row.join(",") + "\n";
+            }
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `學生資產統計表_${new Date().toLocaleDateString()}.csv`;
+            link.click();
+        };
+
+        // 刪除/重設所有資料
+        window.resetAllData = async () => {
+            if (!confirm("警告！這將會把所有 1-30 號學生的所有數值「歸零」。\n此操作無法復原，確定要執行嗎？")) return;
+            
+            document.getElementById('loader').style.display = 'flex';
+            try {
+                const zeroData = {};
+                cardNames.forEach(name => zeroData[name] = 0);
+                zeroData[extraColumn] = 0;
+
+                for (let i = 1; i <= 30; i++) {
+                    await setDoc(doc(db, "studentAssets", i.toString()), zeroData);
+                }
+                alert("所有資料已歸零。");
+            } catch (e) {
+                alert("歸零過程出錯: " + e.message);
+            }
+            document.getElementById('loader').style.display = 'none';
         };
 
         // CSV 匯入邏輯 (累加)
@@ -202,13 +239,10 @@
 
                     const docRef = doc(db, "studentAssets", studentId);
                     let updates = {};
-                    
                     cardNames.forEach((name, idx) => {
                         const count = parseInt(row[idx + 1]) || 0;
                         if (count > 0) updates[name] = increment(count);
                     });
-
-                    // 檢查 CSV 是否有包含「用過UR次數」列 (如果 CSV 也是從本系統匯出的話)
                     if (row.length > cardNames.length + 1) {
                         const urCount = parseInt(row[cardNames.length + 1]) || 0;
                         if (urCount > 0) updates[extraColumn] = increment(urCount);
@@ -227,7 +261,7 @@
                 }
                 document.getElementById('loader').style.display = 'none';
                 alert('資料已成功合併！');
-                event.target.value = ''; // 清除 input 讓下次同檔案上傳可觸發
+                event.target.value = '';
             };
             reader.readAsText(file);
         };
