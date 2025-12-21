@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>王國勇者：數學之盾 Final Ultra Pro</title>
+    <style>
+        :root {
+            --neon-green: #00ff41; --neon-orange: #f39c12; --neon-red: #ff003c;
+            --neon-blue: #00d2ff; --bg-dark: #0a0a0b;
+        }
+
+        * { box-sizing: border-box; }
+        html, body { 
+            height: 100vh; width: 100vw; margin: 0; padding: 0; 
+            overflow: hidden; background-color: var(--bg-dark);
+            font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; color: #fff;
+        }
+
+        /* 主容器佈局：左側遊戲(1fr) + 右側榜單(200px) */
+        .game-wrapper {
+            display: grid;
+            grid-template-columns: 1fr 200px; 
+            grid-template-rows: 10vh 1fr 35vh;
+            gap: 1.5vh;
+            height: 100vh;
+            padding: 2vh;
+        }
+
+        /* 標題與回饋區 */
+        .level-header {
+            grid-column: 1 / 2;
+            background: rgba(243, 156, 18, 0.15);
+            border-left: 12px solid var(--neon-orange);
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 2vw;
+        }
+        .level-header h2 { margin: 0; font-size: 4vh; color: var(--neon-orange); }
+        #feedback { font-size: 4vh; font-weight: 900; }
+
+        /* 左側主遊戲區 */
+        .main-content {
+            grid-column: 1 / 2;
+            display: flex; flex-direction: column; gap: 1vh;
+            min-height: 0;
+        }
+
+        .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1vw; }
+        .stat-card { background: #1a1a1f; border: 1px solid #444; padding: 1vh; text-align: center; border-radius: 10px; }
+        .stat-label { font-size: 1.8vh; color: #888; display: block; margin-bottom: 0.5vh; }
+        .stat-value { font-size: 3.5vh; font-weight: bold; color: var(--neon-blue); }
+
+        /* 核心調整：題目顯示區佔據最大畫面 */
+        .question-display {
+            flex-grow: 1; background: #000; border: 5px solid #333;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 16vh; font-weight: 900; color: var(--neon-green);
+            text-shadow: 0 0 40px rgba(0, 255, 65, 0.7);
+            text-align: center; border-radius: 20px;
+        }
+
+        /* 解答輸入區 */
+        .answer-row { display: flex; justify-content: center; gap: 2vw; align-items: center; height: 16vh; }
+        .input-box {
+            background: #000; border: 6px solid #555; color: var(--neon-green);
+            width: 25vw; height: 13vh; font-size: 10vh; text-align: center; border-radius: 20px;
+        }
+        .input-box.active { border-color: var(--neon-green); box-shadow: 0 0 30px rgba(0, 255, 65, 0.6); }
+
+        /* 右側排行榜：縮小範圍但字體清楚 */
+        .side-panel {
+            grid-column: 2 / 3;
+            grid-row: 1 / 4;
+            background: #111; border: 2px solid var(--neon-blue);
+            padding: 1.5vh 1vh; display: flex; flex-direction: column; border-radius: 15px;
+        }
+        .side-panel h3 { font-size: 2.2vh; color: var(--neon-blue); text-align: center; margin: 0 0 1.5vh 0; border-bottom: 1px solid var(--neon-blue); padding-bottom: 1vh; }
+        .rank-list { list-style: none; padding: 0; margin: 0; flex-grow: 1; overflow-y: auto; }
+        .rank-item { padding: 0.8vh; font-size: 2.3vh; color: #555; border-bottom: 1px solid #222; text-align: left; }
+        .rank-item.active { color: #fff; background: var(--neon-blue); font-weight: bold; border-radius: 8px; }
+
+        /* 控制按鈕區 */
+        .controls-row {
+            grid-column: 1 / 2;
+            display: grid; grid-template-columns: 1.2fr 1fr; gap: 2vw;
+        }
+        .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2vh; }
+        .key { background: #222; border: 1px solid #666; color: #fff; font-size: 4.5vh; cursor: pointer; border-radius: 15px; font-weight: bold; }
+        .key:active { transform: scale(0.92); background: #444; }
+        .key.action { background: var(--neon-orange); color: #000; font-size: 4vh; }
+        .key.delete { background: var(--neon-red); }
+
+        .btn-side { display: flex; flex-direction: column; gap: 1.5vh; }
+        .special-btn {
+            flex: 1; border: none; font-weight: 900; font-size: 3.5vh; color: #fff; cursor: pointer; border-radius: 15px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .cheat-btn { background: #700; border: 3px solid var(--neon-red); }
+        .rest-btn { background: #005577; border: 3px solid var(--neon-blue); }
+
+        /* 故事彈窗：針對大螢幕字體優化 */
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.98); justify-content: center; align-items: center; z-index: 11000;
+        }
+        .modal-content {
+            background: #111; border: 6px solid var(--neon-blue); padding: 5vh;
+            width: 90vw; height: 90vh; display: flex; flex-direction: column; border-radius: 30px;
+        }
+        #restStory { 
+            font-size: 4vh; color: #f0f0f0; line-height: 1.8; text-align: left; 
+            overflow-y: auto; flex-grow: 1; margin: 3vh 0; padding: 4vh; 
+            background: #050505; border-radius: 20px; border: 2px solid #333;
+        }
+        #restStory b { color: var(--neon-orange); font-size: 4.5vh; }
+        #playerName { font-size: 6vh; width: 100%; padding: 2vh; background: #000; color: var(--neon-blue); border: 4px solid var(--neon-blue); margin-top: 2vh; text-align: center; border-radius: 15px; }
+
+        .overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 10000; display: flex; justify-content: center; align-items: center;
+            padding: 5vw; text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div id="prologueOverlay" class="overlay">
+    <div style="max-width: 1000px;">
+        <h1 style="font-size: 9vh; color: var(--neon-orange); margin-bottom: 4vh;">✨ 王國算術危機 ✨</h1>
+        <p style="font-size: 4.5vh; line-height: 1.6; color: #ccc;">「卡爾克利亞王國」的數字核心被打碎了！<br>現在買東西會找錯錢，時鐘會亂跳，大家都不會算數啦！<br><br><b>算術勇者啊，請用你的智慧修正這一切吧！</b></p>
+        <button class="key action" style="padding: 4vh 10vw; font-size: 6vh; margin-top: 6vh; height: auto;" onclick="startGame()">開始冒險！</button>
+    </div>
+</div>
+
+<div class="game-wrapper">
+    <div class="level-header">
+        <h2 id="levelTitle">LOADING...</h2>
+        <div id="feedback" style="color: #666;">READY</div>
+    </div>
+
+    <div class="main-content">
+        <div class="stats-row">
+            <div class="stat-card"><span class="stat-label">目前身份</span><span class="stat-value" id="lvlStatus">村莊平民</span></div>
+            <div class="stat-card"><span class="stat-label">連續正確</span><span class="stat-value" id="streak">0</span></div>
+            <div class="stat-card"><span class="stat-label">平均秒數</span><span class="stat-value" id="avgTime">0</span>s</div>
+            <div class="stat-card"><span class="stat-label">晉級條件</span><span id="goalCond" style="font-size:1.8vh; color:#999;">-</span></div>
+        </div>
+        <div class="question-display" id="questionDisplay">---</div>
+        <div class="answer-row">
+            <input type="number" class="input-box active" id="ansMain" readonly placeholder="?">
+            <div id="remainderZone" style="display:none">
+                <input type="number" class="input-box" id="ansRem" readonly placeholder="餘">
+            </div>
+        </div>
+    </div>
+
+    <div class="side-panel">
+        <h3>勇者排行榜</h3>
+        <ul class="rank-list" id="rankListDisplay"></ul>
+    </div>
+
+    <div class="controls-row">
+        <div class="keypad">
+            <button class="key" onclick="pressKey(1)">1</button><button class="key" onclick="pressKey(2)">2</button><button class="key" onclick="pressKey(3)">3</button>
+            <button class="key" onclick="pressKey(4)">4</button><button class="key" onclick="pressKey(5)">5</button><button class="key" onclick="pressKey(6)">6</button>
+            <button class="key" onclick="pressKey(7)">7</button><button class="key" onclick="pressKey(8)">8</button><button class="key" onclick="pressKey(9)">9</button>
+            <button class="key delete" onclick="pressKey('C')">清除</button><button class="key" onclick="pressKey(0)">0</button>
+            <button class="key action" onclick="check()">送出答案</button>
+        </div>
+        <div class="btn-side">
+            <button class="special-btn cheat-btn" onclick="execCheat()">禁忌咒語：瞬間洞察</button>
+            <button class="special-btn rest-btn" onclick="openRest()">今天想休息了</button>
+            <button class="key" style="background:none; border: 2px solid #444; font-size: 3vh;" onclick="location.reload()">重新啟動</button>
+        </div>
+    </div>
+</div>
+
+<div id="modal" class="modal">
+    <div class="modal-content">
+        <h2 style="color:var(--neon-blue); font-size: 7vh; margin:0; text-align:center;">📖 勇者冒險存檔日記</h2>
+        <div id="inputArea">
+            <p style="font-size: 4vh; margin: 2vh 0; text-align:center;">請輸入勇者的名字：</p>
+            <input type="text" id="playerName" placeholder="例如：數學小天才">
+        </div>
+        <div id="restStory" style="display:none;"></div>
+        <button class="key action" style="width:100%; height: 14vh; font-size: 6vh;" id="modalBtn" onclick="confirmRest()">確認存檔</button>
+    </div>
+</div>
+
+<script>
+    const levels = [
+        { name: "鋼鐵前哨 (加法)", type: "add", fast: [4, 3], slow: [8, 7] },
+        { name: "廢土生存 (減法)", type: "sub", fast: [4, 3], slow: [8, 7] },
+        { name: "彈藥補給 (乘法)", type: "multi99", fast: [3, 3], slow: [5, 7] },
+        { name: "城市突擊 (2x1)", type: "multi2x1", fast: [6, 3], slow: [14, 7] },
+        { name: "火力覆蓋 (2x2)", type: "multi2x2", fast: [10, 3], slow: [20, 7] },
+        { name: "狙擊座標 (整除)", type: "divExact", fast: [10, 3], slow: [16, 7] },
+        { name: "碎甲指令 (餘數I)", type: "divRem1", fast: [12, 3], slow: [26, 7] },
+        { name: "核心解析 (餘數II)", type: "divRem2", fast: [16, 3], slow: [40, 6] },
+        { name: "九重天門 (八項長式)", type: "mix_9", fast: [35, 3], slow: [70, 6] },
+        { name: "諸神黃昏 (十項神式)", type: "mix_10", fast: [45, 3], slow: [90, 6] }
+    ];
+
+    const heroes = ["村莊平民", "新兵戰士", "偵查小隊", "重裝衛兵", "百人隊長", "王宮侍衛", "榮耀騎士", "巨龍將軍", "不朽英雄", "傳說劍聖", "數學戰神"];
+    
+    const stories = {
+        true: [
+            "【村莊平民】{name}回到了家鄉，看見隔壁雜貨店老闆正為了算不清幾籃雞蛋的總數而急得滿頭大汗。{name}大步跨上前，僅用一眼就幫老闆算出了正確答案。老闆感激萬分，送了{name}一籃特大號雞蛋作為回禮。{name}第一次發現，原來學好加法可以幫助這麼多人，全村的人都在門口為你歡呼喝采，這感覺真是太棒了！",
+            "【新兵戰士】在充滿汗水的演武場，教官點名要清點受損的寶劍。原本有兩百支練習劍，卻被粗魯的新兵們弄壞了四十八支，教官大吼問剩下多少。{name}不急不徐地給出了正確答案，讓教官原本準備好的處罰通通取消。戰友們紛紛對{name}豎起大拇指，直說你的腦袋比盾牌還要硬、還要可靠！",
+            "【偵查小隊】{name}潛伏在茂密的森林，必須算出敵營中所有營火的總數。每個營區有九堆火，總共有七個營區，{name}在心裡默唸九九乘法，三秒鐘就推斷出敵方的規模。因為這份神速的情報，我方軍隊及時撤退避開了埋伏。隊長稱讚{name}是全軍最靈活的偵查眼，未來的將軍之位一定有你的份！",
+            "【重裝衛兵】城門口要裝設威力巨大的重型弩炮，{name}負責分配炮彈的總重量。每一台弩炮重達四十五公斤，總共要架設八台，這決定了城牆是否能承受得住衝擊。{name}在沙地上畫了幾筆，迅速算出了精確數值。戰友們看著穩如泰山的城門，深感有{name}在，大家今晚就能安心在營火旁睡個好覺了！",
+            "【百人隊長】{name}統帥一百名精英戰士遠征，遇到需要分配行軍口糧的關鍵時刻。每袋口糧三十二公斤，總共要平均分給十二個小隊，這複雜的算術讓副官算到頭冒輕煙。但{name}拍拍副官的肩膀，輕鬆唸出了正確結果。士兵們崇拜地看著{name}，心裡無比踏實：跟著這麼聰明的隊長，絕對不會在外面餓肚子！",
+            "【王宮侍衛】王宮的地板受損了，國王親自請{name}算出要購買多少塊昂貴的大理石地磚。這是一個龐大的除法工程，稍微算錯一塊，國王走路就會被絆倒。當最後一塊地磚完美填入，沒有任何一絲縫隙時，國王高興地摘下王冠向{name}致意。{name}微笑著，他終於體會到數學帶來的完美平衡感！",
+            "【榮耀騎士】{name}在遠征途中遇到了一個难题：要把五百塊麵包平分給二十五位受災的村民，剩下的餘數要怎麼處理？這考驗著騎士的公正與智慧。{name}冷靜算出答案，並將剩下的麵包分給了路邊最瘦小的孩子。大家對騎士的智慧感佩不已，{name}覺得，數字在好人手裡，就是守護正義的最強盾牌！",
+            "【巨龍將軍】在高空雲層中，{name}駕馭著噴火巨龍，必須隨時計算強風與氣壓的比值。這是一個極高難度的除法與餘數挑戰，稍微算錯就會從幾千公尺的高空掉下去。{name}盯著風速計，腦袋轉得比巨龍的翅膀還要快，最終精準降落在標靶塔尖。全城的巨龍都在為{name}的智慧咆哮喝采，場面壯觀到讓人流淚！",
+            "【不朽英雄】{name}走進了傳說中的邏輯之塔，面前是橫跨整面牆的八項長式封印。這是一場與古老智慧的巔峰決鬥，加減乘除交織成網，稍有不慎就會迷失。{name}閉上雙眼，讓數字在腦海中跳舞，逐一拆解封印，最終金光大作！王國一半的霧霾瞬間消失。{name}在萬人推崇中，成為了歷史書上永恆的英雄！",
+            "【數學戰神】諸神黃昏降臨，世界陷入了混亂的數字黑洞中。{name}面對那連神明都無法心算的十項巨型神式，眼中閃爍著平靜的光芒。他像是一位優雅的指揮家，在虛空中劃下最終解答。黑洞消失了，星辰重歸軌道，{name}的名字永遠刻在了宇宙的秩序核心。他是當之無愧的——數學戰神！"
+        ],
+        false: [
+            "【假的村莊平民】{name}拿著從鄰居那裡借來的假稱號去幫忙算帳，結果把『五顆蘋果加三顆』算成了『五百三十八顆』，老闆以為你是來搶劫的，氣得拿掃帚追著你跑了三條街。{name}一邊跑一邊掉出作弊的小抄，全村的小狗都跟在後面嘲笑你，這下你成了全村最有名的『數學小丑』啦！",
+            "【假的新兵戰士】{name}在演武場考試時偷看解答，結果抄錯行，把剩下的『七十七支劍』報成了『剩下七十七萬隻大象』。教官氣得臉都黑了，指著空蕩蕩的草地問：『大象在哪裡？你給我變出來！』{name}嚇得躲進草叢裡，結果屁股被仙人掌刺得哇哇大叫，這冒牌貨的下場真是太慘了！",
+            "【假的偵查小隊】{name}拿著印錯的九九乘法表去偵查敵人數量，結果把『七個敵人』算成了『七萬個外星軍隊』，嚇得全軍連夜撤退跑了五十公里，最後才發現對方只有一個人在生火烤地瓜。國王罰{name}去幫那個烤地瓜的人數一萬顆地瓜，不能用算的只能用跳的數，全城的人都來看你跳舞！",
+            "【假的重裝衛兵】{name}穿著大到不合身的假盔甲去算弩炮重量，結果因為重心算錯，整個人像個圓滾滾的鐵罐頭一樣往後摔，一路滾到了護城河裡。大家把你撈起來的時候，才發現你盔甲裡塞的不是鐵片而是軟綿綿的棉花糖。{name}在大家的笑聲中紅著臉逃跑，真是丟臉丟到外太空去了！",
+            "【假的百人隊長】{name}在大軍面前想要耍帥用心算分口糧，結果把『分麵包』算成了『分石頭』，讓飢餓的士兵們拿到一堆鵝卵石。大家氣得把{name}舉起來丟進池塘裡餵魚。{name}在水裡吐著泡泡，還在想為什麼自己的作弊按鈕失靈了，這下全王國都知道你是個愛作弊的假隊長啦！",
+            "【假的王宮侍衛】{name}混進王宮幫忙鋪地磚，結果算錯面積，地磚全部疊在一起變成了一座小山，差點把路過的國王埋掉。國王看著你的假證件，笑著把你變成了一尊會噴水的雕像放在城門口。{name}現在每天都要被路過的小貓抓癢卻不能動，這就是愛作弊的搞笑代價，太滑稽了！",
+            "【假的榮耀騎士】{name}在大街上假裝公正分餅乾給難民，結果算錯餘數，把所有的餅乾都算進了自己的嘴巴裡。他還對大家說：『這是在測試餅乾有沒有毒！』結果剛說完，嘴裡的作弊紙條就噴了出來，直接貼在難民的臉上。{name}尷尬到想直接鑽進地洞裡消失，大家笑到肚子好痛！",
+            "【假的巨龍將軍】{name}爬上龍背想要作弊計算飛行高度，結果手汗把作弊條弄得濕糊糊的根本看不清。他隨便喊了一個座標，火龍直接載著他衝進了皇宮的公共廁所裡。{name}掛著一頭捲筒衛生紙爬出來時，所有的龍都笑到差點噴火，這絕對是王國史上最臭、最爆笑的巨龍冒險了！",
+            "【假的不朽英雄】{name}走進邏輯之塔，試圖用禁忌咒語跳過所有關卡。沒想到塔靈早就發現了，故意把題目變成了『1加1等於多少』。{name}因為太緊張大喊：『九十九兆！』。塔靈嘆了一口氣，把{name}變成了一隻穿著芭蕾舞裙的河馬，送他在王城廣場跳舞三天三夜，全城都瘋狂拍照留念！",
+            "【假的數學戰神】{name}在大典上宣稱自己算無遺策，結果國王請他算『10減10等於多少』，他竟然盯著腳趾算了半個多小時，最後大聲回答：『等於一個雞蛋餅！』。全場瞬間爆發出史上最大的笑聲。原來你的戰神貼紙是去雜貨店買一送一換來的，這真是王國歷史上最偉大的搞笑傳說！"
+        ]
+    };
+
+    let curLvl = 0, targetAns = 0, targetRem = 0, streak = 0, times = [], startTime, activeInput = 'main', isCheated = false;
+
+    function startGame() { document.getElementById('prologueOverlay').style.display = 'none'; generate(); }
+
+    function updateRankBoard() {
+        const list = document.getElementById('rankListDisplay');
+        const p = isCheated ? "假的" : ""; 
+        list.innerHTML = heroes.map((h, i) => `<li class="rank-item ${i === curLvl ? 'active' : ''}">${i}.${p}${h}</li>`).join('');
+    }
+
+    function generate() {
+        const lvl = levels[curLvl];
+        document.getElementById('lvlStatus').innerText = (isCheated ? "假的" : "") + heroes[curLvl];
+        document.getElementById('levelTitle').innerText = lvl.name;
+        document.getElementById('goalCond').innerText = `${lvl.fast[0]}s/${lvl.fast[1]}勝 或 ${lvl.slow[0]}s/${lvl.slow[1]}勝`;
+        document.getElementById('remainderZone').style.display = lvl.type.includes('Rem') ? 'block' : 'none';
+        
+        let qText = "", n1, n2;
+        switch(lvl.type) {
+            case "mix_9": let r9 = buildProExpr(8, 50, 250); qText = r9.q; targetAns = r9.a; break;
+            case "mix_10": let r10 = buildProExpr(10, 500, 999); qText = r10.q; targetAns = r10.a; break;
+            case "divExact": do { n2 = rand(3, 16); } while (n2 % 5 === 0); targetAns = rand(11, 40); n1 = n2 * targetAns; qText = `${n1} ÷ ${n2}`; break;
+            case "divRem1": do { n2 = rand(6, 25); } while (n2 % 5 === 0); n1 = rand(50, 250); targetAns = Math.floor(n1/n2); targetRem = n1%n2; qText = `${n1} ÷ ${n2}`; break;
+            case "divRem2": do { n2 = rand(16, 51); } while (n2 % 5 === 0); n1 = rand(300, 1500); targetAns = Math.floor(n1/n2); targetRem = n1%n2; qText = `${n1} ÷ ${n2}`; break;
+            case "add": n1 = rand(10, 99); n2 = rand(10, 99); qText = `${n1}+${n2}`; targetAns = n1+n2; break;
+            case "sub": n1 = rand(100, 300); n2 = rand(10, 99); qText = `${n1}-${n2}`; targetAns = n1-n2; break;
+            case "multi99": n1 = rand(4, 9); n2 = rand(4, 9); qText = `${n1}×${n2}`; targetAns = n1*n2; break;
+            case "multi2x1": n1 = rand(21, 99); n2 = rand(3, 9); qText = `${n1}×${n2}`; targetAns = n1*n2; break;
+            case "multi2x2": n1 = rand(11, 49); n2 = rand(11, 39); qText = `${n1}×${n2}`; targetAns = n1*n2; break;
+        }
+        document.getElementById('questionDisplay').innerText = qText;
+        document.getElementById('ansMain').value = ""; document.getElementById('ansRem').value = "";
+        activeInput = 'main'; updateInputFocus(); startTime = Date.now(); updateRankBoard();
+    }
+
+    function buildProExpr(count, min, max) {
+        let ops = ['+', '-', '*'], expr = [rand(min, max)];
+        for(let i=1; i<count; i++) {
+            let op = ops[rand(0, 2)];
+            let val = (op === '*') ? rand(2, 6) : rand(min, max);
+            expr.push(op); expr.push(val);
+        }
+        let s = expr.join(' ');
+        return { q: s.replace(/\*/g, '×'), a: eval(s) };
+    }
+
+    function pressKey(k) {
+        let t = (activeInput === 'main') ? document.getElementById('ansMain') : document.getElementById('ansRem');
+        if (k === 'C') t.value = ""; else t.value += k;
+    }
+
+    function check() {
+        const uA = parseInt(document.getElementById('ansMain').value), uR = parseInt(document.getElementById('ansRem').value || 0);
+        const dur = (Date.now() - startTime) / 1000;
+        let ok = (uA === targetAns);
+        if (levels[curLvl].type.includes('Rem')) ok = (ok && uR === targetRem);
+
+        if (ok) {
+            streak++; times.push(dur);
+            const avg = (times.reduce((a,b)=>a+b,0)/times.length).toFixed(1);
+            document.getElementById('avgTime').innerText = avg;
+            showFb("魔法核准", "var(--neon-green)");
+            if ((streak >= levels[curLvl].fast[1] && avg <= levels[curLvl].fast[0]) || (streak >= levels[curLvl].slow[1] && avg <= levels[curLvl].slow[0])) upgrade();
+        } else {
+            streak = 0; times = []; document.getElementById('avgTime').innerText = "0";
+            showFb("魔力排斥", "var(--neon-red)");
+        }
+        document.getElementById('streak').innerText = streak; generate();
+    }
+
+    function execCheat() { isCheated = true; updateRankBoard(); document.getElementById('ansMain').value = targetAns; document.getElementById('ansRem').value = targetRem || 0; setTimeout(() => { upgrade(); generate(); }, 200); }
+
+    function upgrade() { if (curLvl < levels.length - 1) { curLvl++; streak = 0; times = []; alert("等級晉升！"); } else { alert("成就達成：秩序主宰者！"); location.reload(); } }
+
+    function openRest() { document.getElementById('modal').style.display = 'flex'; }
+    function confirmRest() {
+        const nameVal = document.getElementById('playerName').value || "佚名勇者";
+        document.getElementById('inputArea').style.display = 'none';
+        document.getElementById('restStory').style.display = 'block';
+        document.getElementById('modalBtn').innerText = "關閉存檔日記";
+        document.getElementById('modalBtn').onclick = () => location.reload();
+        
+        let storyTemplate = stories[(!isCheated).toString()][curLvl];
+        let finalStr = storyTemplate.split("{name}").join(`<b>${nameVal}</b>`);
+        document.getElementById('restStory').innerHTML = finalStr;
+    }
+
+    function updateInputFocus() { document.getElementById('ansMain').classList.toggle('active', activeInput === 'main'); document.getElementById('ansRem').classList.toggle('active', activeInput === 'rem'); }
+    document.getElementById('ansMain').onclick = () => { activeInput = 'main'; updateInputFocus(); };
+    document.getElementById('ansRem').onclick = () => { activeInput = 'rem'; updateInputFocus(); };
+    function showFb(t, c) { const f = document.getElementById('feedback'); f.innerText = t; f.style.color = c; }
+    function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+</script>
+</body>
+</html>
