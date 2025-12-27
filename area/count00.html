@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>王國勇者：數學之盾 Final Ultra Pro</title>
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+        // Firebase 配置
+        const firebaseConfig = {
+            apiKey: "AIzaSyAj-xInEtbFQ_QtMLnVSpG7qfasL8fvTP4",
+            authDomain: "studentdata-83b5e.firebaseapp.com",
+            projectId: "studentdata-83b5e",
+            storageBucket: "studentdata-83b5e.firebasestorage.app",
+            messagingSenderId: "192913024764",
+            appId: "1:192913024764:web:7a7be526a009cb61f6d979"
+        };
+
+        // 初始化 Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        window.firebaseAuth = auth;
+        window.firebaseDb = db;
+        window.firebaseDoc = doc;
+        window.firebaseSetDoc = setDoc;
+        window.firebaseGetDoc = getDoc;
+        window.firebaseCollection = collection;
+        window.firebaseGetDocs = getDocs;
+        window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+        window.onAuthStateChanged = onAuthStateChanged;
+        window.signOut = signOut;
+    </script>
+    <style>
+        :root {
+            --neon-green: #00ff41; --neon-orange: #f39c12; --neon-red: #ff003c;
+            --neon-blue: #00d2ff; --bg-dark: #0a0a0b;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        html, body { 
+            height: 100dvh; width: 100vw; margin: 0; padding: 0; 
+            overflow: hidden; background-color: var(--bg-dark);
+            font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; color: #fff;
+        }
+
+        /* 主容器佈局優化 */
+        .game-wrapper {
+            display: grid;
+            grid-template-columns: 1fr 180px; /* 固定右側寬度 */
+            grid-template-rows: auto auto 1fr auto; /* 標題、統計、題目、按鈕 */
+            gap: 10px;
+            height: 100dvh;
+            padding: 10px;
+        }
+
+        /* 標題與回饋區 */
+        .level-header {
+            grid-column: 1 / 2;
+            background: rgba(243, 156, 18, 0.15);
+            border-left: 8px solid var(--neon-orange);
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 15px;
+            height: 60px;
+        }
+        .level-header h2 { margin: 0; font-size: 24px; color: var(--neon-orange); }
+        #feedback { font-size: 24px; font-weight: 900; }
+
+        /* 統計卡片區 */
+        .stats-row { 
+            grid-column: 1 / 2;
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; 
+        }
+        .stat-card { background: #1a1a1f; border: 1px solid #444; padding: 5px; text-align: center; border-radius: 10px; }
+        .stat-label { font-size: 12px; color: #888; display: block; }
+        .stat-value { font-size: 18px; font-weight: bold; color: var(--neon-blue); }
+
+        /* 題目顯示區：自動延伸填滿 */
+        .question-display {
+            grid-column: 1 / 2;
+            background: #000; border: 3px solid #333;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 12vh; font-weight: 900; color: var(--neon-green);
+            text-shadow: 0 0 20px rgba(0, 255, 65, 0.5);
+            text-align: center; border-radius: 15px;
+            min-height: 0; 
+        }
+
+        /* 解答輸入區 */
+        .answer-row { 
+            position: absolute; bottom: 42%; left: 10px; right: 190px;
+            display: flex; justify-content: center; gap: 10px; pointer-events: none;
+        }
+        .input-box {
+            background: rgba(0,0,0,0.8); border: 4px solid #555; color: var(--neon-green);
+            width: 120px; height: 70px; font-size: 40px; text-align: center; border-radius: 15px;
+            pointer-events: auto;
+        }
+        .input-box.active { border-color: var(--neon-green); box-shadow: 0 0 20px rgba(0, 255, 65, 0.4); }
+
+        /* 右側排行榜 */
+        .side-panel {
+            grid-column: 2 / 3;
+            grid-row: 1 / 5;
+            background: #111; border: 2px solid var(--neon-blue);
+            padding: 10px; display: flex; flex-direction: column; border-radius: 15px;
+            overflow: hidden;
+        }
+        .side-panel h3 { font-size: 18px; color: var(--neon-blue); text-align: center; margin: 0 0 10px 0; border-bottom: 1px solid var(--neon-blue); padding-bottom: 5px; }
+        .rank-list { list-style: none; padding: 0; margin: 0; flex-grow: 1; overflow-y: auto; }
+        .rank-item { padding: 6px; font-size: 14px; color: #555; border-bottom: 1px solid #222; }
+        .rank-item.active { color: #fff; background: var(--neon-blue); font-weight: bold; border-radius: 5px; }
+
+        /* 控制區域：固定在底部 */
+        .controls-row {
+            grid-column: 1 / 2;
+            display: grid; grid-template-columns: 1.5fr 1fr; gap: 10px;
+            height: 38vh; 
+        }
+        .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .key { background: #222; border: 1px solid #666; color: #fff; font-size: 28px; cursor: pointer; border-radius: 12px; font-weight: bold; }
+        .key:active { background: #444; }
+        .key.action { background: var(--neon-orange); color: #000; }
+        .key.delete { background: var(--neon-red); }
+
+        .btn-side { display: flex; flex-direction: column; gap: 8px; }
+        .special-btn {
+            flex: 1; border: none; font-weight: 900; font-size: 18px; color: #fff; cursor: pointer; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center; padding: 5px;
+        }
+        .cheat-btn { background: #700; border: 2px solid var(--neon-red); }
+        .rest-btn { background: #005577; border: 2px solid var(--neon-blue); }
+
+        /* 故事彈窗優化 */
+        .modal {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.98); justify-content: center; align-items: center; z-index: 11000;
+        }
+        .modal-content {
+            background: #111; border: 4px solid var(--neon-blue); padding: 20px;
+            width: 90vw; height: 90dvh; display: flex; flex-direction: column; border-radius: 20px;
+        }
+        #restStory { 
+            font-size: 20px; color: #f0f0f0; line-height: 1.6; text-align: left; 
+            overflow-y: auto; flex-grow: 1; margin: 15px 0; padding: 15px; 
+            background: #050505; border-radius: 15px;
+        }
+        #restStory b { color: var(--neon-orange); }
+        #playerName { font-size: 24px; width: 100%; padding: 10px; background: #000; color: var(--neon-blue); border: 2px solid var(--neon-blue); border-radius: 10px; text-align: center; }
+
+        .overlay {
+            position: fixed; inset: 0; background: #000; z-index: 10000; 
+            display: flex; justify-content: center; align-items: center; padding: 20px; text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div id="loginOverlay" class="overlay">
+    <div style="max-width: 400px; text-align: center;">
+        <h1 style="font-size: 32px; color: var(--neon-orange); margin-bottom: 20px;">學生登入</h1>
+        <p style="font-size: 16px; color: #ccc; margin-bottom: 30px;">請使用學校帳號登入以開始遊戲</p>
+        
+        <input type="email" id="emailInput" placeholder="電子郵件" style="width: 100%; padding: 12px; margin-bottom: 15px; background: #222; color: #fff; border: 2px solid var(--neon-blue); border-radius: 10px; font-size: 16px;">
+        
+        <input type="password" id="passwordInput" placeholder="密碼" style="width: 100%; padding: 12px; margin-bottom: 20px; background: #222; color: #fff; border: 2px solid var(--neon-blue); border-radius: 10px; font-size: 16px;">
+        
+        <button class="key action" id="loginBtn" style="padding: 12px 30px; font-size: 18px; margin-bottom: 10px; width: 100%; height: auto;" onclick="login()">登入</button>
+        
+        <button class="key" id="guestBtn" style="padding: 12px 30px; font-size: 18px; margin-bottom: 20px; width: 100%; height: auto; background: var(--neon-blue); color: #000;" onclick="guestPlay()">訪客試玩</button>
+        
+        <div id="loginMessage" style="color: var(--neon-red); font-size: 14px; margin-top: 10px;"></div>
+    </div>
+</div>
+
+<div id="prologueOverlay" class="overlay" style="display: none;">
+    <div style="max-width: 600px;">
+        <h1 style="font-size: 40px; color: var(--neon-orange); margin-bottom: 20px;">✨ 王國算術危機 ✨</h1>
+        <p style="font-size: 20px; line-height: 1.5; color: #ccc;">「卡爾克利亞王國」的數字核心被打碎了！<br>現在大家都不會算數啦！<br><br><b>算術勇者啊，請用你的智慧修正這一切吧！</b></p>
+        <button class="key action" style="padding: 15px 40px; font-size: 24px; margin-top: 30px; height: auto;" onclick="startGame()">開始冒險！</button>
+        <button class="key" style="padding: 12px 30px; font-size: 18px; margin-top: 20px; height: auto; background: var(--neon-blue);" onclick="showLeaderboard()">查看全班成績</button>
+    </div>
+</div>
+
+<div id="leaderboardOverlay" class="overlay" style="display: none;">
+    <div style="max-width: 90vw; max-height: 90vh; overflow-y: auto;">
+        <h1 style="font-size: 32px; color: var(--neon-blue); margin-bottom: 20px; text-align: center;">全班成績統計</h1>
+        <table id="leaderboardTable" style="width: 100%; border-collapse: collapse; color: #fff;">
+            <thead>
+                <tr style="background: var(--neon-blue);">
+                    <th style="padding: 10px; border: 1px solid #444;">學生姓名</th>
+                    <th style="padding: 10px; border: 1px solid #444;">Email</th>
+                    <th style="padding: 10px; border: 1px solid #444;">最高等級</th>
+                    <th style="padding: 10px; border: 1px solid #444;">總遊玩次數</th>
+                    <th style="padding: 10px; border: 1px solid #444;">平均答題時間</th>
+                    <th style="padding: 10px; border: 1px solid #444;">最後遊玩時間</th>
+                </tr>
+            </thead>
+            <tbody id="leaderboardBody">
+                <tr>
+                    <td colspan="6" style="padding: 20px; text-align: center; color: #888;">載入中...</td>
+                </tr>
+            </tbody>
+        </table>
+        <button class="key" style="padding: 12px 30px; font-size: 18px; margin-top: 20px; width: 100%; height: auto; background: var(--neon-red);" onclick="hideLeaderboard()">關閉</button>
+    </div>
+</div>
+
+<div class="game-wrapper">
+    <div class="level-header">
+        <h2 id="levelTitle">LOADING...</h2>
+        <div id="feedback" style="color: #666;">READY</div>
+    </div>
+
+    <div class="stats-row">
+        <div class="stat-card"><span class="stat-label">身分</span><span class="stat-value" id="lvlStatus">...</span></div>
+        <div class="stat-card"><span class="stat-label">連勝</span><span class="stat-value" id="streak">0</span></div>
+        <div class="stat-card"><span class="stat-label">平均</span><span class="stat-value" id="avgTime">0</span>s</div>
+        <div class="stat-card"><span class="stat-label">目標</span><span id="goalCond" style="font-size:10px; color:#999;">-</span></div>
+    </div>
+
+    <div class="question-display" id="questionDisplay">---</div>
+
+    <div class="answer-row">
+        <input type="number" class="input-box active" id="ansMain" readonly placeholder="?">
+        <div id="remainderZone" style="display:none">
+            <input type="number" class="input-box" id="ansRem" readonly placeholder="餘">
+        </div>
+    </div>
+
+    <div class="side-panel">
+        <h3>勇者排行榜</h3>
+        <ul class="rank-list" id="rankListDisplay"></ul>
+    </div>
+
+    <div class="controls-row">
+        <div class="keypad">
+            <button class="key" onclick="pressKey(1)">1</button><button class="key" onclick="pressKey(2)">2</button><button class="key" onclick="pressKey(3)">3</button>
+            <button class="key" onclick="pressKey(4)">4</button><button class="key" onclick="pressKey(5)">5</button><button class="key" onclick="pressKey(6)">6</button>
+            <button class="key" onclick="pressKey(7)">7</button><button class="key" onclick="pressKey(8)">8</button><button class="key" onclick="pressKey(9)">9</button>
+            <button class="key delete" onclick="pressKey('C')">C</button><button class="key" onclick="pressKey(0)">0</button>
+            <button class="key action" onclick="check()">GO</button>
+        </div>
+        <div class="btn-side">
+            <button class="special-btn cheat-btn" onclick="execCheat()">作弊洞察</button>
+            <button class="special-btn rest-btn" onclick="openRest()">休息結算</button>
+            <button class="key" style="background: var(--neon-red); color: #fff; font-size: 14px;" onclick="logout()">登出</button>
+            <button class="key" style="background:none; border: 1px solid #444; font-size: 14px;" onclick="location.reload()">重新啟動</button>
+        </div>
+    </div>
+</div>
+
+<div id="modal" class="modal">
+    <div class="modal-content">
+        <h2 style="color:var(--neon-blue); font-size: 32px; margin:0; text-align:center;">📖 勇者冒險日記</h2>
+        <div id="inputArea">
+            <p style="font-size: 18px; margin: 15px 0; text-align:center;">勇者的名字：</p>
+            <input type="text" id="playerName" placeholder="輸入名稱...">
+        </div>
+        <div id="restStory" style="display:none;"></div>
+        <button class="key action" style="width:100%; height: 60px; font-size: 24px; margin-top:10px;" id="modalBtn" onclick="confirmRest()">確認存檔</button>
+    </div>
+</div>
+
+<script>
+    const levels = [
+        { name: "鋼鐵前哨 (加法)", type: "add", fast: [4, 3], slow: [8, 7] },
+        { name: "廢土生存 (減法)", type: "sub", fast: [4, 3], slow: [8, 7] },
+        { name: "彈藥補給 (乘法)", type: "multi99", fast: [3, 3], slow: [5, 7] },
+        { name: "城市突擊 (2x1)", type: "multi2x1", fast: [6, 3], slow: [14, 7] },
+        { name: "火力覆蓋 (2x2)", type: "multi2x2", fast: [10, 3], slow: [20, 7] },
+        { name: "狙擊座標 (整除)", type: "divExact", fast: [10, 3], slow: [16, 7] },
+        { name: "碎甲指令 (餘數I)", type: "divRem1", fast: [12, 3], slow: [26, 7] },
+        { name: "核心解析 (餘數II)", type: "divRem2", fast: [16, 3], slow: [40, 6] },
+        { name: "九重天門 (八項長式)", type: "mix_9", fast: [35, 3], slow: [70, 6] },
+        { name: "諸神黃昏 (十項神式)", type: "mix_10", fast: [45, 3], slow: [90, 6] }
+    ];
+
+    const heroes = ["村莊平民", "新兵戰士", "偵查小隊", "重裝衛兵", "百人隊長", "王宮侍衛", "榮耀騎士", "巨龍將軍", "不朽英雄", "傳說劍聖", "數學戰神"];
+    
+    // 每個稱號增加為 3 種隨機故事 (共 60 個)
+    const stories = {
+        true: [
+            /* 0. 村莊平民 */
+            ["夕陽餘暉灑在石磚路上，【村莊平民】{name} 剛回到寧靜的家鄉，就看到雜貨店老闆對著櫃檯上幾百顆混亂的雞蛋庫存急得滿頭大汗，算盤撥得劈啪響也對不上帳。{name} 見狀微微一笑，僅憑肉眼隨意掃過那堆疊如山的蛋籃，便在幾秒內精確報出了總產量。老闆半信半疑地重新清點，結果竟然分毫不差！他激動地從櫃檯後抱出一顆傳說中碩大無朋、閃耀光澤的「歐姆龍雞蛋」送給{name} 當謝禮。當晚，全村人為{name} 舉辦了盛大的歡呼派對，整夜慶祝村裡出了一位天才！",
+            "隔壁的王奶奶正為了織給孫子的毛衣長度發愁，看著手裡的毛線一臉茫然。這時【村莊平民】{name} 走上前去，拿起毛線隨手一量，腦海中瞬間演算出最完美的針法與比例。奶奶照著{name} 的建議施作，果然織出了完美的成品！她開心地送{name} 一條閃耀著七彩光芒、質感非凡的圍巾，並衝到村口大聲廣播：{name} 是全王國最聰明、最貼心的好孩子！這份讚美讓全村人都聽見了，就連路邊經過的小貓都停下腳步，對{name} 投以充滿崇拜的神情。",
+            "村長在統計農田產量時急得滿頭大汗，堆積如山的數據讓他完全理不出頭緒。身為【村莊平民】的 {name} 湊過去只看了一眼，就從泛黃的帳本中抓出了一個藏了十年之久的低級計算錯誤！因為這項關鍵修正，全村的稅金負擔瞬間減半，積壓已久的壓力一掃而空。村民們興奮到了極點，眾人齊心合力將 {name} 高高舉起，繞著村莊廣場足足轉了三圈，歡呼聲響徹雲霄，每個人都把{name} 當成拯救全村的英雄！"],
+            /* 1. 新兵戰士 */
+            ["在氣氛肅殺的軍營訓練場上，管理官突然發現庫存的寶劍少了一把，這對【新兵戰士】們來說是極其嚴重的失職。正當大家面面相覷、準備集體受罰時，{name} 主動站了出來。{name} 冷靜地翻閱領用紀錄，對照著架上的空位迅速心算，不到三分鐘就指出這只是登記時的重疊錯誤，寶劍其實好端端地鎖在保養室裡。因為{name} 的細心，全員免除了魔鬼般的體能處罰，戰友們紛紛對{name} 豎起大拇指，感嘆有{name} 真好！",
+             "今日的射箭訓練風勢強勁，許多新兵都無法掌握準頭，唯獨【新兵戰士】{name} 表現得氣定神閒。{name} 站在靶位前，大腦快速計算著風速、濕度與拋物線的偏移，每一下放箭都像是預測好了落點，箭箭正中紅心，發發驚豔全場。一旁的教官看著靶紙上的完美成績，驚訝得說不出話來，最後決定破例讓{name} 提早結束這場枯燥的訓練，去涼爽的樹蔭下休息，享受其他戰友羨慕的目光。",
+             "到了分發乾糧的時間，原本混亂的排隊現場讓新兵們怨聲載道，大家都擔心領到的物資不均。此時，【新兵戰士】{name} 接手了這項任務。{name} 展現出驚人的平衡感與判斷力，精準確保每一位士兵領到的麵包重量都分毫不差，甚至連分配速度都快得驚人。這份絕對的公正與俐落的處事風格，讓所有人打從心底服氣，大家當場一致推舉 {name} 擔任班長，帶領大家面對未來的挑戰！"],
+            /* 2. 偵查小隊 */
+            ["在充滿危機的邊境森林中，【偵查小隊】{name} 悄無聲息地伏在枯葉堆下，雙眼緊盯著遠處的敵方營地。{name} 並未急著撤退，而是透過營火的明滅、帳篷的陰影範圍以及運糧車的壓痕深淺，在腦中快速推算出敵軍的精確規模。這份神速且精準的情報，讓己方部隊在出發前夕成功避開了死角埋伏，轉而發動奇襲。事後，小隊隊長當眾大力拍著 {name} 的肩膀，激動地稱讚 {name} 是小隊不可或缺的「偵查之眼」！",
+             "一場突如其來的大霧籠罩了原始森林，能見度不到三公尺，受困的小隊成員們逐漸陷入恐慌與迷失方向的焦慮中。此時，【偵查小隊】{name} 冷靜地接過指揮權，閉上雙眼，單憑記憶中的地形數據與腳步邁出的頻率，精確計算出每一道步伐與方位的偏差。在 {name} 沉穩的帶路下，小隊竟奇蹟般地毫髮無傷走出了致命迷霧。看見出口的那一刻，死裡逃生的隊友們感激得差點流下眼淚，緊緊擁抱著救命恩人 {name}。",
+             "在混亂的戰場邊緣，【偵查小隊】{name} 截獲了一封敵方高度機密的急件。正當其他同袍還在對著滿紙亂碼發愁時，{name} 接過密信，大腦如同一台高速運轉的齒輪，不到三秒就洞察了背後的規律，瞬間解開了複雜的數字加密。這份關鍵內容揭露了敵軍的補給線，讓己方成功截斷了對方的後勤支援。這場決定性的勝利，全歸功於 {name} 那異於常人的邏輯天賦，讓敵人徹底陷入孤立無援的困境！"],
+            /* 3. 重裝衛兵 */
+            ["在氣氛緊張的城牆守備區域，沉重的巨型弩炮需要重新佈署。由於地形受力不均，衛兵們正為了如何分配配重而苦惱，深怕射擊時的後座力會導致城基崩塌。這時，【重裝衛兵】{name} 站了出來，環視了一圈弩炮的底座構造，迅速心算出最完美的重量平衡參數。經過 {name} 的調整，數台弩炮安置得穩如泰山，即便全力齊射也毫不動搖。看到如此堅固的防禦，大家懸著的心終於放下，紛紛感嘆今晚終於能安心睡個好覺了！",
+             "城牆在先前的戰鬥中受損嚴重，維修工程正緊鑼密鼓地進行，但物資調度卻因為數據模糊而陷入混亂。正當工程師們為了計算修補缺口所需的材料而爭論不休時，【重裝衛兵】{name} 走到城牆裂縫旁，僅僅憑藉目測與心算，就報出了所需的精確石磚數量。當最後一塊石磚嚴絲合縫地填入缺口時，現場眾人驚訝地發現一塊不多也一塊不少。這份神乎其技的精準度，讓首席工程師當眾宣布 {name} 就是防禦工事界的天才！",
+             "面對地平線上黑壓壓襲來的敵軍，數台巨型投石車發出了低沉的轟鳴，巨大的石塊呼嘯著從天而降。在千鈞一髮之際，【重裝衛兵】{name} 冷靜地觀察石塊的飛行弧線，大腦飛速計算著撞擊力道與偏轉向量，隨即大聲指揮同袍調整盾牌。{name} 帶領大家擺出了最科學的盾牆角度，讓原本足以致命的巨石在撞擊瞬間竟然完美的向側邊滑開！看著毫髮無傷的防線，敵軍陷入了絕望，而 {name} 的英姿也成了戰友心中最強大的護盾。"],
+            /* 4. 百人隊長 */
+            ["在漫長且艱辛的遠征途中，後勤補給一直是維持士氣的最大難題。身為【百人隊長】的 {name} 展現出非凡的統帥才能，面對複雜的物資清單，{name} 總能輕而易舉地在腦中完成繁瑣的口糧分配。不僅確保每位戰士都能獲得充足的能量，更預留了應對突發狀況的儲備。看著 {name} 條理分明地處理繁雜事務，原本疲憊的士兵們眼中漸漸充滿了崇拜與敬意，深信跟隨著 {name} 必能走向勝利！",
+             "遠征軍不幸在酷熱乾旱的荒漠中遇上了極端氣候，水源即將枯竭的恐懼籠罩著全隊。在絕望之際，【百人隊長】 {name} 保持著驚人的冷靜，精確計算出每一滴飲用水的配給量與士兵體力消耗的臨界點。憑藉這份極致的精算，小隊在最後一滴水耗盡前，奇蹟般地撐到了綠洲抵達。看著清澈的水源，重獲新生的士兵們激動萬分，在荒原上齊聲高喊著 {name} 的名字，聲音久久不散！",
+             "面對數倍於己的強敵夾擊，【百人隊長】 {name} 並未退縮，而是迅速指揮戰士們移動，佈下了由 {name} 親自設計、結構極其複雜的「圓形防禦陣法」。這個陣法利用了精密的力學交錯，讓百人小隊在防禦時毫無死角，進攻時則如齒輪般環環相扣，硬生生發揮出了千人部隊才有的強大戰鬥力。這場以少勝多的傳奇戰役震撼了整個王國，所有將領都爭相研究 {name} 那天才般的戰略藝術！"],
+            /* 5. 王宮侍衛 */
+            ["在王宮大殿的翻修工程中，最昂貴的大理石地磚因為切割角度極其複雜，連資深工匠都感到無從下手。身為【王宮侍衛】的 {name} 見狀，卸下盔甲上前幫忙。{name} 僅憑雙眼測量大殿的弧度，腦中迅速跑過精密的幾何運算，接著親自指揮每一塊石磚的落點。當最後一塊地磚落下，整片地板呈現出完美契合、毫無縫隙的視覺震撼。路過的國王被這極致的工藝深深打動，竟破天荒地摘下王冠，向 {name} 表達最高的致意與敬佩！",
+             "在迎接外國使節的盛大國宴上，一共要上 108 道繁瑣的佳餚，節奏稍有差錯便會失禮。擔任總協調的【王宮侍衛】{name}，展現了驚人的時間管理天賦。{name} 精準掌控每一道菜從廚房到餐桌的秒數，確保每一盤端到使節面前時都處於最完美的溫度。這場行雲流水、如藝術般的上菜秀讓各國使節讚嘆不已，緊繃的外交氛圍隨之化解，使節們在歡愉中當場簽下了塵封已久的和平協議，而這背後的功臣正是 {name}！",
+             "王宮寶庫的年度盤點陷入僵局，數以萬計的金幣與珠寶混雜在一起，數據完全對不上。正當眾人焦頭爛額時，【王宮侍衛】{name} 走進金光閃閃的庫房，在這一片混亂中快速掃視，大腦如同步數器般瞬間算出了金幣的精確總數。{name} 隨即指出帳本中刻意隱藏的細微差錯，當場揪出了試圖中飽私囊的貪污小官。國王對 {name} 的機智與清廉大為讚賞，決定在眾臣見證下，親自為 {name} 佩戴上象徵榮譽的特級勳章！"],
+            /* 6. 榮耀騎士 */
+            ["在一場漫長的饑荒後，糧食的公平分配成了維持村莊穩定的關鍵。身為【榮耀騎士】的 {name} 站在領地的廣場中心，親自處理堆積如山的麵包與補給品。{name} 並非粗魯地切割，而是精確地計算了每一戶家庭的人數與需求量，確保每一份麵包的克數都分毫不差，展現出令人心服口服的公正。對 {name} 而言，數字不再只是冰冷的符號，而是守護正義最堅實的盾牌，讓所有村民在領取糧食時，都感受到了前所未有的安心與尊嚴！",
+             "在眾目睽睽的騎士競技場上，對手揮舞著沉重的重劍發動猛烈攻勢，企圖以力量取勝。然而，【榮耀騎士】{name} 只是靜靜地站在原地，雙眼閃爍著冷靜的光芒，大腦飛速計算著對方動作間的物理慣性與體力衰減的破綻。就在對手最意想不到的瞬間，{name} 以極小幅度的跨步閃過致命一擊，並在對方反應過來前，便已優雅地將長劍收回鞘中。這份料事如神的計算力，讓對方在驚愕之餘羞愧地低頭認輸，承認 {name} 的境界早已遠超常人！",
+             "為了拯救被困在重重敵營深處的公主，【榮耀騎士】{name} 站在高崗上俯瞰敵方的防禦部署。{name} 並未盲目衝鋒，而是迅速演算出敵軍巡邏的間隙與最短的突圍路徑，將所有風險數據降到最低。隨著一聲令下，{name} 策馬奔騰，僅僅用了一炷香的時間，就如同一道閃電般精準穿透了敵營防線，出現在公主面前。這場如同教科書般的奇襲行動，不僅展現了 {name} 的勇猛，更證明了智慧才是贏得戰爭的關鍵利器！"],
+            /* 7. 巨龍將軍 */
+            ["在高空強勁的亂流中，【巨龍將軍】{name} 穩穩地跨坐在巨龍寬闊的背脊上。面對下方錯綜複雜的王城建築，{name} 並未盲目俯衝，而是閉上眼感受氣壓的微小變化，在大腦中瞬間演算出風阻與重力的平衡點。隨著一聲清脆的哨音，巨龍在 {name} 的精確引導下，竟然如羽毛般輕盈地降落在最尖細的鐘樓塔尖上，分毫不差。見證了這神乎其技的操控力，全城的巨龍受其感召，紛紛仰天發出震耳欲聾的咆哮，向 {name} 表達最高的崇敬！",
+             "戰場上，敵方的數十座攻城塔正緩緩逼近城牆，局勢萬分危急。身處高空的【巨龍將軍】{name} 冷靜地俯瞰全局，指尖在空中虛劃，快速算出龍焰噴射所需的拋物線弧度與預判位置。隨後，{name} 指揮巨龍俯衝，一口氣噴射出暗紅色的毀滅火焰，火柱精準地貫穿了所有攻城塔的支撐結構，瞬間將其化為灰燼。這場華麗的打擊讓原本陷入苦戰的士兵們爆發出雷鳴般的歡呼，全軍士氣在 {name} 的精準算計下攀升到了頂點！",
+             "為了守護首都免受空襲，【巨龍將軍】{name} 親自坐鎮指揮中心，調度盤旋在天際的龐大龍群。{name} 運用驚人的幾何邏輯，精確計算出每頭巨龍的飛行速度、高度與拍動翅膀的節奏，讓牠們在空中交織成一張完美無瑕的動態防空網。在 {name} 的嚴密監控下，這道防線沒有任何死角，強大的氣壓波動讓敵方的偵查鳥類紛紛墜地，甚至連隻蒼蠅都無法穿透這由 {name} 親手打造的絕對領空，首都的安全從此穩如泰山！"],
+            /* 8. 不朽英雄 */
+            ["在世界盡頭的荒原上，矗立著一座禁錮真理數千年的「邏輯之塔」，其散發出的混沌霧霾讓大地陷入長久的沉睡。身為【不朽英雄】的 {name} 隻身前往塔頂，面對那由無數繁瑣算式組成的上古封印，{name} 眼神堅定，修長的手指在符文間飛速撥動，逐一拆解那看似無解的因果悖論。隨著最後一道邏輯鎖扣應聲而開，塔頂瞬間金光大作，籠罩世界的霧霾在強光中消散殆盡，{name} 的名字從此與光明天空合而為一，成為歷史中永恆的救贖英雄！",
+             "相傳在遠古的遺跡深處，隱藏著一個能改變世界的「根號秘密」，無數冒險者為此喪命。然而，【不朽英雄】{name} 憑藉著過人的洞察力，在斷垣殘壁的幾何線條中，成功推導出通往真理的最終解。當 {name} 解開密碼的瞬間，沉睡萬年的神兵利器感應到主人的智慧，緩緩浮現於虛空之中。那足以斬斷時空的耀眼光芒瞬間照亮了整個大陸，所有生物都目睹了這奇蹟的一刻，而 {name} 則握住了那股足以重塑秩序的神聖力量！",
+             "象徵智慧頂點的聖殿中心，有一塊自創世以來便存在的「真理之石」。如今，【不朽英雄】{name} 的大名被深深地刻在石碑最頂端，與星辰同輝。這不僅僅是榮譽的象徵，更是因為 {name} 所開創的驚人計算技巧，徹底革新了世人對世界的認知。後世千萬年的學生與學者，在翻開課本的第一頁時，都會看見 {name} 的算式被列為絕對標準，大家追隨著名稱背後的智慧與嚴謹，讓 {name} 的傳奇永遠流傳在每一代人的筆尖下！"],
+            /* 9. 數學戰神 */
+            ["當傳說中的「諸神黃昏」正式降臨，天崩地裂，連恆星都開始崩毀墜落。身為【數學戰神】的 {name} 矗立於虛空之中，面對混亂無序的宇宙常數，{name} 眼神平靜如水，指尖在虛空中劃出一道道燃燒著金光的數學符文。隨著 {name} 寫下那道足以解開因果的最終解答，原本脫軌的星辰竟奇蹟般地停止了墜落，並重新歸入原本的軌道運行。{name} 的存在已不再僅是神靈，而是維繫整個宇宙秩序的至高核心，守護著萬物的永恆平衡！",
+             "在時空崩裂、現實與虛幻交織的危險裂縫中，世界正一點一滴地瓦解。此時，【數學戰神】{name} 挺身而出，雙手撥動著肉眼看不見的維度絲線。{name} 將複雜的空間幾何轉化為無懈可擊的數學公式，像縫補破碎衣裳一般，精準地將斷裂的時間軸重新銜接。在 {name} 的修復下，混亂的因果律重新找回了方向，萬物再次回歸到正常的邏輯運作之中。這份神聖的修補工作，讓 {name} 成為了所有位面生命共同景仰的救世真神！",
+             "如今，【數學戰神】{name} 的境界早已超越了時間與空間的束縛，宇宙間的一切變化在 {name} 眼中都不過是簡單的加減乘除。所有的運算與預知，皆在 {name} 的一念之間徹底完成，連命運的流向都逃不過那雙洞悉真理的雙眼。感念於這份前所未有的至高智慧，整座神界為之動容，天際降下了長達百日的芬芳花雨，洗滌著整片大地。{name} 靜坐在智慧的王座上，成為了所有文明與神靈共同追求的終極標竿，萬世傳頌不息！"]
+        ],
+        false: [
+            /* 0. 假的村莊平民 */
+            ["在雜貨店那堆混亂的雞蛋面前，【假的村莊平民】{name} 為了裝模作樣，隨手一指便信口開河報出一個天文數字。老闆一清點，發現數量竟然連一半都不到，氣得當場血壓飆升，抓起櫃檯後的掃帚就對著 {name} 沒命地揮舞。{name} 在街道上狼狽奔逃，沒想到這副滑稽的模樣引來了全村的小狗。牠們整齊地蹲在路邊，對著 {name} 發出響亮的「汪汪！」叫聲，那語氣彷彿在集體嘲笑：「翻譯：這傢伙連雞蛋都不會算，真是笨到家了！」",
+             "【假的村莊平民】{name} 為了向隔壁王奶奶獻殷勤，自告奮勇幫忙計算織毛衣所需的毛線長度。然而，{name} 的數學邏輯顯然出了大問題，竟然在公式後方多算了整整三公里！可憐的王奶奶沒多想，照著數據沒日沒夜地織，最後竟然織出一件體積比整棟房子還要巨大的超級毛衣，把自家的屋頂都給撐破了。看著毀掉的家園，王奶奶氣得老臉通紅，抓起沈重的毛線球就將 {name} 狠狠趕出了家門，勒令 {name} 永遠不准靠近她的織布機！",
+             "在一次雜貨店打工的經歷中，【假的村莊平民】{name} 負責櫃檯找零，卻因為加減法徹底當機，竟然把客人的十塊錢找成了五百塊。老闆娘發現後氣得七竅生煙，認為 {name} 不是笨就是想偷錢，當場把 {name} 認定為居心叵測的騙子。為了警告鄉親，老闆娘親手畫了一張極其醜陋的畫像，將 {name} 的大名與惡行貼在村門口的公告欄上，足足示眾了三個月。現在全村路過的人都會指著公告，對 {name} 的「精算奇蹟」指指點點！"],
+            /* 1. 假的新兵戰士 */
+            ["在嚴肅的軍械庫清點日，身為【假的新兵戰士】的 {name} 對著帳本胡亂比劃，結果把珍貴的寶劍數量算得一塌糊塗。憤怒的隊長大發雷霆，命令 {name} 必須回家親自鍛造寶劍來賠償損失。沒想到，缺乏常識的 {name} 在家忙活了半天，最後竟然交出了幾百支形狀像劍、口感卻甜膩死人的巨大「棒棒糖」。看著這堆五顏六色的甜點，隊長氣得當場血壓升高，毫不留情地將 {name} 踢出軍營，勒令永遠不得踏入！",
+             "在陽光明媚的射箭練習場上，【假的新兵戰士】{name} 為了展現帥氣的一面，好像很厲害地瞇起眼計算風偏與角度。然而，{name} 的數學邏輯顯然徹底斷線，箭矢射出後竟然在空中劃出一道詭異的弧線，不偏不倚地正中後方視察長官的屁股！全場瞬間陷入死寂，隨後傳來長官的驚天咆哮。現在，倒霉的 {name} 正對著堆積如山的臭襪子欲哭無淚，被處罰必須獨自洗完這輩子都沒見過、足以燻死人的全軍營襪子！",
+             "到了午間分發乾糧的時刻，【假的新兵戰士】{name} 雖然身負重任，心裡卻打著歪主意。{name} 趁著混亂偷偷多塞了兩個大麵包進自己的懷裡，沒想到動作太過笨拙，原本夾在袖口裡記錄偷拿數量的「作弊條」竟然隨之滑落，直接掉進了正在熬煮的大鍋湯中！這張關鍵證據被當場撈起，面對鐵證如山的貪心行徑，教官冷笑著提起了 {name} 的衣領。現在，{name} 只能在陰暗潮濕的禁閉室裡，對著冷冰冰的牆壁深深反省自己的貪婪！"],
+            /* 2. 假的偵查小隊 */
+            ["在一次關鍵的邊境偵查任務中，【假的偵查小隊】{name} 趴在草叢裡觀察遠方的營火。或許是因為極度緊張導致眼花，{name} 竟然將敵軍晃動的人影看成了漫山遍野的旌旗，甚至把七個圍著火堆的士兵算成了七萬大軍！{name} 驚恐地傳回求救信號，導致我方部隊連夜拔營，整整撤退了五十公里遠。直到隔天精銳斥候再度前往，才發現對方根本只是七個在烤地瓜解饞的流浪漢，而 {name} 鬧出的笑話讓全軍將士集體傻眼！",
+             "烈日當頭，【假的偵查小隊】{name} 負責引領部隊穿越荒涼的大沙漠。然而，{name} 在繪製地圖時竟然記錯了比例尺，將一公里的距離標成了十公里，還把地標畫反了。在 {name} 的「精確」帶領下，整支小隊在滾燙的沙丘中整整繞了三圈，直到大家的飲用水都喝光了、馬匹也快虛脫了，卻連敵營的一根旗桿都沒看到。隊友們看著 {name} 手裡那份不知所云的地圖，氣得差點想把 {name} 直接埋在沙子裡！",
+             "戰情室內氣氛肅殺，所有長官都焦急地等待著【假的偵查小隊】{name} 傳回的敵情密報。終於，信鴿帶回了一張寫滿奇怪符號與數字的紙條，但軍事專家們研究了半天，發現這根本不是任何已知的密碼，完全就是一堆亂碼。隊長火冒三丈地叫來 {name}，指著紙條質問這到底是在寫什麼戰略情報。沒想到，{name} 卻一臉認真地指著那些點點線線說，因為當時太無聊，所以順手畫了一幅「小狗尿尿圖」。全場將領聽完當場石化，差點氣到身亡！",
+            ],
+            /* 3. 假的重裝衛兵 */
+            ["身為一名【假的重裝衛兵】，{name} 因為受不了厚重盔甲的磨人觸感，私自在金屬護甲裡塞滿了輕飄飄、軟綿綿的棉花糖。雖然穿起來舒服，卻導致整套盔甲的重心嚴重偏移。就在列隊行進經過護城河邊時，{name} 一個重心不穩，整個人像顆巨大的金屬球一樣失控滾動，伴隨著尖叫聲「噗通」一聲掉進了冰冷的河水中！這幕尷尬的畫面被無數路人目睹，讓 {name} 的名聲徹底掃地，簡直丟臉丟到了外太空！",
+             "在守護城門的任務中，【假的重裝衛兵】{name} 本該嚴格執行宵禁，卻因為算錯了齒輪落下的預計時間，導致自己在例行巡邏後還沒回到內城，巨大的城門就轟然關閉。{name} 拼命敲打厚重的木門呼救，卻沒人回應。雪上加霜的是，森林裡的野狼嗅到了 {name} 身上恐懼的味道，成群結隊地發動襲擊。可憐的 {name} 拖著沉重的盔甲，在城牆根下被野狼追著跑了一整晚，直到黎明時分才一臉慘白地爬進城內！",
+             "在演習架設弩炮時，【假的重裝衛兵】{name} 為了展現威風，完全忽視了風阻與角度的物理算式，隨意撥動了發射桿。沒想到，巨大的弩箭並未擊中箭靶，反而劃出一道詭異的斜線，直接飛向王宮花園，「轟隆」一聲將國王最心愛的、鑲滿寶石的純金噴水池射得粉碎！國王見狀心痛到差點昏倒，當場下令沒收 {name} 的所有資產。現在，負債一億兩的 {name} 只能每天瘋狂打工，試圖償還這輩子都還不完的天價債務！"],
+            /* 4. 假的百人隊長 */
+            ["在一次嚴肅的物資分配中，身為【假的百人隊長】的 {name} 為了掩蓋私吞公款的行徑，竟然異想天開地試圖動手腳。{name} 對著帳本胡言亂語，企圖用蹩腳的計算邏輯將珍貴的軟麵包硬生生算成「不可食用的石頭」。然而，飢腸轆轆的戰士們可沒這麼好騙，大家一眼就拆穿了這拙劣的謊言。憤怒的士兵們完全無視 {name} 的官階，當場一擁而上，直接將作弊失靈的 {name} 高高拋起，狠狠丟進了營區後方的臭水池塘裡餵魚，場面極度混亂！",
+             "在決定生死的戰場前線，所有將領都期待著【假的百人隊長】{name} 能展現出什麼驚人的戰略。沒想到 {name} 在指揮士兵變換陣型時，完全算錯了人數與間距的比例。在一陣混亂的推擠與奔跑後，從敵方的山頭向下看去，{name} 率領的百人小隊竟然在大地上歪歪斜斜地排成了一個巨大的「笨」字！原本嚴陣以待的敵軍見狀，集體陷入了歇斯底里的狂笑，甚至笑到連手裡的戰刀都拿不穩，這場戰鬥也因此成了王國史上最荒謬的笑話。",
+             "到了發放軍餉的重要時刻，【假的百人隊長】{name} 拿著金庫鑰匙，卻在計算金額時犯了毀滅性的錯誤。{name} 在支票上不小心多畫了一個零，甚至連發放對象都沒搞清楚，就這樣親手將巨額的軍餉塞進了潛伏在隊伍裡的敵軍間諜手中！間諜拿到這筆從天而降的橫財，連夜逃回敵國退休。國王得知此事後氣得整晚睡不著覺，當眾宣布沒收 {name} 的所有榮譽，並將 {name} 降職為清掃馬廄的馬伕，讓 {name} 餘生都與馬糞為伍！"],
+            /* 5. 假的王宮侍衛 */
+            ["原本應該負責美化大殿的【假的王宮侍衛】{name}，在鋪設地磚時完全沒考慮到受力與平衡。{name} 只顧著把材料胡亂堆疊，結果幾百塊沉重的大理石地磚竟然塌陷滑動，堆成了一座不穩定的小山，差點把正在巡視的國王給活埋在底下！國王死裡逃生後龍顏大怒，下令法師施展奇異的法術，將 {name} 變成了一座造型滑稽的噴水池雕像。現在，{name} 每天只能定在花園裡噴水，還得忍受附近所有的野貓跑來在 {name} 的石像腿上瘋狂抓癢！",
+             "在極其隆重的國宴上，負責餐具清點的【假的王宮侍衛】{name} 竟然因為粗心大意算錯了盤子數量，直到上菜時才發現少了一份餐具。倒楣的是，漏掉的那位正是性格嬌貴的鄰國公主。看著桌上熱騰騰的濃湯，卻沒有碗碟與湯匙可用，公主在極度尷尬下只能被迫嘗試「手抓湯」，氣得她當場翻臉。這場外交災難讓兩國邊境軍隊立刻進入戒備，差點就引發了毀滅性的戰爭，而罪魁禍首 {name} 則嚇得躲在廚房後方瑟瑟發抖！",
+             "【假的王宮侍衛】{name} 在進行例行巡邏時，為了展現專業感，刻意邊走邊數著整齊的步數。沒想到 {name} 在轉角處算錯了距離與步頻，腳下一滑，竟然整個人撞開了大門，直接飛進了王后正在沐浴的華麗浴池中！這驚天動地的落水聲驚動了所有隨從，憤怒的禁衛軍立刻衝上前，像踢足球一樣把 {name} 狠狠踢飛出去。結果，{name} 劃出一道完美的拋物線，直接掛在了王宮最高的屋簷獸首上，在冷風中搖晃了整整三天三夜！"],
+            /* 6. 假的榮耀騎士 */
+            ["在一次莊嚴的賑災行動中，【假的榮耀騎士】{name} 負責監督物資分發，卻偷偷在心中打著貪吃的小算盤。{name} 表面上正經八百地宣讀分配數據，私底下卻趁人不注意，眼疾手快地將一塊又一塊的高級餅乾往自己嘴裡塞。沒想到，因為塞得太猛，{name} 突然一陣劇烈咳嗽，原本藏在舌頭下的「私吞清單」作弊條竟隨著餅乾碎屑噴射而出，直接啪一聲貼在正前方難民的臉上！看著那張寫滿貪污證據的紙條，{name} 恨不得當場在地板上挖個洞鑽進去，永遠消失在眾人鄙夷的目光中。",
+             "為了吹噓自己的戰績，【假的榮耀騎士】{name} 走進酒館，當眾拍著胸脯宣稱自己曾單槍匹馬斬殺了九千頭兇猛的巨龍。這番豪言壯語震驚了全場，直到一名路過的小孩好奇地問：「既然你殺了九千頭，那九加九等於多少？」{name} 當場愣住，額頭冒汗，支支吾吾了半天竟然連「十八」都算不出來，甚至還報出了一個離譜的答案。這下子全場哄堂大笑，大家瞬間看穿了 {name} 的牛皮。消息傳到王宮，國王認為這簡直是騎士團的恥辱，當場下令沒收 {name} 的騎士勳章，並將其逐出聖殿！",
+             "在萬眾矚目的決鬥大賽前夕，【假的榮耀騎士】{name} 因為心虛，竟然在盾牌背面密密麻麻地寫滿了步法與反擊的「作弊公式」，企圖靠計算來取勝。然而，由於過度緊張，{name} 在抄寫時竟然把所有的加減符號與重心比例全部寫反了！當裁判一聲令下，{name} 照著錯誤的公式奮力一踏，原本該向前的身體卻向後扭轉，當場表演了一個極其狼狽的原地摔跤，四腳朝天地倒在沙地上。看著觀眾席傳來的陣陣倒彩聲，{name} 的英勇形象徹底崩塌，成了一個名副其實的笑話。"],
+            /* 7. 假的巨龍將軍 */
+            ["身為【假的巨龍將軍】，{name} 平時全靠藏在袖口裡的座標作弊條來指揮巨龍飛行。沒想到今日高空水氣太重，{name} 驚恐地發現作弊條上的字跡全部濕掉、糊成一團。就在 {name} 驚慌失措地亂拉韁繩時，龐大的火龍失去了方向，竟然失控俯衝，轟隆一聲撞進了城鎮中心的公共廁所。在一片瓦礫聲與惡臭中，{name} 頭頂著碎木片、身上還掛著好幾串長長的衛生紙，狼狽不堪地從廢墟中爬了出來，成為了全城茶餘飯後的笑柄！",
+             "【假的巨龍將軍】{name} 為了省錢，在計算巨龍的每日食量時扣扣搜搜，完全算錯了這種龐然大物所需的能量儲備。就在戰前動員大會上，{name} 坐下的巨龍因為餓到兩眼發昏，竟然轉頭一口咬住 {name} 背後那件象徵將軍權力的鮮紅斗篷，像嚼零食一樣吞進肚子裡。{name} 被巨大的拉力扯得差點摔倒，最後只能在眾目睽睽之下，尷尬地穿著一件破舊的白背心，光著兩條手臂繼續揮著指揮棒，原有的威嚴瞬間煙消雲散！",
+             "在一次盛大的龍群降落演習中，【假的巨龍將軍】{name} 因為搞錯了地圖上的經緯度，算錯了降落點的座標。{name} 信心滿滿地發出信號，沒想到身後遮天蔽日的龍群竟然全部垂直降落在鄰國正舉行婚禮的莊園草坪上。巨大的龍翼掃斷了婚禮拱門，龍鼻噴出的熱氣直接吹歪了結婚蛋糕，嚇得新郎以為是敵軍來襲，當場丟下戒指連夜逃命。{name} 看著氣得發抖的新娘，只能一臉尷尬地在龍背上瘋狂道歉，這場外交與婚禮的雙重災難讓 {name} 徹底出名了！"],
+            /* 8. 假的不朽英雄 */
+            ["為了在眾人面前展現出超凡脫俗的智慧，【假的不朽英雄】{name} 昂首闊步地走向神聖的真理之塔，宣稱自己掌握了宇宙最深奧的奧秘。面對守護塔門的古老塔靈，{name} 眼神狂妄，竟指著塔身上的古文大喊：「我看穿了！這最終的解答就是 1+1 等於九十九兆！」這番毫無邏輯的言論徹底激怒了追求真理的塔靈。在一陣紫色的魔法煙霧中，{name} 被施加了恥辱的詛咒，瞬間變成了一隻穿著粉紅色緊身芭蕾舞裙的巨大河馬，在塔前被迫跳起滑稽的旋轉舞，引來全大陸勇者的瘋狂圍觀！",
+             "在傳說中的古代遺跡前，【假的不朽英雄】{name} 拿著偽造的星圖，宣稱要解開足以改變世界的遠古封印。然而，{name} 在推算方位時完全算錯了空間座標，手忙腳亂地按下了一串錯誤的符號。沒想到，這組座標並未開啟寶庫，反而啟動了古人遺留下來的「自動洗澡防疫模式」。一時間，遺跡頂端噴發出巨量的清潔原液，全王國的天空竟然下起了長達一小時、帶著薰衣草香氣的濃密泡泡雨！原本嚴肅的封印儀式變成了全民洗澡大賽，而 {name} 則尷尬地淹沒在泡泡堆裡找不到路。",
+             "【假的不朽英雄】{name} 站在王宮的高台上，對著下方的子民發表激昂的演說，宣稱自己體質特殊、早已超越凡人且擁有不朽之軀。然而，就在 {name} 準備優雅地走下階梯時，卻因為過度膨脹而算錯了樓梯的高度與間距。{name} 腳下一空，整個人像個皮球似地從九十九層階梯一路滾到地平線，金金閃閃的頭盔被撞得稀爛。等到 {name} 終於停下來時，原本英氣逼人的臉蛋因為劇烈撞擊而腫得又紅又大，看起來就像一顆熟透的巨型大南瓜，讓現場原本肅然起敬的民眾全都忍不住笑出了聲。"],
+            /* 9. 假的數學戰神 */
+            ["在年度最重要的數學祭典上，【假的數學戰神】{name} 披著一身閃亮的披風，神氣活現地下場應戰。當評審給出一道簡單的幼兒算術題「10 減 10 等於多少」時，{name} 竟然閉上眼假裝冥想，最後一臉認真地大聲宣布：「最終解答就是——雞蛋餅！」這荒謬的回答讓莊嚴的會場瞬間陷入爆笑的海洋。這時有人眼尖發現，{name} 胸前那枚號稱至高榮譽的「戰神貼紙」，邊緣竟然還印著超商標籤。原來，這一切都是 {name} 趁著便利商店活動，用「買一送一」的點數換來的廉價贈品！",
+             "就在預言中諸神黃昏降臨的關鍵時刻，【假的數學戰神】{name} 站在山巔觀察天象。因為看錯了天文刻度，{name} 驚恐地指著遠方忽明忽滅的光點大喊：「不好了！我算出了災難的軌跡，那是數以萬計的毀滅隕石正衝向神界！」這番言論嚇得眾神魂不附體，紛紛拋下神器、尖叫著集體跑路。沒想到大家撤退到一半回頭看，那些所謂的「毀滅隕石」不過是幾隻在草叢裡悠閒飛過的螢火蟲。{name} 的數學判斷力讓眾神氣得咬牙切齒，差點聯手把 {name} 從山上踹下去！",
+             "【假的數學戰神】{name} 聲稱自己感應到了天啟，要在真理祭壇上運算出「宇宙的終極意義」。{name} 拿著一根大毛筆在石碑上揮毫，寫下了無數在外行看來極其專業的符號，全宇宙的生靈都屏息以待。然而，當最後的運算結果浮現時，卻是一串整齊又清晰的神秘字母：「B-E-N-D-A-N」（笨蛋）。這組被神靈認證的「亂碼」讓現場陷入死寂，連最慈悲的神靈都忍不住對著 {name} 無奈地搖頭嘆息。看來 {name} 的大腦運算，確實給宇宙帶來了前所未有的尷尬與衝擊！"]
+        ]
+    };
+
+    let curLvl = 0, targetAns = 0, targetRem = 0, streak = 0, times = [], startTime, activeInput = 'main', isCheated = false, userId = null, userEmail = null;
+
+    // 等待 DOM 載入完成
+    document.addEventListener('DOMContentLoaded', async () => {
+        // 強制登出，確保每次重開都要登入
+        if (window.signOut && window.firebaseAuth) {
+            try {
+                await window.signOut(window.firebaseAuth);
+                console.log("已強制登出");
+            } catch (error) {
+                console.error("登出錯誤:", error);
+            }
+        }
+        
+        // 初始化認證監聽
+        if (window.onAuthStateChanged) {
+            window.onAuthStateChanged(window.firebaseAuth, (user) => {
+                if (user) {
+                    userId = user.uid;
+                    userEmail = user.email;
+                    console.log("用戶已登入:", userId, userEmail);
+                    document.getElementById('loginOverlay').style.display = 'none';
+                    document.getElementById('prologueOverlay').style.display = 'flex';
+                } else {
+                    console.log("用戶未登入");
+                    userId = null;
+                    userEmail = null;
+                    document.getElementById('loginOverlay').style.display = 'flex';
+                    document.getElementById('prologueOverlay').style.display = 'none';
+                }
+            });
+        } else {
+            // 如果 Firebase 還沒載入，重試
+            setTimeout(async () => {
+                if (window.signOut && window.firebaseAuth) {
+                    await window.signOut(window.firebaseAuth);
+                }
+                if (window.onAuthStateChanged) {
+                    window.onAuthStateChanged(window.firebaseAuth, (user) => {
+                        if (user) {
+                            userId = user.uid;
+                            userEmail = user.email;
+                            console.log("用戶已登入 (重試):", userId, userEmail);
+                            document.getElementById('loginOverlay').style.display = 'none';
+                            document.getElementById('prologueOverlay').style.display = 'flex';
+                        } else {
+                            console.log("用戶未登入 (重試)");
+                            userId = null;
+                            userEmail = null;
+                            document.getElementById('loginOverlay').style.display = 'flex';
+                            document.getElementById('prologueOverlay').style.display = 'none';
+                        }
+                    });
+                }
+            }, 1000);
+        }
+    });
+
+    async function login() {
+        const email = document.getElementById('emailInput').value;
+        const password = document.getElementById('passwordInput').value;
+        const messageDiv = document.getElementById('loginMessage');
+        
+        if (!email || !password) {
+            messageDiv.textContent = "請輸入電子郵件和密碼";
+            return;
+        }
+        
+        try {
+            console.log("嘗試登入...");
+            const userCredential = await window.signInWithEmailAndPassword(window.firebaseAuth, email, password);
+            console.log("登入成功:", userCredential.user.email);
+            messageDiv.textContent = "";
+        } catch (error) {
+            console.error("登入失敗:", error);
+            messageDiv.textContent = "登入失敗: " + error.message;
+        }
+    }
+
+    function guestPlay() {
+        console.log("訪客試玩模式");
+        userId = null; // 不記錄
+        document.getElementById('loginOverlay').style.display = 'none';
+        document.getElementById('prologueOverlay').style.display = 'flex';
+    }
+
+    function startGame() { 
+        document.getElementById('prologueOverlay').style.display = 'none'; 
+        generate(); 
+    }
+
+    function updateRankBoard() {
+        const list = document.getElementById('rankListDisplay');
+        const p = isCheated ? "假的" : ""; 
+        list.innerHTML = heroes.map((h, i) => `<li class="rank-item ${i === curLvl ? 'active' : ''}">${i}.${p}${h}</li>`).join('');
+    }
+
+    function generate() {
+        const lvl = levels[curLvl];
+        document.getElementById('lvlStatus').innerText = (isCheated ? "假的" : "") + heroes[curLvl];
+        document.getElementById('levelTitle').innerText = lvl.name;
+        document.getElementById('goalCond').innerText = `${lvl.fast[0]}s/${lvl.fast[1]}勝 或 ${lvl.slow[0]}s/${lvl.slow[1]}勝`;
+        document.getElementById('remainderZone').style.display = lvl.type.includes('Rem') ? 'block' : 'none';
+        
+        let qText = "", n1, n2;
+        switch(lvl.type) {
+            case "mix_9": let r9 = buildProExpr(8, 50, 250); qText = r9.q; targetAns = r9.a; break;
+            case "mix_10": let r10 = buildProExpr(10, 500, 999); qText = r10.q; targetAns = r10.a; break;
+            case "divExact": do { n2 = rand(3, 16); } while (n2 % 5 === 0); targetAns = rand(11, 40); n1 = n2 * targetAns; qText = `${n1} ÷ ${n2}`; break;
+            case "divRem1": do { n2 = rand(6, 25); } while (n2 % 5 === 0); n1 = rand(50, 250); targetAns = Math.floor(n1/n2); targetRem = n1%n2; qText = `${n1} ÷ ${n2}`; break;
+            case "divRem2": do { n2 = rand(16, 51); } while (n2 % 5 === 0); n1 = rand(300, 1500); targetAns = Math.floor(n1/n2); targetRem = n1%n2; qText = `${n1} ÷ ${n2}`; break;
+            case "add": n1 = rand(10, 99); n2 = rand(10, 99); qText = `${n1}+${n2}`; targetAns = n1+n2; break;
+            case "sub": n1 = rand(100, 300); n2 = rand(10, 99); qText = `${n1}-${n2}`; targetAns = n1-n2; break;
+            case "multi99": n1 = rand(4, 9); n2 = rand(4, 9); qText = `${n1}×${n2}`; targetAns = n1*n2; break;
+            case "multi2x1": n1 = rand(21, 99); n2 = rand(3, 9); qText = `${n1}×${n2}`; targetAns = n1*n2; break;
+            case "multi2x2": n1 = rand(11, 49); n2 = rand(11, 39); qText = `${n1}×${n2}`; targetAns = n1*n2; break;
+        }
+        document.getElementById('questionDisplay').innerText = qText;
+        document.getElementById('ansMain').value = ""; document.getElementById('ansRem').value = "";
+        activeInput = 'main'; updateInputFocus(); startTime = Date.now(); updateRankBoard();
+    }
+
+    function buildProExpr(count, min, max) {
+        let ops = ['+', '-', '*'], expr = [rand(min, max)];
+        for(let i=1; i<count; i++) {
+            let op = ops[rand(0, 2)];
+            let val = (op === '*') ? rand(2, 6) : rand(min, max);
+            expr.push(op); expr.push(val);
+        }
+        let s = expr.join(' ');
+        return { q: s.replace(/\*/g, '×'), a: eval(s) };
+    }
+
+    function pressKey(k) {
+        let t = (activeInput === 'main') ? document.getElementById('ansMain') : document.getElementById('ansRem');
+        if (k === 'C') t.value = ""; else t.value += k;
+    }
+
+    function check() {
+        const uA = parseInt(document.getElementById('ansMain').value), uR = parseInt(document.getElementById('ansRem').value || 0);
+        const dur = (Date.now() - startTime) / 1000;
+        let ok = (uA === targetAns);
+        if (levels[curLvl].type.includes('Rem')) ok = (ok && uR === targetRem);
+
+        if (ok) {
+            streak++; times.push(dur);
+            const avg = (times.reduce((a,b)=>a+b,0)/times.length).toFixed(1);
+            document.getElementById('avgTime').innerText = avg;
+            showFb("魔法核准", "var(--neon-green)");
+            if ((streak >= levels[curLvl].fast[1] && avg <= levels[curLvl].fast[0]) || (streak >= levels[curLvl].slow[1] && avg <= levels[curLvl].slow[0])) upgrade();
+        } else {
+            streak = 0; times = []; document.getElementById('avgTime').innerText = "0";
+            showFb("魔力排斥", "var(--neon-red)");
+        }
+        document.getElementById('streak').innerText = streak; generate();
+    }
+
+    function execCheat() { isCheated = true; updateRankBoard(); document.getElementById('ansMain').value = targetAns; document.getElementById('ansRem').value = targetRem || 0; setTimeout(() => { upgrade(); generate(); }, 200); }
+
+    function upgrade() { if (curLvl < levels.length - 1) { curLvl++; streak = 0; times = []; alert("等級晉升！"); } else { alert("成就達成：秩序主宰者！"); location.reload(); } }
+
+    function openRest() { document.getElementById('modal').style.display = 'flex'; }
+    
+    async function confirmRest() {
+        const nameVal = document.getElementById('playerName').value || "佚名勇者";
+        document.getElementById('inputArea').style.display = 'none';
+        document.getElementById('restStory').style.display = 'block';
+        document.getElementById('modalBtn').innerText = "關閉存檔日記";
+        document.getElementById('modalBtn').onclick = () => location.reload();
+        
+        // 上傳遊玩記錄到 Firebase (僅限登入用戶且未作弊)
+        if (userId && !isCheated) {
+            try {
+                const playerData = {
+                    name: nameVal,
+                    email: userEmail,
+                    level: curLvl,
+                    streak: streak,
+                    avgTime: parseFloat(document.getElementById('avgTime').innerText) || 0,
+                    isCheated: isCheated,
+                    timestamp: new Date()
+                };
+                await window.firebaseSetDoc(window.firebaseDoc(window.firebaseDb, "players", userId), playerData);
+                console.log("資料上傳成功");
+            } catch (error) {
+                console.error("上傳失敗:", error);
+                alert("無法上傳資料，請檢查 Firebase 設定。");
+            }
+        } else if (isCheated) {
+            console.log("作弊模式，不記錄資料");
+        } else {
+            console.log("訪客模式，不記錄資料");
+        }
+        
+        // 隨機選取 3 種故事中的一種
+        const randomIdx = rand(0, 2);
+        console.log("選擇故事:", !isCheated, curLvl, randomIdx);
+        const storyKey = (!isCheated).toString();
+        console.log("故事鍵:", storyKey, "可用鍵:", Object.keys(stories));
+        if (!stories[storyKey] || !stories[storyKey][curLvl] || !stories[storyKey][curLvl][randomIdx]) {
+            console.error("故事不存在:", storyKey, curLvl, randomIdx);
+            document.getElementById('restStory').innerHTML = "故事載入失敗，請聯繫管理員。";
+            return;
+        }
+        let storyTemplate = stories[storyKey][curLvl][randomIdx];
+        console.log("故事模板長度:", storyTemplate.length);
+        let finalStr = storyTemplate.split("{name}").join(`<b>${nameVal}</b>`);
+        console.log("最終故事長度:", finalStr.length);
+        document.getElementById('restStory').innerHTML = finalStr;
+    }
+
+    async function showLeaderboard() {
+        document.getElementById('leaderboardOverlay').style.display = 'flex';
+        const tbody = document.getElementById('leaderboardBody');
+        tbody.innerHTML = '<tr><td colspan="6" style="padding: 20px; text-align: center; color: #888;">載入中...</td></tr>';
+
+        try {
+            const querySnapshot = await window.firebaseGetDocs(window.firebaseCollection(window.firebaseDb, "players"));
+            const stats = {};
+
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                const email = data.email;
+                if (!stats[email]) {
+                    stats[email] = {
+                        name: data.name,
+                        maxLevel: 0,
+                        totalPlays: 0,
+                        totalTime: 0,
+                        lastPlay: null
+                    };
+                }
+                stats[email].maxLevel = Math.max(stats[email].maxLevel, data.level);
+                stats[email].totalPlays += 1;
+                stats[email].totalTime += data.avgTime;
+                const timestamp = data.timestamp.toDate ? data.timestamp.toDate() : new Date(data.timestamp);
+                if (!stats[email].lastPlay || timestamp > stats[email].lastPlay) {
+                    stats[email].lastPlay = timestamp;
+                }
+            });
+
+            tbody.innerHTML = '';
+            for (const email in stats) {
+                const s = stats[email];
+                const avgTime = (s.totalTime / s.totalPlays).toFixed(1);
+                const lastPlayStr = s.lastPlay ? s.lastPlay.toLocaleString() : '未知';
+                tbody.innerHTML += `
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #444;">${s.name}</td>
+                        <td style="padding: 10px; border: 1px solid #444;">${email}</td>
+                        <td style="padding: 10px; border: 1px solid #444;">${s.maxLevel}</td>
+                        <td style="padding: 10px; border: 1px solid #444;">${s.totalPlays}</td>
+                        <td style="padding: 10px; border: 1px solid #444;">${avgTime}s</td>
+                        <td style="padding: 10px; border: 1px solid #444;">${lastPlayStr}</td>
+                    </tr>
+                `;
+            }
+
+            if (Object.keys(stats).length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="padding: 20px; text-align: center; color: #888;">暫無資料</td></tr>';
+            }
+        } catch (error) {
+            console.error("載入排行榜失敗:", error);
+            tbody.innerHTML = '<tr><td colspan="6" style="padding: 20px; text-align: center; color: var(--neon-red);">載入失敗: ' + error.message + '</td></tr>';
+        }
+    }
+
+    function hideLeaderboard() {
+        document.getElementById('leaderboardOverlay').style.display = 'none';
+    }
+
+    function updateInputFocus() { document.getElementById('ansMain').classList.toggle('active', activeInput === 'main'); document.getElementById('ansRem').classList.toggle('active', activeInput === 'rem'); }
+    document.getElementById('ansMain').onclick = () => { activeInput = 'main'; updateInputFocus(); };
+    document.getElementById('ansRem').onclick = () => { activeInput = 'rem'; updateInputFocus(); };
+    function showFb(t, c) { const f = document.getElementById('feedback'); f.innerText = t; f.style.color = c; }
+    function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+</script>
+</body>
+</html>
