@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+S<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
@@ -99,7 +99,7 @@
         }
         .input-box {
             background: rgba(0,0,0,0.8); border: 4px solid #555; color: var(--neon-green);
-            width: 120px; height: 70px; font-size: 40px; text-align: center; border-radius: 15px;
+            width: 160px; height: 70px; font-size: 32px; text-align: center; border-radius: 15px;
             pointer-events: auto;
         }
         .input-box.active { border-color: var(--neon-green); box-shadow: 0 0 20px rgba(0, 255, 65, 0.4); }
@@ -480,7 +480,7 @@
         let startLevel, endLevel;
         if (maxLevel >= 8) {
             // 若玩家闖到8-10關，則一律從6開始
-            startLevel = 6;
+            startLevel = 1;
             endLevel = 6;
         } else {
             // 可以選擇從1到(最高關卡-2)的關卡，但至少要有1關可以選
