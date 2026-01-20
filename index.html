@@ -171,6 +171,61 @@
         body.mode-spin .container { animation: container-spin 1s; }
         @keyframes container-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
+        /* --- 新增：彈出視窗樣式 --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(15px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .modal-overlay.show { display: flex; opacity: 1; }
+        .modal-content {
+            background: rgba(30, 30, 30, 0.8);
+            border: 1px solid var(--glass-border);
+            border-radius: 32px;
+            padding: 30px;
+            width: 90%;
+            max-width: 450px;
+            transform: scale(0.9);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .modal-overlay.show .modal-content { transform: scale(1); }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+        .close-btn {
+            background: none; border: none; color: white;
+            font-size: 2rem; cursor: pointer; opacity: 0.5;
+        }
+        .close-btn:hover { opacity: 1; }
+        .links-list { display: flex; flex-direction: column; gap: 12px; }
+        .link-item {
+            display: flex; align-items: center;
+            padding: 15px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            color: white;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+        .link-item:hover {
+            background: rgba(255, 255, 255, 0.12);
+            transform: translateX(8px);
+            border-color: var(--primary);
+        }
+        .link-icon { margin-right: 12px; font-size: 1.2rem; }
+
         @media (max-width: 600px) {
             h1 { font-size: 2.5rem; }
             .grid-box { grid-template-columns: 1fr; }
@@ -263,6 +318,40 @@
                     <div class="widget-title">王國拯救戰</div>
                 </div>
             </a>
+
+            <div class="widget active blue-mode" onclick="openModal()" style="cursor: pointer;">
+                <div class="top-row"><div class="icon">🌐</div><div class="status-light"></div></div>
+                <div class="text-content">
+                    <div class="widget-subtitle">LINKS</div>
+                    <div class="widget-title">外部網站</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="linksModal" class="modal-overlay" onclick="closeModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2>外部資源連結</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="links-list">
+                <a href="https://gemini.google.com/share/89c807fbd204" target="_blank" class="link-item">
+                    <span class="link-icon">🧩</span> 字詞解謎遊戲
+                </a>
+                <a href="https://charliella.github.io/teachingportfolio/" target="_blank" class="link-item">
+                    <span class="link-icon">🚧</span> 施工中
+                </a>
+                <a href="https://charliella.github.io/teachingportfolio/" target="_blank" class="link-item">
+                    <span class="link-icon">🚧</span> 施工中
+                </a>
+                <a href="https://charliella.github.io/teachingportfolio/" target="_blank" class="link-item">
+                    <span class="link-icon">🚧</span> 施工中
+                </a>
+                <a href="https://charliella.github.io/teachingportfolio/" target="_blank" class="link-item">
+                    <span class="link-icon">🚧</span> 施工中
+                </a>
+            </div>
         </div>
     </div>
 
@@ -278,9 +367,20 @@
             let duration = effect === 'glitch' ? 400 : effect === 'spin' ? 1000 : 800;
             setTimeout(() => { body.classList.remove(modeClass); }, duration);
         }
+
+        /* 控制彈出視窗的函式 */
+        function openModal() {
+            const modal = document.getElementById('linksModal');
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('show'), 10);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('linksModal');
+            modal.classList.remove('show');
+            setTimeout(() => modal.style.display = 'none', 300);
+        }
     </script>
 
 </body>
 </html>
-
-
