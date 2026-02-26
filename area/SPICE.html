@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SPICE：異常裂縫終端 (穩定修復版)</title>
+    <style>
+        :root {
+            --paper: #f4e4bc;
+            --ink: #3a2e24;
+            --accent: #8b5cf6;
+            --panel-bg: rgba(18, 20, 28, 0.95);
+            --text-light: #e2e8f0;
+            --success: #4ade80;
+            --fail: #f87171;
+            --tab-active: #6d28d9;
+        }
+
+        body, html {
+            margin: 0; padding: 0; height: 100%;
+            background: #050508; color: var(--text-light);
+            font-family: 'Segoe UI', 'PingFang TC', sans-serif;
+            overflow-x: hidden;
+        }
+
+        nav {
+            background: #000; padding: 0.8rem 1.5rem;
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 2px solid var(--accent);
+            position: sticky; top: 0; z-index: 100;
+        }
+        .logo { font-weight: 900; letter-spacing: 3px; color: var(--accent); cursor: pointer; }
+        .nav-links button { background: none; border: 1px solid var(--accent); color: white; padding: 6px 12px; cursor: pointer; border-radius: 4px; margin-left: 5px; }
+
+        .view-section { display: none; padding: 15px; min-height: 90vh; }
+        .active { display: block; }
+
+        /* 關主區佈局 */
+        .gm-layout { display: grid; grid-template-columns: 1fr 350px; gap: 15px; height: calc(100vh - 120px); }
+        @media (max-width: 1024px) { .gm-layout { grid-template-columns: 1fr; height: auto; } }
+
+        .canvas-container { 
+            position: relative; height: 500px;
+            background-color: var(--paper);
+            background-image: url('https://www.transparenttextures.com/patterns/old-map.png');
+            border: 4px double #8b5a2b; border-radius: 8px; overflow: hidden; touch-action: none;
+        }
+        canvas { width: 100%; height: 100%; cursor: crosshair; }
+        
+        .gm-tabs-container { margin-top: 15px; background: var(--panel-bg); border-radius: 8px; padding: 10px; border: 1px solid #334155; }
+        .tab-buttons { display: flex; gap: 5px; overflow-x: auto; padding-bottom: 10px; }
+        .tab-btn { flex: 0 0 auto; padding: 8px 15px; background: #1e293b; border: none; color: #94a3b8; cursor: pointer; border-radius: 4px; font-size: 0.8rem; }
+        .tab-btn.active { background: var(--tab-active); color: white; }
+        .tab-content-area { width: 100%; min-height: 150px; background: #0f172a; border: 1px solid #334155; border-radius: 4px; padding: 10px; box-sizing: border-box; color: white; resize: vertical; }
+
+        /* 角色卡片樣式 */
+        .char-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+        .char-card { background: var(--panel-bg); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 10px; padding: 20px; }
+        .spice-bar { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin: 15px 0; }
+        .spice-item { text-align: center; background: rgba(0,0,0,0.3); padding: 5px; border-radius: 4px; }
+        .spice-label { font-size: 0.7rem; color: #94a3b8; }
+        .spice-val { font-weight: bold; color: var(--accent); }
+        .char-bio-section { font-size: 0.85rem; line-height: 1.5; color: #cbd5e1; border-top: 1px dashed #444; margin-top: 10px; padding-top: 10px; }
+        .bio-label { color: var(--accent); font-weight: bold; display: block; }
+
+        /* 日誌全螢幕編輯 */
+        #log-editor-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 2000; padding: 20px; box-sizing: border-box;
+        }
+        .editor-container { max-width: 900px; margin: 0 auto; height: 100%; display: flex; flex-direction: column; }
+        #full-log-textarea { flex-grow: 1; background: #1a1a2e; color: #e2e8f0; border: 1px solid var(--accent); border-radius: 8px; padding: 20px; font-size: 1.1rem; line-height: 1.6; resize: none; }
+
+        .toolbar { position: absolute; top: 10px; left: 10px; display: flex; gap: 8px; z-index: 10; }
+        .toolbar button { background: #3a2e24; color: #f4e4bc; border: none; padding: 8px 12px; cursor: pointer; border-radius: 3px; }
+        .dice-panel { background: #161821; padding: 20px; border-radius: 8px; border: 1px solid #334155; }
+        #edit-modal { 
+            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: #1e1b4b; padding: 25px; border-radius: 12px; z-index: 1000; width: 90%; max-width: 450px;
+            max-height: 85vh; overflow-y: auto; border: 2px solid var(--accent); box-shadow: 0 0 50px rgba(0,0,0,0.8);
+        }
+        input, textarea, select { width: 100%; padding: 10px; margin: 5px 0 15px; background: #000; color: white; border: 1px solid #444; border-radius: 6px; box-sizing: border-box; }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="logo" onclick="showView('home')">SPICE TERMINAL</div>
+    <div class="nav-links">
+        <button onclick="showView('gm-zone')">🛠️ 關主</button>
+        <button onclick="showView('char-zone')">👥 角色</button>
+        <button onclick="showView('log-zone')">📖 日誌</button>
+    </div>
+</nav>
+
+<section id="home" class="view-section active" style="text-align: center; padding-top: 80px;">
+    <h1 style="font-size: 3.5rem; color: var(--accent); letter-spacing: 10px;">SPICE</h1>
+    <button onclick="showView('gm-zone')" style="margin-top:40px; padding: 18px 40px; background: var(--accent); border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 30px;">啟動系統</button>
+</section>
+
+<section id="gm-zone" class="view-section">
+    <div class="gm-layout">
+        <div class="main-column">
+            <div class="canvas-container" id="canvasWrap">
+                <div class="toolbar">
+                    <button onclick="window.currentTool='pen'">🖋️ 畫筆</button>
+                    <button onclick="window.currentTool='text'">🔠 打字</button>
+                    <button onclick="window.clearCanvas()">🧹 清除</button>
+                    <input type="color" id="inkColor" value="#3a2e24" style="width:40px; height:35px; margin:0;">
+                </div>
+                <canvas id="mainCanvas"></canvas>
+            </div>
+            <div class="gm-tabs-container">
+                <div class="tab-buttons" id="tabButtons"></div>
+                <textarea id="tabContent" class="tab-content-area" placeholder="在此記錄本頁秘密資料..."></textarea>
+            </div>
+        </div>
+        <div class="dice-panel">
+            <h3>機率解構</h3>
+            <select id="diceType"><option value="100">D100</option><option value="20">D20</option><option value="6">D6</option></select>
+            <input type="number" id="targetVal" value="50" placeholder="目標值">
+            <button onclick="window.rollDice()" style="width:100%; padding:15px; background:var(--accent); color:white; border:none; cursor:pointer; font-weight:bold; border-radius:8px;">執行投擲</button>
+            <div id="resNum" style="font-size:4rem; text-align:center; font-weight:bold; margin-top:10px;">--</div>
+            <div id="resTag" style="text-align:center; font-size:1.2rem; min-height:1.5em; color:#94a3b8;">等待指令</div>
+        </div>
+    </div>
+</section>
+
+<section id="char-zone" class="view-section">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h2>角色庫</h2>
+        <button onclick="window.checkAdmin(window.openCharCreate)" style="background:var(--accent); border:none; color:white; padding:10px 20px; cursor:pointer; border-radius:5px;">+ 新增角色</button>
+    </div>
+    <div class="char-grid" id="charGrid">正在同步雲端資料...</div>
+</section>
+
+<section id="log-zone" class="view-section">
+    <h2>冒險紀錄</h2>
+    <div id="log-content" style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 12px; min-height: 300px; white-space: pre-wrap; border: 1px solid #334155;"></div>
+    <button onclick="window.checkAdmin(window.openLogEditor)" style="margin-top:20px; background:var(--accent); border: none; color: white; padding: 12px 30px; cursor:pointer; border-radius: 5px;">編輯日誌</button>
+</section>
+
+<div id="edit-modal">
+    <h3 id="modal-title">角色資料編輯</h3>
+    <input type="text" id="c-name" placeholder="角色名稱">
+    <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;">
+        <input type="number" id="c-s" placeholder="S"> <input type="number" id="c-p" placeholder="P">
+        <input type="number" id="c-i" placeholder="I"> <input type="number" id="c-c" placeholder="C">
+        <input type="number" id="c-e" placeholder="E">
+    </div>
+    <textarea id="c-personality" placeholder="性格描述..." rows="3"></textarea>
+    <textarea id="c-background" placeholder="背景故事..." rows="3"></textarea>
+    <textarea id="c-traits" placeholder="特質/物品..." rows="2"></textarea>
+    <button id="save-btn" style="width:100%; padding:15px; background:var(--accent); color:white; border:none; cursor:pointer; font-weight:bold; border-radius:8px;">確認儲存至雲端</button>
+    <button onclick="window.closeModal()" style="width:100%; margin-top:10px; background:none; color:#94a3b8; border:none; cursor:pointer;">取消</button>
+</div>
+
+<div id="log-editor-overlay">
+    <div class="editor-container">
+        <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
+            <h2 style="margin:0;">編輯紀錄</h2>
+            <div>
+                <button onclick="window.closeLogEditor()" style="background:#444; color:white; border:none; padding:10px 20px; cursor:pointer;">取消</button>
+                <button onclick="window.saveLog()" style="background:var(--success); color:black; border:none; padding:10px 25px; font-weight:bold; cursor:pointer;">儲存</button>
+            </div>
+        </div>
+        <textarea id="full-log-textarea"></textarea>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
+    import { getFirestore, doc, setDoc, onSnapshot, collection, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAtDx1dYH-vAKIN3iTrkqya52gZkjM9bTk",
+        authDomain: "spice-8eb9f.firebaseapp.com",
+        projectId: "spice-8eb9f",
+        storageBucket: "spice-8eb9f.firebasestorage.app",
+        messagingSenderId: "244211683384",
+        appId: "1:244211683384:web:85662dc29c17f7fee916cd",
+        measurementId: "G-ZHRS2F8XM6"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // --- 繪圖優化 ---
+    window.currentTool = 'pen';
+    const canvas = document.getElementById('mainCanvas');
+    const ctx = canvas.getContext('2d');
+    let isDrawing = false;
+
+    window.initCanvas = () => {
+        const container = document.getElementById('canvasWrap');
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+        ctx.lineCap = 'round';
+    };
+
+    canvas.addEventListener('pointerdown', (e) => {
+        if(window.currentTool === 'pen') {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            ctx.beginPath();
+            ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+        } else if(window.currentTool === 'text') {
+            const txt = prompt("輸入文字：");
+            if(txt) {
+                const rect = canvas.getBoundingClientRect();
+                ctx.fillStyle = document.getElementById('inkColor').value;
+                ctx.font = "bold 20px serif";
+                ctx.fillText(txt, e.clientX - rect.left, e.clientY - rect.top);
+            }
+        }
+    });
+
+    canvas.addEventListener('pointermove', (e) => {
+        if(!isDrawing || window.currentTool !== 'pen') return;
+        const rect = canvas.getBoundingClientRect();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = document.getElementById('inkColor').value;
+        ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+        ctx.stroke();
+    });
+    window.addEventListener('pointerup', () => isDrawing = false);
+    window.clearCanvas = () => ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    // --- 角色功能修復 ---
+    window.currentEditId = null;
+    window.openCharCreate = () => {
+        window.currentEditId = "char_" + Date.now();
+        document.getElementById('modal-title').innerText = "新增調查員";
+        document.querySelectorAll('#edit-modal input, #edit-modal textarea').forEach(i => i.value = "");
+        document.getElementById('edit-modal').style.display = 'block';
+    };
+
+    window.editChar = async (id) => {
+        window.currentEditId = id;
+        const docRef = doc(db, "characters", id);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+            const c = docSnap.data();
+            document.getElementById('c-name').value = c.name;
+            document.getElementById('c-s').value = c.s;
+            document.getElementById('c-p').value = c.p;
+            document.getElementById('c-i').value = c.i;
+            document.getElementById('c-c').value = c.c;
+            document.getElementById('c-e').value = c.e;
+            document.getElementById('c-personality').value = c.personality;
+            document.getElementById('c-background').value = c.background;
+            document.getElementById('c-traits').value = c.traits;
+            document.getElementById('edit-modal').style.display = 'block';
+        }
+    };
+
+    window.deleteChar = async (id) => { if(confirm("確定刪除？")) await deleteDoc(doc(db, "characters", id)); };
+
+    document.getElementById('save-btn').onclick = async () => {
+        const data = {
+            name: document.getElementById('c-name').value || "無名氏",
+            s: parseInt(document.getElementById('c-s').value) || 0,
+            p: parseInt(document.getElementById('c-p').value) || 0,
+            i: parseInt(document.getElementById('c-i').value) || 0,
+            c: parseInt(document.getElementById('c-c').value) || 0,
+            e: parseInt(document.getElementById('c-e').value) || 0,
+            personality: document.getElementById('c-personality').value || "",
+            background: document.getElementById('c-background').value || "",
+            traits: document.getElementById('c-traits').value || ""
+        };
+        await setDoc(doc(db, "characters", window.currentEditId), data);
+        window.closeModal();
+    };
+
+    window.closeModal = () => document.getElementById('edit-modal').style.display = 'none';
+
+    onSnapshot(collection(db, "characters"), (snap) => {
+        const grid = document.getElementById('charGrid');
+        grid.innerHTML = "";
+        snap.forEach(d => {
+            const c = d.data();
+            grid.innerHTML += `
+                <div class="char-card">
+                    <h3 style="color:var(--accent); margin:0">${c.name}</h3>
+                    <div class="spice-bar">
+                        <div class="spice-item"><div class="spice-label">S</div><div class="spice-val">${c.s}</div></div>
+                        <div class="spice-item"><div class="spice-label">P</div><div class="spice-val">${c.p}</div></div>
+                        <div class="spice-item"><div class="spice-label">I</div><div class="spice-val">${c.i}</div></div>
+                        <div class="spice-item"><div class="spice-label">C</div><div class="spice-val">${c.c}</div></div>
+                        <div class="spice-item"><div class="spice-label">E</div><div class="spice-val">${c.e}</div></div>
+                    </div>
+                    <div class="char-bio-section">
+                        <span class="bio-label">性格/特質</span><p>${c.personality}</p>
+                        <span class="bio-label">持有物</span><p>${c.traits}</p>
+                    </div>
+                    <div style="margin-top:10px; padding-top:10px; border-top:1px solid #334155;">
+                        <button onclick="window.checkAdmin(()=>window.editChar('${d.id}'))" style="color:var(--accent); background:none; border:1px solid var(--accent); cursor:pointer; padding:3px 8px;">編輯</button>
+                        <button onclick="window.checkAdmin(()=>window.deleteChar('${d.id}'))" style="color:#666; background:none; border:none; cursor:pointer; margin-left:10px;">刪除</button>
+                    </div>
+                </div>`;
+        });
+    });
+
+    // --- 分頁與日誌邏輯 ---
+    let currentTab = 0;
+    const tabContent = document.getElementById('tabContent');
+    for(let i=0; i<10; i++) {
+        const btn = document.createElement('button');
+        btn.className = `tab-btn ${i===0?'active':''}`;
+        btn.innerText = `分頁 ${i+1}`;
+        btn.onclick = () => {
+            localStorage.setItem(`spice_tab_${currentTab}`, tabContent.value);
+            currentTab = i;
+            document.querySelectorAll('.tab-btn').forEach((b,idx)=>b.classList.toggle('active', idx===i));
+            tabContent.value = localStorage.getItem(`spice_tab_${i}`) || "";
+        };
+        document.getElementById('tabButtons').appendChild(btn);
+    }
+    tabContent.value = localStorage.getItem('spice_tab_0') || "";
+    tabContent.oninput = () => localStorage.setItem(`spice_tab_${currentTab}`, tabContent.value);
+
+    window.openLogEditor = () => {
+        document.getElementById('full-log-textarea').value = document.getElementById('log-content').innerText;
+        document.getElementById('log-editor-overlay').style.display = 'block';
+    };
+    window.closeLogEditor = () => document.getElementById('log-editor-overlay').style.display = 'none';
+    window.saveLog = async () => {
+        await setDoc(doc(db, "system", "log"), { text: document.getElementById('full-log-textarea').value });
+        window.closeLogEditor();
+    };
+
+    onSnapshot(doc(db, "system", "log"), (d) => { if(d.exists()) document.getElementById('log-content').innerText = d.data().text; });
+
+    window.showView = (id) => {
+        document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        if(id === 'gm-zone') setTimeout(window.initCanvas, 100);
+    };
+    window.checkAdmin = (cb) => { if(prompt("密碼：") === "0921") cb(); else alert("錯誤"); };
+    window.rollDice = () => {
+        const type = parseInt(document.getElementById('diceType').value);
+        const target = parseInt(document.getElementById('targetVal').value);
+        const res = Math.floor(Math.random() * type) + 1;
+        document.getElementById('resNum').innerText = res;
+        document.getElementById('resTag').innerText = res <= target ? "成功" : "失敗";
+        document.getElementById('resTag').style.color = res <= target ? "var(--success)" : "var(--fail)";
+    };
+</script>
+</body>
+</html>
