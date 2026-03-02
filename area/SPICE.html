@@ -3,12 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SPICE：異常裂縫終端 (最終修復版)</title>
+    <title>SPICE：異常裂縫終端 (檢定修復版)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <style>
         :root {
             --paper: #f4e4bc; --ink: #3a2e24; --accent: #8b5cf6;
             --panel-bg: rgba(18, 20, 28, 0.95); --text-light: #e2e8f0;
             --success: #4ade80; --fail: #f87171; --tab-active: #8b5cf6;
+            --npc-accent: #f59e0b;
         }
         body, html { margin: 0; padding: 0; height: 100%; background: #050508; color: var(--text-light); font-family: 'Courier New', 'PingFang TC', serif; overflow-x: hidden; }
         
@@ -20,37 +22,33 @@
         .view-section { display: none; padding: 20px; min-height: 90vh; }
         .active { display: block; }
 
-        /* 關主區佈局 */
         .gm-layout { display: grid; grid-template-columns: 1fr 350px; gap: 20px; height: calc(100vh - 150px); }
         @media (max-width: 1024px) { .gm-layout { grid-template-columns: 1fr; height: auto; } }
 
-        /* 畫布與分頁 */
         .canvas-container { 
             position: relative; height: 600px; background-color: var(--paper);
             background-image: url('https://www.transparenttextures.com/patterns/old-map.png');
-            border: 4px double #8b5a2b; border-radius: 8px; overflow: hidden; touch-action: none;
+            border: 4px double #8b5a2b; border-radius: 8px; overflow: hidden;
         }
-        canvas { width: 100%; height: 100%; cursor: crosshair; }
+        
+        #drawing-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 2000; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .draw-modal { width: 95%; height: 85%; background: var(--paper); border-radius: 10px; position: relative; box-shadow: 0 0 30px rgba(0,0,0,0.5); }
+        
         .gm-page-tabs { display: flex; gap: 2px; margin-bottom: 5px; overflow-x: auto; }
-        .page-btn { padding: 8px 15px; background: #1e293b; border: 1px solid #334155; color: #94a3b8; cursor: pointer; }
+        .page-btn { padding: 8px 15px; background: #1e293b; border: 1px solid #334155; color: #94a3b8; cursor: pointer; white-space: nowrap; }
         .page-btn.active { background: var(--tab-active); color: white; border-color: var(--tab-active); }
 
-        /* 棋子樣式 */
-        .token {
-            position: absolute; width: 42px; height: 42px; border-radius: 50%;
-            background: var(--accent); color: white; display: flex; align-items: center;
-            justify-content: center; font-weight: bold; cursor: move; border: 2px solid white;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.5); z-index: 50; user-select: none;
-        }
+        .toolbar { padding: 10px; background: #1e1b4b; display: flex; flex-wrap: wrap; gap: 10px; border-radius: 8px 8px 0 0; width: 95%; box-sizing: border-box; border: 1px solid var(--accent); }
+        .toolbar button { background: #4c1d95; color: white; border: none; padding: 6px 12px; cursor: pointer; border-radius: 4px; font-size: 0.9rem; }
+        .toolbar button.active { background: var(--success); color: black; font-weight: bold; }
+        .token-tool-group { display: flex; align-items: center; gap: 5px; background: rgba(0,0,0,0.3); padding: 5px 10px; border-radius: 20px; margin: 0 5px; }
 
-        .toolbar { position: absolute; top: 10px; left: 10px; display: flex; flex-wrap: wrap; gap: 8px; z-index: 60; }
-        .toolbar button { background: #3a2e24; color: #f4e4bc; border: none; padding: 8px 12px; cursor: pointer; border-radius: 3px; }
+        .dice-panel { background: #161821; padding: 25px; border-radius: 12px; border: 1px solid #334155; overflow-y: auto; }
+        .check-setting { margin: 15px 0; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px; border: 1px solid #2d3748; }
 
-        /* 骰子面板 */
-        .dice-panel { background: #161821; padding: 25px; border-radius: 12px; border: 1px solid #334155; }
-        .check-setting { margin: 15px 0; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px; }
-
-        /* 角色卡片 (恢復至 system2.html 版本) */
         .char-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 25px; margin-top: 20px; }
         .char-card { background: var(--panel-bg); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 12px; padding: 25px; position: relative; }
         .spice-bar { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 20px 0; }
@@ -58,18 +56,15 @@
         .spice-label { font-size: 0.75rem; color: #94a3b8; margin-bottom: 4px; }
         .spice-val { font-size: 1.2rem; font-weight: bold; color: var(--accent); }
         .char-bio-section { font-size: 0.9rem; line-height: 1.6; color: #cbd5e1; border-top: 1px dashed #444; margin-top: 15px; padding-top: 15px; }
-        .bio-label { color: var(--accent); font-weight: bold; display: block; margin-bottom: 5px; }
+        .bio-label { color: var(--accent); font-weight: bold; display: block; margin-top: 10px; }
+        .note-box { background: rgba(0,0,0,0.2); padding: 10px; border-radius: 4px; font-style: italic; font-size: 0.85rem; border-left: 3px solid var(--accent); margin-bottom: 5px; }
 
-        /* Modal & Editor */
         #edit-modal { 
             display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: #1e1b4b; padding: 30px; border-radius: 16px; z-index: 1000; width: 90%; max-width: 500px;
+            background: #1e1b4b; padding: 30px; border-radius: 16px; z-index: 3000; width: 90%; max-width: 500px;
             max-height: 90vh; overflow-y: auto; border: 2px solid var(--accent); box-shadow: 0 0 50px rgba(0,0,0,0.8);
         }
         input, textarea, select { width: 100%; padding: 12px; margin: 8px 0 18px; background: #000; color: white; border: 1px solid #444; border-radius: 8px; box-sizing: border-box; font-family: inherit; }
-        
-        #log-editor-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; padding: 30px; box-sizing: border-box; }
-        #full-log-textarea { width: 100%; height: calc(100% - 100px); background: #111; color: #eee; padding: 25px; border: 1px solid var(--accent); font-size: 1.1rem; line-height: 1.8; resize: none; border-radius: 10px; }
     </style>
 </head>
 <body>
@@ -93,22 +88,11 @@
     <div class="gm-page-tabs" id="pageTabs"></div>
     <div class="gm-layout">
         <div class="main-column">
+            <div style="margin-bottom: 10px;">
+                <button onclick="openDrawingMode()" style="padding:12px 25px; background:var(--accent); border:none; color:white; border-radius:8px; cursor:pointer; font-weight:bold; width:100%; font-size:1.1rem;">🖋️ 進入戰圖編輯模式</button>
+            </div>
             <div class="canvas-container" id="canvasWrap">
-                <div class="toolbar">
-                    <button onclick="window.currentTool='pen'">🖋️ 畫筆</button>
-                    <button onclick="window.currentTool='text'">🔠 打字</button>
-                    <button onclick="window.clearCanvas()">🧹 清空本頁</button>
-                    <input type="color" id="inkColor" value="#3a2e24" style="width:35px; height:35px; border:none; padding:0; cursor:pointer;">
-                    <span style="border-left:1px solid #8b5a2b; margin: 0 10px;"></span>
-                    <button style="background:#6d28d9" onclick="addToken('修')">修</button>
-                    <button style="background:#6d28d9" onclick="addToken('旻')">旻</button>
-                    <button style="background:#6d28d9" onclick="addToken('庭')">庭</button>
-                    <button style="background:#6d28d9" onclick="addToken('梓')">梓</button>
-                    <button style="background:#6d28d9" onclick="addToken('岱')">岱</button>
-                    <button style="background:#6d28d9" onclick="addToken('玥')">玥</button>
-                </div>
                 <canvas id="mainCanvas"></canvas>
-                <div id="tokenLayer"></div>
             </div>
         </div>
 
@@ -118,19 +102,37 @@
             <select id="diceType"><option value="100">D100 (百分骰)</option><option value="20">D20</option><option value="6">D6</option></select>
             
             <div class="check-setting">
-                <label style="display:flex; align-items:center; cursor:pointer; margin-bottom:10px;">
-                    <input type="checkbox" id="useTarget" checked style="width:20px; height:20px; margin-right:12px;"> 啟用目標值檢定
-                </label>
-                <label>目標數值 (≤ 為成功)</label>
+                <label style="color:var(--accent); font-weight:bold;">讀取角色數值 (SPICE)</label>
+                <select id="charAttrSelect" onchange="window.syncTargetValue()" style="margin-bottom:10px;">
+                    <option value="">-- 手動輸入模式 --</option>
+                </select>
+                
+                <label>檢定目標值 (≤ 為成功)</label>
                 <input type="number" id="targetVal" value="50">
+                <label style="display:flex; align-items:center; cursor:pointer;">
+                    <input type="checkbox" id="useTarget" checked style="width:18px; height:18px; margin-right:8px;"> 啟用檢定顯示
+                </label>
             </div>
 
             <button onclick="window.rollDice()" style="width:100%; padding:18px; background:var(--accent); color:white; border:none; cursor:pointer; font-weight:bold; border-radius:10px; font-size:1.1rem;">執行投擲</button>
-            <div id="resNum" style="font-size:5rem; text-align:center; font-weight:bold; margin:20px 0; color:white;">--</div>
+            <div id="resNum" style="font-size:5rem; text-align:center; font-weight:bold; margin:15px 0; color:white;">--</div>
             <div id="resTag" style="text-align:center; font-size:1.5rem; min-height:1.5em; font-weight:bold;">等待指令</div>
         </div>
     </div>
 </section>
+
+<div id="drawing-overlay">
+    <div class="toolbar">
+        <button id="tool-select" onclick="setTool('select')">🖐️ 移動</button>
+        <button id="tool-pen" onclick="setTool('pen')">🖋️ 畫筆</button>
+        <button onclick="addText()">🔠 文字</button>
+        <div class="token-tool-group" id="pcTokens"></div>
+        <button onclick="deleteSelected()" style="background:#dc2626">🗑️ 刪除</button>
+        <button onclick="clearCanvas()" style="background:#000">🧹 清空</button>
+        <button onclick="closeDrawingMode()" style="margin-left:auto; background:var(--success); color:black;">💾 儲存</button>
+    </div>
+    <div class="draw-modal"><canvas id="editCanvas"></canvas></div>
+</div>
 
 <section id="char-zone" class="view-section">
     <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -142,46 +144,32 @@
 
 <section id="log-zone" class="view-section">
     <h2 style="color:var(--accent);">冒險日誌</h2>
-    <div id="log-content" style="background: rgba(255,255,255,0.05); padding: 35px; border-radius: 15px; min-height: 400px; white-space: pre-wrap; border: 1px solid #334155; line-height:2; font-size:1.1rem;"></div>
-    <button onclick="window.checkAdmin(window.openLogEditor)" style="margin-top:30px; background:var(--accent); border: none; color: white; padding: 15px 40px; border-radius: 8px; font-weight: bold;">編輯日誌內容</button>
+    <div id="log-content" style="background: rgba(255,255,255,0.05); padding: 35px; border-radius: 15px; min-height: 400px; white-space: pre-wrap; border: 1px solid #334155; line-height:2;"></div>
+    <button onclick="window.checkAdmin(window.openLogEditor)" style="margin-top:30px; background:var(--accent); border: none; color: white; padding: 15px 40px; border-radius: 8px;">編輯日誌</button>
 </section>
 
 <div id="edit-modal">
-    <h3 id="modal-title" style="margin-top:0; color:var(--accent);">角色檔案編輯</h3>
-    <label>調查員姓名</label>
-    <input type="text" id="c-name" placeholder="請輸入姓名">
-    
-    <label>核心屬性 (SPICE)</label>
+    <h3 style="margin-top:0; color:var(--accent);">角色檔案編輯</h3>
+    <input type="text" id="c-name" placeholder="調查員姓名">
     <div style="display:grid; grid-template-columns: repeat(5, 1fr); gap:10px;">
-        <div><small>S體力</small><input type="number" id="c-s"></div>
+        <div><small>S體能</small><input type="number" id="c-s"></div>
         <div><small>P感知</small><input type="number" id="c-p"></div>
         <div><small>I智慧</small><input type="number" id="c-i"></div>
-        <div><small>C勇氣</small><input type="number" id="c-c"></div>
+        <div><small>C勇敢</small><input type="number" id="c-c"></div>
         <div><small>E情感</small><input type="number" id="c-e"></div>
     </div>
-
-    <label>性格特質</label>
-    <textarea id="c-personality" rows="3"></textarea>
-    <label>背景故事</label>
-    <textarea id="c-background" rows="3"></textarea>
-    <label>隨身裝備/特質</label>
-    <textarea id="c-traits" rows="2"></textarea>
-
-    <button id="save-btn" style="width:100%; padding:15px; background:var(--accent); border:none; color:white; font-weight:bold; border-radius:8px; font-size:1rem; cursor:pointer;">更新雲端資料</button>
-    <button onclick="window.closeModal()" style="width:100%; background:none; color:#94a3b8; border:none; margin-top:10px; cursor:pointer;">取消返回</button>
+    <label>性格特質</label><textarea id="c-personality" rows="2"></textarea>
+    <label>背景故事</label><textarea id="c-background" rows="2"></textarea>
+    <label>隨身裝備</label><textarea id="c-traits" rows="2"></textarea>
+    <label style="color:var(--success)">🌟 成長與變更記事</label><textarea id="c-notes" rows="4"></textarea>
+    <button id="save-btn" style="width:100%; padding:15px; background:var(--accent); border:none; color:white; font-weight:bold; border-radius:8px;">更新雲端資料</button>
+    <button onclick="window.closeModal()" style="width:100%; background:none; color:#94a3b8; border:none; margin-top:10px;">取消返回</button>
 </div>
 
-<div id="log-editor-overlay">
-    <div style="max-width:1000px; margin:auto; height:100%; display:flex; flex-direction:column;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <h2 style="margin:0; color:var(--accent);">編輯冒險日誌</h2>
-            <div>
-                <button onclick="window.closeLogEditor()" style="background:#444; color:white; border:none; padding:12px 25px; border-radius:6px;">取消</button>
-                <button onclick="window.saveLog()" style="background:var(--success); color:black; border:none; padding:12px 30px; border-radius:6px; font-weight:bold; margin-left:15px;">儲存並同步</button>
-            </div>
-        </div>
-        <textarea id="full-log-textarea" placeholder="在此記錄這段傳奇冒險..."></textarea>
-    </div>
+<div id="log-editor-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; padding: 30px;">
+    <textarea id="full-log-textarea" style="width:100%; height:80%; background:#111; color:#eee; padding:20px;"></textarea>
+    <button onclick="window.saveLog()" style="background:var(--success); padding:10px 30px; margin-top:10px;">同步儲存</button>
+    <button onclick="window.closeLogEditor()" style="background:#444; padding:10px 30px; color:white;">取消</button>
 </div>
 
 <script type="module">
@@ -192,133 +180,51 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // --- 畫布分頁與棋子 (維持關主區需求) ---
-    let currentPage = 0;
-    let pageData = Array.from({length: 10}, () => ({ img: null, tokens: [] }));
-    const canvas = document.getElementById('mainCanvas');
-    const ctx = canvas.getContext('2d');
-    const tokenLayer = document.getElementById('tokenLayer');
-    let isDrawing = false;
+    let currentPage = 0, fabricCanvas, previewCanvas;
+    let pageData = Array.from({length: 10}, () => ({ json: null }));
+    let cachedChars = [];
 
-    window.initCanvas = () => {
-        const wrap = document.getElementById('canvasWrap');
-        canvas.width = wrap.clientWidth;
-        canvas.height = wrap.clientHeight;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        loadPage(currentPage);
-    };
+    // --- 核心修復：同步選取值 ---
+    window.syncTargetValue = () => {
+        const select = document.getElementById('charAttrSelect');
+        const compositeId = select.value;
+        if(!compositeId) return;
 
-    const savePage = () => {
-        pageData[currentPage].img = canvas.toDataURL();
-        const tokens = [];
-        document.querySelectorAll('.token').forEach(t => tokens.push({ text: t.innerText, x: t.style.left, y: t.style.top }));
-        pageData[currentPage].tokens = tokens;
-        localStorage.setItem('spice_canvas_data', JSON.stringify(pageData));
-    };
+        // 解析格式 "id_attr"
+        const separatorIndex = compositeId.lastIndexOf('_');
+        const charId = compositeId.substring(0, separatorIndex);
+        const attr = compositeId.substring(separatorIndex + 1);
 
-    const loadPage = (idx) => {
-        ctx.clearRect(0,0,canvas.width,canvas.height);
-        tokenLayer.innerHTML = "";
-        const saved = JSON.parse(localStorage.getItem('spice_canvas_data'));
-        if(saved) pageData = saved;
-
-        if(pageData[idx].img) {
-            const img = new Image(); img.src = pageData[idx].img;
-            img.onload = () => ctx.drawImage(img, 0, 0);
-        }
-        pageData[idx].tokens.forEach(t => createTokenElement(t.text, t.x, t.y));
-    };
-
-    const tabs = document.getElementById('pageTabs');
-    for(let i=0; i<10; i++) {
-        const btn = document.createElement('button');
-        btn.className = `page-btn ${i===0?'active':''}`;
-        btn.innerText = `戰圖 ${i+1}`;
-        btn.onclick = () => { savePage(); currentPage = i; document.querySelectorAll('.page-btn').forEach((b, k) => b.classList.toggle('active', k === i)); loadPage(i); };
-        tabs.appendChild(btn);
-    }
-
-    canvas.addEventListener('pointerdown', (e) => {
-        const r = canvas.getBoundingClientRect();
-        const x = e.clientX - r.left; const y = e.clientY - r.top;
-        if(window.currentTool === 'pen') { isDrawing = true; ctx.beginPath(); ctx.moveTo(x, y); }
-        else if(window.currentTool === 'text') { const txt = prompt("標記文字："); if(txt){ ctx.fillStyle = document.getElementById('inkColor').value; ctx.font = "bold 20px serif"; ctx.fillText(txt, x, y); savePage(); } }
-    });
-    canvas.addEventListener('pointermove', (e) => {
-        if(!isDrawing || window.currentTool !== 'pen') return;
-        const r = canvas.getBoundingClientRect();
-        ctx.lineWidth = 2; ctx.strokeStyle = document.getElementById('inkColor').value;
-        ctx.lineTo(e.clientX - r.left, e.clientY - r.top); ctx.stroke();
-    });
-    window.addEventListener('pointerup', () => { if(isDrawing){ isDrawing = false; savePage(); } });
-
-    window.addToken = (name) => { createTokenElement(name, "50%", "50%"); savePage(); };
-    function createTokenElement(name, x, y) {
-        const t = document.createElement('div'); t.className = 'token'; t.innerText = name; t.style.left = x; t.style.top = y;
-        t.onpointerdown = (e) => {
-            let sX = e.clientX - t.getBoundingClientRect().left; let sY = e.clientY - t.getBoundingClientRect().top;
-            function move(ev) { const r = document.getElementById('canvasWrap').getBoundingClientRect(); t.style.left = (ev.clientX - r.left - sX) + 'px'; t.style.top = (ev.clientY - r.top - sY) + 'px'; }
-            document.addEventListener('pointermove', move);
-            t.onpointerup = () => { document.removeEventListener('pointermove', move); t.onpointerup = null; savePage(); };
-        };
-        t.ondblclick = () => { if(confirm("移除此棋子？")){ t.remove(); savePage(); } };
-        tokenLayer.appendChild(t);
-    }
-
-    // --- 角色編輯邏輯 (完全修復至 system2.html 版本) ---
-    window.currentEditId = null;
-    window.openCharCreate = () => {
-        window.currentEditId = "char_" + Date.now();
-        document.getElementById('modal-title').innerText = "建立新調查員檔案";
-        document.querySelectorAll('#edit-modal input, #edit-modal textarea').forEach(i => i.value = "");
-        document.getElementById('edit-modal').style.display = 'block';
-    };
-
-    window.editChar = async (id) => {
-        window.currentEditId = id;
-        const docRef = doc(db, "characters", id);
-        const snap = await getDoc(docRef);
-        if (snap.exists()) {
-            const c = snap.data();
-            document.getElementById('c-name').value = c.name;
-            document.getElementById('c-s').value = c.s; document.getElementById('c-p').value = c.p;
-            document.getElementById('c-i').value = c.i; document.getElementById('c-c').value = c.c;
-            document.getElementById('c-e').value = c.e;
-            document.getElementById('c-personality').value = c.personality;
-            document.getElementById('c-background').value = c.background;
-            document.getElementById('c-traits').value = c.traits;
-            document.getElementById('modal-title').innerText = "編輯調查員：" + c.name;
-            document.getElementById('edit-modal').style.display = 'block';
+        const char = cachedChars.find(c => c.id === charId);
+        if(char && char[attr] !== undefined) {
+            document.getElementById('targetVal').value = char[attr];
+            console.log(`Synced ${char.name}'s ${attr}: ${char[attr]}`);
         }
     };
 
-    window.deleteChar = async (id) => { if(confirm("確定永久移除此調查員？")) await deleteDoc(doc(db, "characters", id)); };
-    window.closeModal = () => document.getElementById('edit-modal').style.display = 'none';
-
-    document.getElementById('save-btn').onclick = async () => {
-        const data = {
-            name: document.getElementById('c-name').value || "無名氏",
-            s: parseInt(document.getElementById('c-s').value) || 0,
-            p: parseInt(document.getElementById('c-p').value) || 0,
-            i: parseInt(document.getElementById('c-i').value) || 0,
-            c: parseInt(document.getElementById('c-c').value) || 0,
-            e: parseInt(document.getElementById('c-e').value) || 0,
-            personality: document.getElementById('c-personality').value || "未知",
-            background: document.getElementById('c-background').value || "未知",
-            traits: document.getElementById('c-traits').value || "無"
-        };
-        await setDoc(doc(db, "characters", window.currentEditId), data);
-        window.closeModal();
-    };
-
+    // --- 角色數據監聽 ---
     onSnapshot(collection(db, "characters"), (snap) => {
+        cachedChars = [];
         const grid = document.getElementById('charGrid'); grid.innerHTML = "";
+        const select = document.getElementById('charAttrSelect');
+        const currentSelected = select.value;
+        
+        select.innerHTML = '<option value="">-- 手動輸入模式 --</option>';
+        
         snap.forEach(d => {
-            const c = d.data();
+            const c = d.data(); c.id = d.id; cachedChars.push(c);
+            const spiceNames = {s:'體能(S)', p:'感知(P)', i:'智慧(I)', c:'勇敢(C)', e:'情感(E)'};
+            
+            ['s','p','i','c','e'].forEach(attr => {
+                const opt = document.createElement('option');
+                opt.value = `${d.id}_${attr}`;
+                opt.innerText = `${c.name} - ${spiceNames[attr]}`;
+                select.appendChild(opt);
+            });
+
             grid.innerHTML += `
                 <div class="char-card">
-                    <h3 style="color:var(--accent); margin:0; font-size:1.5rem;">${c.name}</h3>
+                    <h3 style="color:var(--accent); margin:0;">${c.name}</h3>
                     <div class="spice-bar">
                         <div class="spice-item"><div class="spice-label">S</div><div class="spice-val">${c.s}</div></div>
                         <div class="spice-item"><div class="spice-label">P</div><div class="spice-val">${c.p}</div></div>
@@ -327,18 +233,19 @@
                         <div class="spice-item"><div class="spice-label">E</div><div class="spice-val">${c.e}</div></div>
                     </div>
                     <div class="char-bio-section">
-                        <span class="bio-label">性格特質</span><p>${c.personality}</p>
-                        <span class="bio-label">隨身物品</span><p>${c.traits}</p>
+                        <span class="bio-label">隨身物品</span><p>${c.traits || "無"}</p>
+                        <span class="bio-label">成長記事</span><div class="note-box">${c.notes || "尚未記錄..."}</div>
                     </div>
-                    <div style="margin-top:20px; border-top:1px solid #333; pt:15px; display:flex; gap:10px;">
-                        <button onclick="window.checkAdmin(()=>window.editChar('${d.id}'))" style="flex:1; background:none; border:1px solid var(--accent); color:white; padding:8px; cursor:pointer; border-radius:4px;">編輯資料</button>
-                        <button onclick="window.checkAdmin(()=>window.deleteChar('${d.id}'))" style="background:none; border:none; color:#555; cursor:pointer;">刪除</button>
+                    <div style="margin-top:15px; display:flex; gap:10px;">
+                        <button onclick="window.checkAdmin(()=>window.editChar('${d.id}'))" style="flex:1; background:none; border:1px solid var(--accent); color:white; padding:8px; border-radius:4px;">編輯/成長</button>
+                        <button onclick="window.checkAdmin(()=>window.deleteChar('${d.id}'))" style="color:#555; background:none; border:none; cursor:pointer;">刪除</button>
                     </div>
                 </div>`;
         });
+        if(currentSelected) select.value = currentSelected;
     });
 
-    // --- 骰子檢定邏輯 (恢復穩定版) ---
+    // --- 骰子邏輯 ---
     window.rollDice = () => {
         const type = parseInt(document.getElementById('diceType').value);
         const target = parseInt(document.getElementById('targetVal').value);
@@ -346,28 +253,66 @@
         const res = Math.floor(Math.random() * type) + 1;
         document.getElementById('resNum').innerText = res;
         const tag = document.getElementById('resTag');
-
-        if(!isTesting) { tag.innerText = "純結果投擲"; tag.style.color = "#94a3b8"; return; }
-
+        if(!isTesting) { tag.innerText = "純投擲"; tag.style.color = "#94a3b8"; return; }
+        
         if(type === 100) {
             if(res <= 5) { tag.innerText = "大成功！"; tag.style.color = "#fbbf24"; }
             else if(res >= 96) { tag.innerText = "大失敗！"; tag.style.color = "#f87171"; }
-            else if(res <= target) { tag.innerText = "檢定通過"; tag.style.color = "var(--success)"; }
-            else { tag.innerText = "檢定失敗"; tag.style.color = "var(--fail)"; }
+            else if(res <= target) { tag.innerText = "成功"; tag.style.color = "var(--success)"; }
+            else { tag.innerText = "失敗"; tag.style.color = "var(--fail)"; }
         } else {
-            tag.innerText = res <= target ? "達成目標" : "未達成目標";
+            tag.innerText = res <= target ? "達成" : "未達成";
             tag.style.color = res <= target ? "var(--success)" : "var(--fail)";
         }
     };
 
-    // --- 日誌與基礎功能 ---
+    // --- 畫布與其餘功能 (保持原樣) ---
+    window.initCanvas = () => {
+        if (!previewCanvas) previewCanvas = new fabric.StaticCanvas('mainCanvas', { width: document.getElementById('canvasWrap').clientWidth, height: 600 });
+        if (!fabricCanvas) fabricCanvas = new fabric.Canvas('editCanvas', { width: window.innerWidth * 0.95, height: window.innerHeight * 0.85 });
+        loadPage(currentPage);
+    };
+    window.openDrawingMode = () => { document.getElementById('drawing-overlay').style.display = 'flex'; fabricCanvas.setWidth(window.innerWidth * 0.95); fabricCanvas.setHeight(window.innerHeight * 0.85); };
+    window.closeDrawingMode = () => { document.getElementById('drawing-overlay').style.display = 'none'; savePage(); };
+    window.setTool = (mode) => { fabricCanvas.isDrawingMode = (mode === 'pen'); };
+    window.addObjectToken = (name, color) => {
+        const circle = new fabric.Circle({ radius: 25, fill: color, stroke: '#fff', strokeWidth: 3 });
+        const text = new fabric.Text(name, { fontSize: 22, fill: '#fff', originX: 'center', originY: 'center', left: 25, top: 25 });
+        fabricCanvas.add(new fabric.Group([circle, text], { left: 100, top: 100 }));
+    };
+    const savePage = () => { pageData[currentPage].json = JSON.stringify(fabricCanvas.toJSON()); localStorage.setItem('spice_map', JSON.stringify(pageData)); previewCanvas.loadFromJSON(pageData[currentPage].json, () => previewCanvas.renderAll()); };
+    const loadPage = (idx) => { const saved = JSON.parse(localStorage.getItem('spice_map')); if(saved) pageData = saved; fabricCanvas.loadFromJSON(pageData[idx].json || "{}", () => fabricCanvas.renderAll()); previewCanvas.loadFromJSON(pageData[idx].json || "{}", () => previewCanvas.renderAll()); };
+
+    window.openCharCreate = () => { window.currentEditId = "char_" + Date.now(); document.querySelectorAll('#edit-modal input, #edit-modal textarea').forEach(i => i.value = ""); document.getElementById('edit-modal').style.display = 'block'; };
+    window.editChar = async (id) => {
+        window.currentEditId = id; const snap = await getDoc(doc(db, "characters", id));
+        if (snap.exists()) {
+            const c = snap.data(); document.getElementById('c-name').value = c.name;
+            ['s','p','i','c','e'].forEach(a => document.getElementById('c-'+a).value = c[a]);
+            document.getElementById('c-personality').value = c.personality || ""; document.getElementById('c-background').value = c.background || "";
+            document.getElementById('c-traits').value = c.traits || ""; document.getElementById('c-notes').value = c.notes || "";
+            document.getElementById('edit-modal').style.display = 'block';
+        }
+    };
+    document.getElementById('save-btn').onclick = async () => {
+        const d = { name: document.getElementById('c-name').value, s:parseInt(document.getElementById('c-s').value)||0, p:parseInt(document.getElementById('c-p').value)||0, i:parseInt(document.getElementById('c-i').value)||0, c:parseInt(document.getElementById('c-c').value)||0, e:parseInt(document.getElementById('c-e').value)||0, personality:document.getElementById('c-personality').value, background:document.getElementById('c-background').value, traits:document.getElementById('c-traits').value, notes:document.getElementById('c-notes').value };
+        await setDoc(doc(db, "characters", window.currentEditId), d); window.closeModal();
+    };
+
+    const tabs = document.getElementById('pageTabs');
+    for(let i=0; i<10; i++) {
+        const b = document.createElement('button'); b.className = `page-btn ${i===0?'active':''}`; b.innerText = `戰圖 ${i+1}`;
+        b.onclick = () => { savePage(); currentPage = i; document.querySelectorAll('.page-btn').forEach((x, k) => x.classList.toggle('active', k === i)); loadPage(i); }; tabs.appendChild(b);
+    }
+    window.deleteChar = async (id) => { if(confirm("確定刪除？")) await deleteDoc(doc(db, "characters", id)); };
+    window.closeModal = () => document.getElementById('edit-modal').style.display = 'none';
+    window.showView = (id) => { document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); if(id === 'gm-zone') setTimeout(window.initCanvas, 100); };
+    window.checkAdmin = (cb) => { if(prompt("管理者密碼：") === "0921") cb(); else alert("存取遭拒"); };
     onSnapshot(doc(db, "system", "log"), (d) => { if(d.exists()) document.getElementById('log-content').innerText = d.data().text; });
     window.openLogEditor = () => { document.getElementById('full-log-textarea').value = document.getElementById('log-content').innerText; document.getElementById('log-editor-overlay').style.display='block'; };
     window.closeLogEditor = () => { document.getElementById('log-editor-overlay').style.display='none'; };
     window.saveLog = async () => { await setDoc(doc(db, "system", "log"), { text: document.getElementById('full-log-textarea').value }); window.closeLogEditor(); };
-    window.showView = (id) => { document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); if(id === 'gm-zone') setTimeout(window.initCanvas, 100); };
-    window.checkAdmin = (cb) => { if(prompt("管理者密碼：") === "0921") cb(); else alert("存取遭拒"); };
-    window.clearCanvas = () => { if(confirm("清空當前戰圖？")){ ctx.clearRect(0,0,canvas.width,canvas.height); tokenLayer.innerHTML=""; savePage(); } };
+    window.clearCanvas = () => { fabricCanvas.clear(); savePage(); };
 </script>
 </body>
 </html>
