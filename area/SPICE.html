@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SPICE：異常裂縫終端 (檢定修復版)</title>
+    <title>SPICE：異常裂縫終端 (智慧連動版)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <style>
         :root {
@@ -89,7 +89,7 @@
     <div class="gm-layout">
         <div class="main-column">
             <div style="margin-bottom: 10px;">
-                <button onclick="openDrawingMode()" style="padding:12px 25px; background:var(--accent); border:none; color:white; border-radius:8px; cursor:pointer; font-weight:bold; width:100%; font-size:1.1rem;">🖋️ 進入戰圖編輯模式</button>
+                <button onclick="openDrawingMode()" style="padding:12px 25px; background:var(--accent); border:none; color:white; border-radius:8px; cursor:pointer; font-weight:bold; width:100%; font-size:1.1rem;">🖋️ 進入戰圖編輯模式 (物件與棋子)</button>
             </div>
             <div class="canvas-container" id="canvasWrap">
                 <canvas id="mainCanvas"></canvas>
@@ -123,15 +123,36 @@
 
 <div id="drawing-overlay">
     <div class="toolbar">
-        <button id="tool-select" onclick="setTool('select')">🖐️ 移動</button>
+        <button id="tool-select" onclick="setTool('select')">🖐️ 移動選擇</button>
         <button id="tool-pen" onclick="setTool('pen')">🖋️ 畫筆</button>
         <button onclick="addText()">🔠 文字</button>
-        <div class="token-tool-group" id="pcTokens"></div>
-        <button onclick="deleteSelected()" style="background:#dc2626">🗑️ 刪除</button>
-        <button onclick="clearCanvas()" style="background:#000">🧹 清空</button>
-        <button onclick="closeDrawingMode()" style="margin-left:auto; background:var(--success); color:black;">💾 儲存</button>
+        
+        <div class="token-tool-group">
+            <small style="color:var(--accent)">PC:</small>
+            <button onclick="addObjectToken('修','#8b5cf6')">修</button>
+            <button onclick="addObjectToken('旻','#8b5cf6')">旻</button>
+            <button onclick="addObjectToken('庭','#8b5cf6')">庭</button>
+            <button onclick="addObjectToken('梓','#8b5cf6')">梓</button>
+            <button onclick="addObjectToken('岱','#8b5cf6')">岱</button>
+            <button onclick="addObjectToken('玥','#8b5cf6')">玥</button>
+        </div>
+
+        <div class="token-tool-group">
+            <small style="color:var(--npc-accent)">NPC:</small>
+            <button onclick="addObjectToken('N1','#f59e0b')" style="background:#f59e0b">N1</button>
+            <button onclick="addObjectToken('N2','#f59e0b')" style="background:#f59e0b">N2</button>
+            <button onclick="addObjectToken('N3','#f59e0b')" style="background:#f59e0b">N3</button>
+            <button onclick="addObjectToken('N4','#f59e0b')" style="background:#f59e0b">N4</button>
+            <button onclick="addObjectToken('N5','#f59e0b')" style="background:#f59e0b">N5</button>
+        </div>
+
+        <button onclick="deleteSelected()" style="background:#dc2626">🗑️ 刪除選中</button>
+        <button onclick="clearCanvas()" style="background:#000">🧹 清空頁面</button>
+        <button onclick="closeDrawingMode()" style="margin-left:auto; background:var(--success); color:black; padding:8px 25px;">💾 儲存並退出</button>
     </div>
-    <div class="draw-modal"><canvas id="editCanvas"></canvas></div>
+    <div class="draw-modal">
+        <canvas id="editCanvas"></canvas>
+    </div>
 </div>
 
 <section id="char-zone" class="view-section">
@@ -144,13 +165,14 @@
 
 <section id="log-zone" class="view-section">
     <h2 style="color:var(--accent);">冒險日誌</h2>
-    <div id="log-content" style="background: rgba(255,255,255,0.05); padding: 35px; border-radius: 15px; min-height: 400px; white-space: pre-wrap; border: 1px solid #334155; line-height:2;"></div>
-    <button onclick="window.checkAdmin(window.openLogEditor)" style="margin-top:30px; background:var(--accent); border: none; color: white; padding: 15px 40px; border-radius: 8px;">編輯日誌</button>
+    <div id="log-content" style="background: rgba(255,255,255,0.05); padding: 35px; border-radius: 15px; min-height: 400px; white-space: pre-wrap; border: 1px solid #334155; line-height:2; font-size:1.1rem;"></div>
+    <button onclick="window.checkAdmin(window.openLogEditor)" style="margin-top:30px; background:var(--accent); border: none; color: white; padding: 15px 40px; border-radius: 8px; font-weight: bold;">編輯日誌內容</button>
 </section>
 
 <div id="edit-modal">
-    <h3 style="margin-top:0; color:var(--accent);">角色檔案編輯</h3>
-    <input type="text" id="c-name" placeholder="調查員姓名">
+    <h3 id="modal-title" style="margin-top:0; color:var(--accent);">角色檔案編輯</h3>
+    <label>調查員姓名</label>
+    <input type="text" id="c-name">
     <div style="display:grid; grid-template-columns: repeat(5, 1fr); gap:10px;">
         <div><small>S體能</small><input type="number" id="c-s"></div>
         <div><small>P感知</small><input type="number" id="c-p"></div>
@@ -160,16 +182,21 @@
     </div>
     <label>性格特質</label><textarea id="c-personality" rows="2"></textarea>
     <label>背景故事</label><textarea id="c-background" rows="2"></textarea>
-    <label>隨身裝備</label><textarea id="c-traits" rows="2"></textarea>
+    <label>隨身裝備 (重要事項)</label><textarea id="c-traits" rows="2"></textarea>
     <label style="color:var(--success)">🌟 成長與變更記事</label><textarea id="c-notes" rows="4"></textarea>
     <button id="save-btn" style="width:100%; padding:15px; background:var(--accent); border:none; color:white; font-weight:bold; border-radius:8px;">更新雲端資料</button>
     <button onclick="window.closeModal()" style="width:100%; background:none; color:#94a3b8; border:none; margin-top:10px;">取消返回</button>
 </div>
 
-<div id="log-editor-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; padding: 30px;">
-    <textarea id="full-log-textarea" style="width:100%; height:80%; background:#111; color:#eee; padding:20px;"></textarea>
-    <button onclick="window.saveLog()" style="background:var(--success); padding:10px 30px; margin-top:10px;">同步儲存</button>
-    <button onclick="window.closeLogEditor()" style="background:#444; padding:10px 30px; color:white;">取消</button>
+<div id="log-editor-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; padding: 30px; box-sizing: border-box;">
+    <div style="max-width:1000px; margin:auto; height:100%; display:flex; flex-direction:column;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h2 style="margin:0; color:var(--accent);">編輯冒險日誌</h2>
+            <div><button onclick="window.closeLogEditor()" style="background:#444; border:none; color:white; padding:10px 20px; border-radius:5px;">取消</button>
+            <button onclick="window.saveLog()" style="background:var(--success); border:none; color:black; padding:10px 30px; border-radius:5px; font-weight:bold; margin-left:10px;">同步儲存</button></div>
+        </div>
+        <textarea id="full-log-textarea" style="width:100%; flex:1; background:#111; color:#eee; padding:20px; border-radius:10px;"></textarea>
+    </div>
 </div>
 
 <script type="module">
@@ -184,44 +211,48 @@
     let pageData = Array.from({length: 10}, () => ({ json: null }));
     let cachedChars = [];
 
-    // --- 核心修復：同步選取值 ---
+    // --- 強化連動：同步選取的數值到目標框 ---
     window.syncTargetValue = () => {
         const select = document.getElementById('charAttrSelect');
-        const compositeId = select.value;
-        if(!compositeId) return;
+        const compositeValue = select.value; // 格式為 "id_attr"
+        
+        if(!compositeValue) return;
 
-        // 解析格式 "id_attr"
-        const separatorIndex = compositeId.lastIndexOf('_');
-        const charId = compositeId.substring(0, separatorIndex);
-        const attr = compositeId.substring(separatorIndex + 1);
+        // 從後往前找底線，分離 ID 與 屬性代稱
+        const splitIdx = compositeValue.lastIndexOf('_');
+        const charId = compositeValue.substring(0, splitIdx);
+        const attr = compositeValue.substring(splitIdx + 1);
 
+        // 從全域快取尋找該角色
         const char = cachedChars.find(c => c.id === charId);
         if(char && char[attr] !== undefined) {
             document.getElementById('targetVal').value = char[attr];
-            console.log(`Synced ${char.name}'s ${attr}: ${char[attr]}`);
+            console.log(`已成功同步: ${char.name} 的 ${attr} = ${char[attr]}`);
         }
     };
 
-    // --- 角色數據監聽 ---
+    // --- 角色數據即時同步與 UI 渲染 ---
     onSnapshot(collection(db, "characters"), (snap) => {
         cachedChars = [];
         const grid = document.getElementById('charGrid'); grid.innerHTML = "";
         const select = document.getElementById('charAttrSelect');
-        const currentSelected = select.value;
-        
+        const savedSelection = select.value; // 記住目前選取的項
+
         select.innerHTML = '<option value="">-- 手動輸入模式 --</option>';
         
         snap.forEach(d => {
             const c = d.data(); c.id = d.id; cachedChars.push(c);
             const spiceNames = {s:'體能(S)', p:'感知(P)', i:'智慧(I)', c:'勇敢(C)', e:'情感(E)'};
             
+            // 為每個角色生成 5 種屬性的選單項
             ['s','p','i','c','e'].forEach(attr => {
                 const opt = document.createElement('option');
                 opt.value = `${d.id}_${attr}`;
-                opt.innerText = `${c.name} - ${spiceNames[attr]}`;
+                opt.innerText = `${c.name} - ${spiceNames[attr]} (${c[attr]})`;
                 select.appendChild(opt);
             });
 
+            // 渲染角色名冊卡片
             grid.innerHTML += `
                 <div class="char-card">
                     <h3 style="color:var(--accent); margin:0;">${c.name}</h3>
@@ -242,47 +273,54 @@
                     </div>
                 </div>`;
         });
-        if(currentSelected) select.value = currentSelected;
+        
+        // 恢復之前的選取狀態
+        if(savedSelection) select.value = savedSelection;
     });
 
-    // --- 骰子邏輯 ---
+    // --- 骰子檢定邏輯 ---
     window.rollDice = () => {
         const type = parseInt(document.getElementById('diceType').value);
         const target = parseInt(document.getElementById('targetVal').value);
         const isTesting = document.getElementById('useTarget').checked;
         const res = Math.floor(Math.random() * type) + 1;
+        
         document.getElementById('resNum').innerText = res;
         const tag = document.getElementById('resTag');
-        if(!isTesting) { tag.innerText = "純投擲"; tag.style.color = "#94a3b8"; return; }
+        
+        if(!isTesting) { tag.innerText = "純結果投擲"; tag.style.color = "#94a3b8"; return; }
         
         if(type === 100) {
             if(res <= 5) { tag.innerText = "大成功！"; tag.style.color = "#fbbf24"; }
             else if(res >= 96) { tag.innerText = "大失敗！"; tag.style.color = "#f87171"; }
-            else if(res <= target) { tag.innerText = "成功"; tag.style.color = "var(--success)"; }
-            else { tag.innerText = "失敗"; tag.style.color = "var(--fail)"; }
+            else if(res <= target) { tag.innerText = "檢定通過"; tag.style.color = "var(--success)"; }
+            else { tag.innerText = "檢定失敗"; tag.style.color = "var(--fail)"; }
         } else {
-            tag.innerText = res <= target ? "達成" : "未達成";
+            tag.innerText = res <= target ? "達成目標" : "未達成目標";
             tag.style.color = res <= target ? "var(--success)" : "var(--fail)";
         }
     };
 
-    // --- 畫布與其餘功能 (保持原樣) ---
+    // --- 畫布相關邏輯 ---
     window.initCanvas = () => {
         if (!previewCanvas) previewCanvas = new fabric.StaticCanvas('mainCanvas', { width: document.getElementById('canvasWrap').clientWidth, height: 600 });
         if (!fabricCanvas) fabricCanvas = new fabric.Canvas('editCanvas', { width: window.innerWidth * 0.95, height: window.innerHeight * 0.85 });
         loadPage(currentPage);
     };
-    window.openDrawingMode = () => { document.getElementById('drawing-overlay').style.display = 'flex'; fabricCanvas.setWidth(window.innerWidth * 0.95); fabricCanvas.setHeight(window.innerHeight * 0.85); };
+    window.openDrawingMode = () => { document.getElementById('drawing-overlay').style.display = 'flex'; fabricCanvas.setWidth(window.innerWidth * 0.95); fabricCanvas.setHeight(window.innerHeight * 0.85); setTool('select'); };
     window.closeDrawingMode = () => { document.getElementById('drawing-overlay').style.display = 'none'; savePage(); };
-    window.setTool = (mode) => { fabricCanvas.isDrawingMode = (mode === 'pen'); };
+    window.setTool = (mode) => { fabricCanvas.isDrawingMode = (mode === 'pen'); document.getElementById('tool-pen').classList.toggle('active', mode === 'pen'); document.getElementById('tool-select').classList.toggle('active', mode === 'select'); };
     window.addObjectToken = (name, color) => {
         const circle = new fabric.Circle({ radius: 25, fill: color, stroke: '#fff', strokeWidth: 3 });
-        const text = new fabric.Text(name, { fontSize: 22, fill: '#fff', originX: 'center', originY: 'center', left: 25, top: 25 });
+        const text = new fabric.Text(name, { fontSize: 22, fill: '#fff', originX: 'center', originY: 'center', left: 25, top: 25, fontWeight: 'bold' });
         fabricCanvas.add(new fabric.Group([circle, text], { left: 100, top: 100 }));
     };
+    window.addText = () => { fabricCanvas.add(new fabric.IText('新文字', { left: 100, top: 100, fill: '#3a2e24', fontSize: 24 })); };
+    window.deleteSelected = () => { const active = fabricCanvas.getActiveObjects(); fabricCanvas.discardActiveObject(); active.forEach(obj => fabricCanvas.remove(obj)); };
     const savePage = () => { pageData[currentPage].json = JSON.stringify(fabricCanvas.toJSON()); localStorage.setItem('spice_map', JSON.stringify(pageData)); previewCanvas.loadFromJSON(pageData[currentPage].json, () => previewCanvas.renderAll()); };
     const loadPage = (idx) => { const saved = JSON.parse(localStorage.getItem('spice_map')); if(saved) pageData = saved; fabricCanvas.loadFromJSON(pageData[idx].json || "{}", () => fabricCanvas.renderAll()); previewCanvas.loadFromJSON(pageData[idx].json || "{}", () => previewCanvas.renderAll()); };
 
+    // --- 角色編輯基礎功能 ---
     window.openCharCreate = () => { window.currentEditId = "char_" + Date.now(); document.querySelectorAll('#edit-modal input, #edit-modal textarea').forEach(i => i.value = ""); document.getElementById('edit-modal').style.display = 'block'; };
     window.editChar = async (id) => {
         window.currentEditId = id; const snap = await getDoc(doc(db, "characters", id));
@@ -295,10 +333,11 @@
         }
     };
     document.getElementById('save-btn').onclick = async () => {
-        const d = { name: document.getElementById('c-name').value, s:parseInt(document.getElementById('c-s').value)||0, p:parseInt(document.getElementById('c-p').value)||0, i:parseInt(document.getElementById('c-i').value)||0, c:parseInt(document.getElementById('c-c').value)||0, e:parseInt(document.getElementById('c-e').value)||0, personality:document.getElementById('c-personality').value, background:document.getElementById('c-background').value, traits:document.getElementById('c-traits').value, notes:document.getElementById('c-notes').value };
+        const d = { name: document.getElementById('c-name').value || "未命名", s:parseInt(document.getElementById('c-s').value)||0, p:parseInt(document.getElementById('c-p').value)||0, i:parseInt(document.getElementById('c-i').value)||0, c:parseInt(document.getElementById('c-c').value)||0, e:parseInt(document.getElementById('c-e').value)||0, personality:document.getElementById('c-personality').value, background:document.getElementById('c-background').value, traits:document.getElementById('c-traits').value, notes:document.getElementById('c-notes').value };
         await setDoc(doc(db, "characters", window.currentEditId), d); window.closeModal();
     };
 
+    // --- 初始化 UI 元素 ---
     const tabs = document.getElementById('pageTabs');
     for(let i=0; i<10; i++) {
         const b = document.createElement('button'); b.className = `page-btn ${i===0?'active':''}`; b.innerText = `戰圖 ${i+1}`;
@@ -308,11 +347,13 @@
     window.closeModal = () => document.getElementById('edit-modal').style.display = 'none';
     window.showView = (id) => { document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); if(id === 'gm-zone') setTimeout(window.initCanvas, 100); };
     window.checkAdmin = (cb) => { if(prompt("管理者密碼：") === "0921") cb(); else alert("存取遭拒"); };
+    
+    // 日誌監聽
     onSnapshot(doc(db, "system", "log"), (d) => { if(d.exists()) document.getElementById('log-content').innerText = d.data().text; });
     window.openLogEditor = () => { document.getElementById('full-log-textarea').value = document.getElementById('log-content').innerText; document.getElementById('log-editor-overlay').style.display='block'; };
     window.closeLogEditor = () => { document.getElementById('log-editor-overlay').style.display='none'; };
     window.saveLog = async () => { await setDoc(doc(db, "system", "log"), { text: document.getElementById('full-log-textarea').value }); window.closeLogEditor(); };
-    window.clearCanvas = () => { fabricCanvas.clear(); savePage(); };
+    window.clearCanvas = () => { if(confirm("確定清空？")) { fabricCanvas.clear(); savePage(); } };
 </script>
 </body>
 </html>
