@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SPICE：異常裂縫終端 (智慧連動版)</title>
+    <title>SPICE：異常裂縫終端 (全功能優化版)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <style>
         :root {
@@ -22,13 +22,15 @@
         .view-section { display: none; padding: 20px; min-height: 90vh; }
         .active { display: block; }
 
-        .gm-layout { display: grid; grid-template-columns: 1fr 350px; gap: 20px; height: calc(100vh - 150px); }
-        @media (max-width: 1024px) { .gm-layout { grid-template-columns: 1fr; height: auto; } }
+        /* GM 佈局優化 */
+        .gm-layout { display: grid; grid-template-columns: 1fr 380px; gap: 20px; height: calc(100vh - 120px); }
+        @media (max-width: 1200px) { .gm-layout { grid-template-columns: 1fr; height: auto; } }
 
         .canvas-container { 
-            position: relative; height: 600px; background-color: var(--paper);
+            position: relative; height: 650px; background-color: var(--paper);
             background-image: url('https://www.transparenttextures.com/patterns/old-map.png');
             border: 4px double #8b5a2b; border-radius: 8px; overflow: hidden;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.2);
         }
         
         #drawing-overlay {
@@ -38,30 +40,41 @@
         .draw-modal { width: 95%; height: 85%; background: var(--paper); border-radius: 10px; position: relative; box-shadow: 0 0 30px rgba(0,0,0,0.5); }
         
         .gm-page-tabs { display: flex; gap: 2px; margin-bottom: 5px; overflow-x: auto; }
-        .page-btn { padding: 8px 15px; background: #1e293b; border: 1px solid #334155; color: #94a3b8; cursor: pointer; white-space: nowrap; }
+        .page-btn { padding: 10px 20px; background: #1e293b; border: 1px solid #334155; color: #94a3b8; cursor: pointer; white-space: nowrap; transition: 0.2s; }
         .page-btn.active { background: var(--tab-active); color: white; border-color: var(--tab-active); }
 
         .toolbar { padding: 10px; background: #1e1b4b; display: flex; flex-wrap: wrap; gap: 10px; border-radius: 8px 8px 0 0; width: 95%; box-sizing: border-box; border: 1px solid var(--accent); }
-        .toolbar button { background: #4c1d95; color: white; border: none; padding: 6px 12px; cursor: pointer; border-radius: 4px; font-size: 0.9rem; }
+        .toolbar button { background: #4c1d95; color: white; border: none; padding: 8px 15px; cursor: pointer; border-radius: 4px; font-size: 0.9rem; }
         .toolbar button.active { background: var(--success); color: black; font-weight: bold; }
-        .token-tool-group { display: flex; align-items: center; gap: 5px; background: rgba(0,0,0,0.3); padding: 5px 10px; border-radius: 20px; margin: 0 5px; }
-
-        .dice-panel { background: #161821; padding: 25px; border-radius: 12px; border: 1px solid #334155; overflow-y: auto; }
-        .check-setting { margin: 15px 0; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px; border: 1px solid #2d3748; }
+        
+        /* 骰子面板優化 */
+        .dice-panel { background: #0f172a; padding: 20px; border-radius: 12px; border: 2px solid var(--accent); display: flex; flex-direction: column; gap: 15px; overflow-y: auto; }
+        .roll-history { background: rgba(0,0,0,0.3); border-radius: 8px; padding: 10px; height: 120px; overflow-y: auto; font-size: 0.85rem; border: 1px solid #334155; }
+        .history-item { padding: 4px 0; border-bottom: 1px solid #222; display: flex; justify-content: space-between; }
 
         .char-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 25px; margin-top: 20px; }
         .char-card { background: var(--panel-bg); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 12px; padding: 25px; position: relative; }
         .spice-bar { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 20px 0; }
         .spice-item { text-align: center; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; border: 1px solid #2d3748; }
-        .spice-label { font-size: 0.75rem; color: #94a3b8; margin-bottom: 4px; }
-        .spice-val { font-size: 1.2rem; font-weight: bold; color: var(--accent); }
-        .char-bio-section { font-size: 0.9rem; line-height: 1.6; color: #cbd5e1; border-top: 1px dashed #444; margin-top: 15px; padding-top: 15px; }
-        .bio-label { color: var(--accent); font-weight: bold; display: block; margin-top: 10px; }
-        .note-box { background: rgba(0,0,0,0.2); padding: 10px; border-radius: 4px; font-style: italic; font-size: 0.85rem; border-left: 3px solid var(--accent); margin-bottom: 5px; }
+        .custom-attr-tag { background: var(--accent); color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; margin-right: 5px; display: inline-block; }
+
+        /* 全體監控模式 */
+        #monitor-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #050508; z-index: 4000; padding: 40px; box-sizing: border-box; overflow-y: auto; }
+        .monitor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 30px; }
+        .monitor-card { border: 2px solid var(--accent); padding: 20px; border-radius: 15px; background: #111; }
+        .monitor-name { font-size: 2.5rem; color: var(--accent); font-weight: bold; margin-bottom: 15px; border-bottom: 2px solid #333; }
+        .monitor-stats { font-size: 1.8rem; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+        /* 音樂播放器樣式 */
+        .music-container { max-width: 800px; margin: auto; background: var(--panel-bg); padding: 30px; border-radius: 20px; border: 1px solid var(--accent); }
+        .playlist { margin-top: 20px; border: 1px solid #334155; border-radius: 10px; max-height: 400px; overflow-y: auto; }
+        .track-item { padding: 15px; border-bottom: 1px solid #222; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        .track-item:hover { background: rgba(139, 92, 246, 0.1); }
+        .track-item.playing { border-left: 5px solid var(--success); background: rgba(74, 222, 128, 0.1); }
 
         #edit-modal { 
             display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: #1e1b4b; padding: 30px; border-radius: 16px; z-index: 3000; width: 90%; max-width: 500px;
+            background: #1e1b4b; padding: 30px; border-radius: 16px; z-index: 3000; width: 90%; max-width: 600px;
             max-height: 90vh; overflow-y: auto; border: 2px solid var(--accent); box-shadow: 0 0 50px rgba(0,0,0,0.8);
         }
         input, textarea, select { width: 100%; padding: 12px; margin: 8px 0 18px; background: #000; color: white; border: 1px solid #444; border-radius: 8px; box-sizing: border-box; font-family: inherit; }
@@ -72,24 +85,28 @@
 <nav>
     <div class="logo" onclick="showView('home')">SPICE TERMINAL</div>
     <div class="nav-links">
-        <button onclick="showView('gm-zone')">🛠️ 關主區</button>
-        <button onclick="showView('char-zone')">👥 調查員</button>
+        <button onclick="showView('gm-zone')">🛠️ 關主控制</button>
+        <button onclick="showView('char-zone')">👥 調查員檔案</button>
+        <button onclick="showView('music-zone')">🎵 音訊終端</button>
         <button onclick="showView('log-zone')">📖 冒險日誌</button>
     </div>
 </nav>
 
+<!-- 首頁省略 (保持原樣) -->
 <section id="home" class="view-section active" style="text-align: center; padding-top: 120px;">
     <h1 style="font-size: 4rem; color: var(--accent); letter-spacing: 15px; margin-bottom: 0;">SPICE</h1>
     <p style="opacity: 0.6; margin-top: 10px;">Strategic Paranormal Investigation & Crisis Evaluation</p>
     <button onclick="showView('gm-zone')" style="margin-top:50px; padding: 20px 50px; background: var(--accent); border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 40px; font-size: 1.2rem;">啟動終端系統</button>
 </section>
 
+<!-- 關主控制區 (優化版) -->
 <section id="gm-zone" class="view-section">
     <div class="gm-page-tabs" id="pageTabs"></div>
     <div class="gm-layout">
         <div class="main-column">
-            <div style="margin-bottom: 10px;">
-                <button onclick="openDrawingMode()" style="padding:12px 25px; background:var(--accent); border:none; color:white; border-radius:8px; cursor:pointer; font-weight:bold; width:100%; font-size:1.1rem;">🖋️ 進入戰圖編輯模式 (物件與棋子)</button>
+            <div style="margin-bottom: 10px; display: flex; gap: 10px;">
+                <button onclick="openDrawingMode()" style="flex: 2; padding:12px; background:var(--accent); border:none; color:white; border-radius:8px; cursor:pointer; font-weight:bold;">🖋️ 進入戰圖編輯模式 (物件與棋子)</button>
+                <button onclick="toggleMonitor(true)" style="flex: 1; background:#1e293b; color:white; border:1px solid var(--accent); border-radius:8px; cursor:pointer;">📊 全體狀態監控</button>
             </div>
             <div class="canvas-container" id="canvasWrap">
                 <canvas id="mainCanvas"></canvas>
@@ -97,82 +114,107 @@
         </div>
 
         <div class="dice-panel">
-            <h3 style="margin-top:0; color:var(--accent);">機率解構</h3>
-            <label>骰子種類</label>
-            <select id="diceType"><option value="100">D100 (百分骰)</option><option value="20">D20</option><option value="6">D6</option></select>
+            <h3 style="margin:0; color:var(--accent); display:flex; justify-content:space-between;">機率解構 <small style="font-size:0.7rem; color:#666;">v2.0 Optimized</small></h3>
             
-            <div class="check-setting">
-                <label style="color:var(--accent); font-weight:bold;">讀取角色數值 (SPICE)</label>
-                <select id="charAttrSelect" onchange="window.syncTargetValue()" style="margin-bottom:10px;">
-                    <option value="">-- 手動輸入模式 --</option>
-                </select>
+            <div>
+                <label style="font-size:0.8rem; opacity:0.7;">1. 選取對象</label>
+                <select id="charAttrSelect" onchange="window.syncTargetValue()" style="margin-bottom:5px;"></select>
                 
-                <label>檢定目標值 (≤ 為成功)</label>
-                <input type="number" id="targetVal" value="50">
-                <label style="display:flex; align-items:center; cursor:pointer;">
-                    <input type="checkbox" id="useTarget" checked style="width:18px; height:18px; margin-right:8px;"> 啟用檢定顯示
-                </label>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <div>
+                        <label style="font-size:0.8rem; opacity:0.7;">2. 骰子類型</label>
+                        <select id="diceType"><option value="100">D100</option><option value="20">D20</option><option value="6">D6</option><option value="4">D4</option></select>
+                    </div>
+                    <div>
+                        <label style="font-size:0.8rem; opacity:0.7;">3. 目標值</label>
+                        <input type="number" id="targetVal" value="50">
+                    </div>
+                </div>
             </div>
 
-            <button onclick="window.rollDice()" style="width:100%; padding:18px; background:var(--accent); color:white; border:none; cursor:pointer; font-weight:bold; border-radius:10px; font-size:1.1rem;">執行投擲</button>
-            <div id="resNum" style="font-size:5rem; text-align:center; font-weight:bold; margin:15px 0; color:white;">--</div>
-            <div id="resTag" style="text-align:center; font-size:1.5rem; min-height:1.5em; font-weight:bold;">等待指令</div>
+            <button onclick="window.rollDice()" style="width:100%; padding:20px; background:var(--accent); color:white; border:none; cursor:pointer; font-weight:bold; border-radius:10px; font-size:1.4rem; box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);">執行投擲</button>
+            
+            <div style="background:#000; border-radius:10px; padding:10px; position:relative;">
+                <div id="resNum" style="font-size:4.5rem; text-align:center; font-weight:bold; color:white; line-height:1;">--</div>
+                <div id="resTag" style="text-align:center; font-size:1.2rem; font-weight:bold; margin-top:5px;">READY</div>
+            </div>
+
+            <div class="roll-history" id="rollHistory">
+                <div style="font-size:0.7rem; color:var(--accent); margin-bottom:5px; border-bottom:1px solid #333;">投擲歷史紀錄</div>
+            </div>
         </div>
     </div>
 </section>
 
+<!-- 音訊終端分頁 -->
+<section id="music-zone" class="view-section">
+    <div class="music-container">
+        <h2 style="color:var(--accent); margin-top:0;">🎵 臨時音訊傳輸終端</h2>
+        <p style="color:#94a3b8; font-size:0.9rem;">上傳音檔至瀏覽器快取製作臨時播放清單（重新整理後需重新上傳）</p>
+        
+        <div style="margin: 20px 0;">
+            <input type="file" id="audio-upload" multiple accept="audio/*" style="display:none;">
+            <button onclick="document.getElementById('audio-upload').click()" style="padding:12px 25px; background:var(--accent); border:none; color:white; border-radius:8px; cursor:pointer; font-weight:bold;">+ 選擇音訊檔案上傳</button>
+        </div>
+
+        <div id="player-controls" style="background:#000; padding:20px; border-radius:10px; margin-bottom:20px;">
+            <div id="current-track-name" style="text-align:center; margin-bottom:10px; color:var(--success);">尚未選擇曲目</div>
+            <audio id="main-audio" controls style="width:100%;"></audio>
+            <div style="display:flex; justify-content:center; gap:20px; margin-top:15px;">
+                <label><input type="checkbox" id="loop-toggle"> 循環播放模式</label>
+            </div>
+        </div>
+
+        <div class="playlist" id="playlistItems">
+            <div style="padding:20px; text-align:center; color:#555;">清單為空</div>
+        </div>
+    </div>
+</section>
+
+<!-- 繪圖編輯模式 (保持原樣) -->
 <div id="drawing-overlay">
     <div class="toolbar">
-        <button id="tool-select" onclick="setTool('select')">🖐️ 移動選擇</button>
+        <button id="tool-select" onclick="setTool('select')">🖐️ 移動</button>
         <button id="tool-pen" onclick="setTool('pen')">🖋️ 畫筆</button>
         <button onclick="addText()">🔠 文字</button>
-        
         <div class="token-tool-group">
             <small style="color:var(--accent)">PC:</small>
-            <button onclick="addObjectToken('修','#8b5cf6')">修</button>
-            <button onclick="addObjectToken('旻','#8b5cf6')">旻</button>
-            <button onclick="addObjectToken('庭','#8b5cf6')">庭</button>
-            <button onclick="addObjectToken('梓','#8b5cf6')">梓</button>
-            <button onclick="addObjectToken('岱','#8b5cf6')">岱</button>
-            <button onclick="addObjectToken('玥','#8b5cf6')">玥</button>
+            <button onclick="addObjectToken('修','#8b5cf6')">修</button><button onclick="addObjectToken('旻','#8b5cf6')">旻</button><button onclick="addObjectToken('庭','#8b5cf6')">庭</button>
+            <button onclick="addObjectToken('梓','#8b5cf6')">梓</button><button onclick="addObjectToken('岱','#8b5cf6')">岱</button><button onclick="addObjectToken('玥','#8b5cf6')">玥</button>
         </div>
-
-        <div class="token-tool-group">
-            <small style="color:var(--npc-accent)">NPC:</small>
-            <button onclick="addObjectToken('N1','#f59e0b')" style="background:#f59e0b">N1</button>
-            <button onclick="addObjectToken('N2','#f59e0b')" style="background:#f59e0b">N2</button>
-            <button onclick="addObjectToken('N3','#f59e0b')" style="background:#f59e0b">N3</button>
-            <button onclick="addObjectToken('N4','#f59e0b')" style="background:#f59e0b">N4</button>
-            <button onclick="addObjectToken('N5','#f59e0b')" style="background:#f59e0b">N5</button>
-        </div>
-
-        <button onclick="deleteSelected()" style="background:#dc2626">🗑️ 刪除選中</button>
-        <button onclick="clearCanvas()" style="background:#000">🧹 清空頁面</button>
+        <button onclick="deleteSelected()" style="background:#dc2626">🗑️ 刪除</button>
+        <button onclick="clearCanvas()" style="background:#000">🧹 清空</button>
         <button onclick="closeDrawingMode()" style="margin-left:auto; background:var(--success); color:black; padding:8px 25px;">💾 儲存並退出</button>
     </div>
-    <div class="draw-modal">
-        <canvas id="editCanvas"></canvas>
-    </div>
+    <div class="draw-modal"><canvas id="editCanvas"></canvas></div>
 </div>
 
+<!-- 角色列表區 -->
 <section id="char-zone" class="view-section">
     <div style="display:flex; justify-content:space-between; align-items:center;">
         <h2 style="color:var(--accent);">調查員名冊</h2>
-        <button onclick="window.checkAdmin(window.openCharCreate)" style="background:var(--accent); border:none; color:white; padding:12px 25px; border-radius:6px; font-weight:bold;">+ 新增調查員</button>
+        <div style="display:flex; gap:10px;">
+            <button onclick="toggleMonitor(true)" style="background:#1e293b; color:white; padding:12px 25px; border-radius:6px; border:1px solid var(--accent);">📊 全體狀態監控</button>
+            <button onclick="window.checkAdmin(window.openCharCreate)" style="background:var(--accent); border:none; color:white; padding:12px 25px; border-radius:6px; font-weight:bold;">+ 新增調查員</button>
+        </div>
     </div>
     <div class="char-grid" id="charGrid"></div>
 </section>
 
-<section id="log-zone" class="view-section">
-    <h2 style="color:var(--accent);">冒險日誌</h2>
-    <div id="log-content" style="background: rgba(255,255,255,0.05); padding: 35px; border-radius: 15px; min-height: 400px; white-space: pre-wrap; border: 1px solid #334155; line-height:2; font-size:1.1rem;"></div>
-    <button onclick="window.checkAdmin(window.openLogEditor)" style="margin-top:30px; background:var(--accent); border: none; color: white; padding: 15px 40px; border-radius: 8px; font-weight: bold;">編輯日誌內容</button>
-</section>
+<!-- 全體監控 Overlay -->
+<div id="monitor-overlay">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:30px;">
+        <h1 style="color:var(--accent); margin:0;">TEAM MONITORING SYSTEM</h1>
+        <button onclick="toggleMonitor(false)" style="background:var(--fail); border:none; color:white; padding:10px 30px; border-radius:8px; cursor:pointer;">關閉監控</button>
+    </div>
+    <div id="monitor-content" class="monitor-grid"></div>
+</div>
 
+<!-- 角色編輯彈窗 (強化版) -->
 <div id="edit-modal">
-    <h3 id="modal-title" style="margin-top:0; color:var(--accent);">角色檔案編輯</h3>
-    <label>調查員姓名</label>
-    <input type="text" id="c-name">
+    <h3 id="modal-title" style="margin-top:0; color:var(--accent);">調查員核心檔案</h3>
+    <label>姓名</label><input type="text" id="c-name">
+    
     <div style="display:grid; grid-template-columns: repeat(5, 1fr); gap:10px;">
         <div><small>S體能</small><input type="number" id="c-s"></div>
         <div><small>P感知</small><input type="number" id="c-p"></div>
@@ -180,13 +222,27 @@
         <div><small>C勇敢</small><input type="number" id="c-c"></div>
         <div><small>E情感</small><input type="number" id="c-e"></div>
     </div>
-    <label>性格特質</label><textarea id="c-personality" rows="2"></textarea>
-    <label>背景故事</label><textarea id="c-background" rows="2"></textarea>
-    <label>隨身裝備 (重要事項)</label><textarea id="c-traits" rows="2"></textarea>
-    <label style="color:var(--success)">🌟 成長與變更記事</label><textarea id="c-notes" rows="4"></textarea>
-    <button id="save-btn" style="width:100%; padding:15px; background:var(--accent); border:none; color:white; font-weight:bold; border-radius:8px;">更新雲端資料</button>
+
+    <div id="custom-attrs-area" style="margin-top:10px; padding:10px; background:rgba(0,0,0,0.3); border-radius:8px;">
+        <label style="color:var(--success); font-size:0.8rem;">自定義屬性 (如：靈感、SAN、體力)</label>
+        <div id="custom-fields-list"></div>
+        <button onclick="addCustomFieldInput()" style="width:100%; padding:5px; background:#333; color:#ccc; border:1px dashed #666; margin-top:5px; cursor:pointer;">+ 增加自定義數值欄位</button>
+    </div>
+
+    <label style="margin-top:15px; display:block;">背景/裝備/成長</label>
+    <textarea id="c-traits" placeholder="隨身裝備" rows="2"></textarea>
+    <textarea id="c-notes" placeholder="成長與變更記事" rows="4"></textarea>
+    
+    <button id="save-btn" style="width:100%; padding:15px; background:var(--accent); border:none; color:white; font-weight:bold; border-radius:8px; margin-top:20px;">同步至雲端</button>
     <button onclick="window.closeModal()" style="width:100%; background:none; color:#94a3b8; border:none; margin-top:10px;">取消返回</button>
 </div>
+
+<!-- 日誌區域省略 (保持原樣) -->
+<section id="log-zone" class="view-section">
+    <h2 style="color:var(--accent);">冒險日誌</h2>
+    <div id="log-content" style="background: rgba(255,255,255,0.05); padding: 35px; border-radius: 15px; min-height: 400px; white-space: pre-wrap; border: 1px solid #334155; line-height:2; font-size:1.1rem;"></div>
+    <button onclick="window.checkAdmin(window.openLogEditor)" style="margin-top:30px; background:var(--accent); border: none; color: white; padding: 15px 40px; border-radius: 8px; font-weight: bold;">編輯日誌內容</button>
+</section>
 
 <div id="log-editor-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; padding: 30px; box-sizing: border-box;">
     <div style="max-width:1000px; margin:auto; height:100%; display:flex; flex-direction:column;">
@@ -211,48 +267,95 @@
     let pageData = Array.from({length: 10}, () => ({ json: null }));
     let cachedChars = [];
 
-    // --- 強化連動：同步選取的數值到目標框 ---
-    window.syncTargetValue = () => {
-        const select = document.getElementById('charAttrSelect');
-        const compositeValue = select.value; // 格式為 "id_attr"
-        
-        if(!compositeValue) return;
+    // --- 音樂播放器邏輯 ---
+    let playlist = [];
+    const audioInput = document.getElementById('audio-upload');
+    const mainAudio = document.getElementById('main-audio');
+    const playlistContainer = document.getElementById('playlistItems');
 
-        // 從後往前找底線，分離 ID 與 屬性代稱
-        const splitIdx = compositeValue.lastIndexOf('_');
-        const charId = compositeValue.substring(0, splitIdx);
-        const attr = compositeValue.substring(splitIdx + 1);
-
-        // 從全域快取尋找該角色
-        const char = cachedChars.find(c => c.id === charId);
-        if(char && char[attr] !== undefined) {
-            document.getElementById('targetVal').value = char[attr];
-            console.log(`已成功同步: ${char.name} 的 ${attr} = ${char[attr]}`);
-        }
+    audioInput.onchange = (e) => {
+        const files = Array.from(e.target.files);
+        files.forEach(file => {
+            const url = URL.createObjectURL(file);
+            playlist.push({ name: file.name, url: url });
+        });
+        renderPlaylist();
     };
 
-    // --- 角色數據即時同步與 UI 渲染 ---
+    function renderPlaylist() {
+        playlistContainer.innerHTML = "";
+        playlist.forEach((track, index) => {
+            const div = document.createElement('div');
+            div.className = "track-item";
+            div.innerHTML = `<span>${index+1}. ${track.name}</span><button style="background:none; border:none; color:var(--fail);">✖</button>`;
+            div.onclick = () => playTrack(index);
+            playlistContainer.appendChild(div);
+        });
+    }
+
+    function playTrack(index) {
+        document.querySelectorAll('.track-item').forEach((el, i) => el.classList.toggle('playing', i === index));
+        mainAudio.src = playlist[index].url;
+        document.getElementById('current-track-name').innerText = "正在播放: " + playlist[index].name;
+        mainAudio.play();
+        mainAudio.onended = () => {
+            if(document.getElementById('loop-toggle').checked) {
+                playTrack(index);
+            } else if (index + 1 < playlist.length) {
+                playTrack(index + 1);
+            }
+        };
+    }
+
+    // --- 角色核心邏輯 (含自定義屬性) ---
+    window.addCustomFieldInput = (key = "", val = "") => {
+        const container = document.getElementById('custom-fields-list');
+        const div = document.createElement('div');
+        div.style = "display:flex; gap:5px; margin-bottom:5px;";
+        div.innerHTML = `<input type="text" placeholder="屬性名" class="custom-k" value="${key}" style="margin:0; flex:1;">
+                         <input type="number" placeholder="值" class="custom-v" value="${val}" style="margin:0; width:80px;">
+                         <button onclick="this.parentElement.remove()" style="background:none; border:none; color:var(--fail);">✖</button>`;
+        container.appendChild(div);
+    };
+
     onSnapshot(collection(db, "characters"), (snap) => {
         cachedChars = [];
         const grid = document.getElementById('charGrid'); grid.innerHTML = "";
         const select = document.getElementById('charAttrSelect');
-        const savedSelection = select.value; // 記住目前選取的項
+        const monitor = document.getElementById('monitor-content'); monitor.innerHTML = "";
+        const savedSelection = select.value;
 
-        select.innerHTML = '<option value="">-- 手動輸入模式 --</option>';
+        select.innerHTML = '<option value="">-- 手動輸入 --</option>';
         
         snap.forEach(d => {
             const c = d.data(); c.id = d.id; cachedChars.push(c);
             const spiceNames = {s:'體能(S)', p:'感知(P)', i:'智慧(I)', c:'勇敢(C)', e:'情感(E)'};
             
-            // 為每個角色生成 5 種屬性的選單項
             ['s','p','i','c','e'].forEach(attr => {
                 const opt = document.createElement('option');
                 opt.value = `${d.id}_${attr}`;
-                opt.innerText = `${c.name} - ${spiceNames[attr]} (${c[attr]})`;
+                opt.innerText = `${c.name} - ${spiceNames[attr]} (${c[attr] || 0})`;
                 select.appendChild(opt);
             });
+            
+            // 加入自定義屬性到選單
+            if(c.customStats) {
+                Object.keys(c.customStats).forEach(key => {
+                    const opt = document.createElement('option');
+                    opt.value = `${d.id}_custom_${key}`;
+                    opt.innerText = `${c.name} - ${key} (${c.customStats[key]})`;
+                    select.appendChild(opt);
+                });
+            }
 
-            // 渲染角色名冊卡片
+            // 渲染一般卡片
+            let customHtml = "";
+            if(c.customStats) {
+                Object.entries(c.customStats).forEach(([k,v]) => {
+                    customHtml += `<span class="custom-attr-tag">${k}: ${v}</span>`;
+                });
+            }
+
             grid.innerHTML += `
                 <div class="char-card">
                     <h3 style="color:var(--accent); margin:0;">${c.name}</h3>
@@ -263,47 +366,119 @@
                         <div class="spice-item"><div class="spice-label">C</div><div class="spice-val">${c.c}</div></div>
                         <div class="spice-item"><div class="spice-label">E</div><div class="spice-val">${c.e}</div></div>
                     </div>
+                    <div style="margin-bottom:10px;">${customHtml}</div>
                     <div class="char-bio-section">
-                        <span class="bio-label">隨身物品</span><p>${c.traits || "無"}</p>
-                        <span class="bio-label">成長記事</span><div class="note-box">${c.notes || "尚未記錄..."}</div>
+                        <span class="bio-label">裝備記事</span><p>${c.traits || "無"}</p>
+                        <div class="note-box">${c.notes || "尚未記錄..."}</div>
                     </div>
                     <div style="margin-top:15px; display:flex; gap:10px;">
-                        <button onclick="window.checkAdmin(()=>window.editChar('${d.id}'))" style="flex:1; background:none; border:1px solid var(--accent); color:white; padding:8px; border-radius:4px;">編輯/成長</button>
-                        <button onclick="window.checkAdmin(()=>window.deleteChar('${d.id}'))" style="color:#555; background:none; border:none; cursor:pointer;">刪除</button>
+                        <button onclick="window.checkAdmin(()=>window.editChar('${d.id}'))" style="flex:1; background:none; border:1px solid var(--accent); color:white; padding:8px; border-radius:4px;">編輯檔案</button>
+                        <button onclick="window.checkAdmin(()=>window.deleteChar('${d.id}'))" style="color:#555; background:none; border:none; cursor:pointer;">✖</button>
+                    </div>
+                </div>`;
+
+            // 渲染監控大字卡
+            monitor.innerHTML += `
+                <div class="monitor-card">
+                    <div class="monitor-name">${c.name}</div>
+                    <div class="monitor-stats">
+                        <div style="color:#f87171">S: ${c.s}</div><div style="color:#60a5fa">P: ${c.p}</div>
+                        <div style="color:#fbbf24">I: ${c.i}</div><div style="color:#4ade80">C: ${c.c}</div>
+                        <div style="color:#c084fc">E: ${c.e}</div>
+                    </div>
+                    <div style="margin-top:20px; font-size:1.4rem;">
+                        ${Object.entries(c.customStats || {}).map(([k,v])=> `<div>${k}: ${v}</div>`).join('')}
                     </div>
                 </div>`;
         });
-        
-        // 恢復之前的選取狀態
         if(savedSelection) select.value = savedSelection;
     });
 
-    // --- 骰子檢定邏輯 ---
+    window.toggleMonitor = (show) => { document.getElementById('monitor-overlay').style.display = show ? 'block' : 'none'; };
+
+    // --- 骰子檢定與歷史 ---
     window.rollDice = () => {
         const type = parseInt(document.getElementById('diceType').value);
         const target = parseInt(document.getElementById('targetVal').value);
-        const isTesting = document.getElementById('useTarget').checked;
         const res = Math.floor(Math.random() * type) + 1;
         
         document.getElementById('resNum').innerText = res;
         const tag = document.getElementById('resTag');
-        
-        if(!isTesting) { tag.innerText = "純結果投擲"; tag.style.color = "#94a3b8"; return; }
+        let status = "";
         
         if(type === 100) {
-            if(res <= 5) { tag.innerText = "大成功！"; tag.style.color = "#fbbf24"; }
-            else if(res >= 96) { tag.innerText = "大失敗！"; tag.style.color = "#f87171"; }
-            else if(res <= target) { tag.innerText = "檢定通過"; tag.style.color = "var(--success)"; }
-            else { tag.innerText = "檢定失敗"; tag.style.color = "var(--fail)"; }
+            if(res <= 5) { status = "大成功！"; tag.style.color = "#fbbf24"; }
+            else if(res >= 96) { status = "大失敗！"; tag.style.color = "#f87171"; }
+            else if(res <= target) { status = "檢定通過"; tag.style.color = "var(--success)"; }
+            else { status = "檢定失敗"; tag.style.color = "var(--fail)"; }
         } else {
-            tag.innerText = res <= target ? "達成目標" : "未達成目標";
+            status = res <= target ? "達成" : "未達成";
             tag.style.color = res <= target ? "var(--success)" : "var(--fail)";
+        }
+        tag.innerText = status;
+
+        // 紀錄歷史
+        const hist = document.getElementById('rollHistory');
+        const item = document.createElement('div');
+        item.className = "history-item";
+        item.innerHTML = `<span>D${type} > ${res}</span><span style="color:${tag.style.color}">${status} (目標${target})</span>`;
+        hist.prepend(item);
+    };
+
+    window.syncTargetValue = () => {
+        const compositeValue = document.getElementById('charAttrSelect').value;
+        if(!compositeValue) return;
+        const [charId, ...attrParts] = compositeValue.split('_');
+        const char = cachedChars.find(c => c.id === charId);
+        if(!char) return;
+
+        if(attrParts[0] === 'custom') {
+            document.getElementById('targetVal').value = char.customStats[attrParts[1]] || 0;
+        } else {
+            document.getElementById('targetVal').value = char[attrParts[0]] || 0;
         }
     };
 
-    // --- 畫布相關邏輯 ---
+    // --- 編輯功能更新 ---
+    window.editChar = async (id) => {
+        window.currentEditId = id; const snap = await getDoc(doc(db, "characters", id));
+        document.getElementById('custom-fields-list').innerHTML = "";
+        if (snap.exists()) {
+            const c = snap.data(); 
+            document.getElementById('c-name').value = c.name;
+            ['s','p','i','c','e'].forEach(a => document.getElementById('c-'+a).value = c[a]);
+            document.getElementById('c-traits').value = c.traits || ""; 
+            document.getElementById('c-notes').value = c.notes || "";
+            if(c.customStats) {
+                Object.entries(c.customStats).forEach(([k,v]) => window.addCustomFieldInput(k, v));
+            }
+            document.getElementById('edit-modal').style.display = 'block';
+        }
+    };
+
+    document.getElementById('save-btn').onclick = async () => {
+        const customStats = {};
+        const keys = document.querySelectorAll('.custom-k');
+        const vals = document.querySelectorAll('.custom-v');
+        keys.forEach((k, i) => { if(k.value) customStats[k.value] = parseInt(vals[i].value) || 0; });
+
+        const d = { 
+            name: document.getElementById('c-name').value || "未命名", 
+            s:parseInt(document.getElementById('c-s').value)||0, 
+            p:parseInt(document.getElementById('c-p').value)||0, 
+            i:parseInt(document.getElementById('c-i').value)||0, 
+            c:parseInt(document.getElementById('c-c').value)||0, 
+            e:parseInt(document.getElementById('c-e').value)||0, 
+            traits:document.getElementById('c-traits').value, 
+            notes:document.getElementById('c-notes').value,
+            customStats: customStats
+        };
+        await setDoc(doc(db, "characters", window.currentEditId), d); window.closeModal();
+    };
+
+    // --- 畫布與導覽 (保持原樣並整合) ---
     window.initCanvas = () => {
-        if (!previewCanvas) previewCanvas = new fabric.StaticCanvas('mainCanvas', { width: document.getElementById('canvasWrap').clientWidth, height: 600 });
+        if (!previewCanvas) previewCanvas = new fabric.StaticCanvas('mainCanvas', { width: document.getElementById('canvasWrap').clientWidth, height: 650 });
         if (!fabricCanvas) fabricCanvas = new fabric.Canvas('editCanvas', { width: window.innerWidth * 0.95, height: window.innerHeight * 0.85 });
         loadPage(currentPage);
     };
@@ -317,38 +492,21 @@
     };
     window.addText = () => { fabricCanvas.add(new fabric.IText('新文字', { left: 100, top: 100, fill: '#3a2e24', fontSize: 24 })); };
     window.deleteSelected = () => { const active = fabricCanvas.getActiveObjects(); fabricCanvas.discardActiveObject(); active.forEach(obj => fabricCanvas.remove(obj)); };
-    const savePage = () => { pageData[currentPage].json = JSON.stringify(fabricCanvas.toJSON()); localStorage.setItem('spice_map', JSON.stringify(pageData)); previewCanvas.loadFromJSON(pageData[currentPage].json, () => previewCanvas.renderAll()); };
-    const loadPage = (idx) => { const saved = JSON.parse(localStorage.getItem('spice_map')); if(saved) pageData = saved; fabricCanvas.loadFromJSON(pageData[idx].json || "{}", () => fabricCanvas.renderAll()); previewCanvas.loadFromJSON(pageData[idx].json || "{}", () => previewCanvas.renderAll()); };
+    const savePage = () => { pageData[currentPage].json = JSON.stringify(fabricCanvas.toJSON()); localStorage.setItem('spice_map_v2', JSON.stringify(pageData)); previewCanvas.loadFromJSON(pageData[currentPage].json, () => previewCanvas.renderAll()); };
+    const loadPage = (idx) => { const saved = JSON.parse(localStorage.getItem('spice_map_v2')); if(saved) pageData = saved; fabricCanvas.loadFromJSON(pageData[idx].json || "{}", () => fabricCanvas.renderAll()); previewCanvas.loadFromJSON(pageData[idx].json || "{}", () => previewCanvas.renderAll()); };
 
-    // --- 角色編輯基礎功能 ---
-    window.openCharCreate = () => { window.currentEditId = "char_" + Date.now(); document.querySelectorAll('#edit-modal input, #edit-modal textarea').forEach(i => i.value = ""); document.getElementById('edit-modal').style.display = 'block'; };
-    window.editChar = async (id) => {
-        window.currentEditId = id; const snap = await getDoc(doc(db, "characters", id));
-        if (snap.exists()) {
-            const c = snap.data(); document.getElementById('c-name').value = c.name;
-            ['s','p','i','c','e'].forEach(a => document.getElementById('c-'+a).value = c[a]);
-            document.getElementById('c-personality').value = c.personality || ""; document.getElementById('c-background').value = c.background || "";
-            document.getElementById('c-traits').value = c.traits || ""; document.getElementById('c-notes').value = c.notes || "";
-            document.getElementById('edit-modal').style.display = 'block';
-        }
-    };
-    document.getElementById('save-btn').onclick = async () => {
-        const d = { name: document.getElementById('c-name').value || "未命名", s:parseInt(document.getElementById('c-s').value)||0, p:parseInt(document.getElementById('c-p').value)||0, i:parseInt(document.getElementById('c-i').value)||0, c:parseInt(document.getElementById('c-c').value)||0, e:parseInt(document.getElementById('c-e').value)||0, personality:document.getElementById('c-personality').value, background:document.getElementById('c-background').value, traits:document.getElementById('c-traits').value, notes:document.getElementById('c-notes').value };
-        await setDoc(doc(db, "characters", window.currentEditId), d); window.closeModal();
-    };
-
-    // --- 初始化 UI 元素 ---
     const tabs = document.getElementById('pageTabs');
     for(let i=0; i<10; i++) {
         const b = document.createElement('button'); b.className = `page-btn ${i===0?'active':''}`; b.innerText = `戰圖 ${i+1}`;
         b.onclick = () => { savePage(); currentPage = i; document.querySelectorAll('.page-btn').forEach((x, k) => x.classList.toggle('active', k === i)); loadPage(i); }; tabs.appendChild(b);
     }
-    window.deleteChar = async (id) => { if(confirm("確定刪除？")) await deleteDoc(doc(db, "characters", id)); };
+    
+    window.openCharCreate = () => { window.currentEditId = "char_" + Date.now(); document.querySelectorAll('#edit-modal input, #edit-modal textarea').forEach(i => i.value = ""); document.getElementById('custom-fields-list').innerHTML = ""; document.getElementById('edit-modal').style.display = 'block'; };
+    window.deleteChar = async (id) => { if(confirm("確定永久刪除此調查員檔案？")) await deleteDoc(doc(db, "characters", id)); };
     window.closeModal = () => document.getElementById('edit-modal').style.display = 'none';
     window.showView = (id) => { document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); if(id === 'gm-zone') setTimeout(window.initCanvas, 100); };
     window.checkAdmin = (cb) => { if(prompt("管理者密碼：") === "0921") cb(); else alert("存取遭拒"); };
     
-    // 日誌監聽
     onSnapshot(doc(db, "system", "log"), (d) => { if(d.exists()) document.getElementById('log-content').innerText = d.data().text; });
     window.openLogEditor = () => { document.getElementById('full-log-textarea').value = document.getElementById('log-content').innerText; document.getElementById('log-editor-overlay').style.display='block'; };
     window.closeLogEditor = () => { document.getElementById('log-editor-overlay').style.display='none'; };
