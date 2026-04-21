@@ -16,6 +16,7 @@
             --no-text: #ffff00;    /* 座號黃色文字 */
             --sr-bg: #1b4d2e;      /* SR 深綠色 */
             --ssr-bg: #b8860b;     /* SSR 深金色 */
+            --x-bg: #b0b0b0;       /* 新增：X卡 淡灰色背景 */
         }
 
         body {
@@ -74,6 +75,9 @@
         .col-sr { background-color: var(--sr-bg) !important; }
         .col-ssr { background-color: var(--ssr-bg) !important; color: #fff; text-shadow: 1px 1px 2px #000; }
         
+        /* 新增：X卡樣式 (淡灰色背景，黑色粗體字) */
+        .col-x { background-color: var(--x-bg) !important; color: #000 !important; font-weight: bold; }
+
         /* UR 強化版霓虹發光動畫 */
         .col-ur {
             animation: diamond-neon-glow 5s infinite alternate;
@@ -84,22 +88,22 @@
 
         @keyframes diamond-neon-glow {
             0% { 
-                background-color: #ffffff; /* 冷銀白 */
+                background-color: #ffffff; 
                 box-shadow: 0 0 15px #fff, inset 0 0 8px #fff;
                 filter: drop-shadow(0 0 4px #fff);
             }
             33% { 
-                background-color: #ffb7c5; /* 淺玫瑰金 */
+                background-color: #ffb7c5; 
                 box-shadow: 0 0 25px #ff69b4, inset 0 0 12px #ffb6c1;
                 filter: drop-shadow(0 0 12px #ff1493);
             }
             66% { 
-                background-color: #e0b0ff; /* 珍珠粉紫 */
+                background-color: #e0b0ff; 
                 box-shadow: 0 0 25px #9400d3, inset 0 0 12px #da70d6;
                 filter: drop-shadow(0 0 12px #8a2be2);
             }
             100% { 
-                background-color: #a2e4f0; /* 極淺冰藍 */
+                background-color: #a2e4f0; 
                 box-shadow: 0 0 25px #00bfff, inset 0 0 12px #87cefa;
                 filter: drop-shadow(0 0 12px #1e90ff);
             }
@@ -172,11 +176,13 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
+        // 修改區塊：在這裡加入 "X卡"
         const cardNames = [
             "12 號R卡", "11 號R卡", "10 號R卡",
             "9  號SR卡", "8  號SR卡", "7  號SR卡",
             "6  號SSR卡", "5  號SSR卡", "4  號SSR卡",
-            "3  號UR卡", "2  號UR卡", "1  號UR卡"
+            "3  號UR卡", "2  號UR卡", "1  號UR卡",
+            "X卡"  // <--- 新增的違規紀錄卡
         ];
         const extraColumn = "用過UR次數";
 
@@ -184,6 +190,7 @@
         let currentDBData = {}; 
 
         function getLevelClass(name) {
+            if (name === "X卡") return "col-x"; // <--- 新增判斷 X卡
             if (name.includes("UR")) return "col-ur";
             if (name.includes("SSR")) return "col-ssr";
             if (name.includes("SR")) return "col-sr";
