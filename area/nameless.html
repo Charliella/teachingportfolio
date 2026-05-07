@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>文字雲留言系統</title>
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+        // 👇👇👇 請把這裡替換成你剛剛在「步驟5」複製的代碼 👇👇👇
+        const firebaseConfig = {
+    apiKey: "AIzaSyAMWydxNTMsPxENrECTo6VeyS7YIwbLjZU",
+    authDomain: "nameless-16961.firebaseapp.com",
+    databaseURL: "https://nameless-16961-default-rtdb.firebaseio.com",
+    projectId: "nameless-16961",
+    storageBucket: "nameless-16961.firebasestorage.app",
+    messagingSenderId: "49208226272",
+    appId: "1:49208226272:web:da2c190a9d97f003f8fb85",
+    measurementId: "G-QR1SDBTBVN"
+  };
+        // 👆👆👆 替換到這裡 👆👆👆
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // 掛載到全域變數
+        window.firebaseAuth = auth;
+        window.firebaseDb = db;
+        window.firebaseCollection = collection;
+        window.firebaseAddDoc = addDoc;
+        window.firebaseOnSnapshot = onSnapshot;
+        window.firebaseQuery = query;
+        window.firebaseOrderBy = orderBy;
+        window.firebaseServerTimestamp = serverTimestamp;
+        window.firebaseDoc = doc;
+        window.firebaseSetDoc = setDoc;
+        window.firebaseGetDoc = getDoc;
+        
+        window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+        window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
+        window.onAuthStateChanged = onAuthStateChanged;
+        window.signOut = signOut;
+    </script>
+    <style>
+        :root {
+            --neon-green: #00ff41; --neon-orange: #f39c12; --neon-red: #ff003c;
+            --neon-blue: #00d2ff; --neon-purple: #bc13fe; --neon-pink: #ff007f;
+            --bg-dark: #0a0a0b;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        html, body { 
+            height: 100dvh; width: 100vw; margin: 0; padding: 0; 
+            overflow: hidden; background-color: var(--bg-dark);
+            font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; color: #fff;
+        }
+
+        /* 登入視窗 */
+        .overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 10000; 
+            display: flex; justify-content: center; align-items: center; padding: 20px; text-align: center;
+        }
+        .key { background: #222; border: 1px solid #666; color: #fff; cursor: pointer; border-radius: 12px; font-weight: bold; }
+        .key:active { background: #444; }
+        .key.action { background: var(--neon-orange); color: #000; }
+        
+        .toggle-text { color: var(--neon-blue); cursor: pointer; text-decoration: underline; margin-top: 15px; font-size: 14px; }
+
+        /* 主佈局 */
+        .app-wrapper {
+            display: flex; flex-direction: column;
+            height: 100dvh; display: none;
+        }
+
+        .header {
+            background: #111; border-bottom: 2px solid var(--neon-blue);
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 20px; flex-shrink: 0;
+        }
+        .tabs { display: flex; gap: 10px; }
+        .tab-btn {
+            background: transparent; color: #888; border: 1px solid #444;
+            padding: 8px 15px; border-radius: 20px; cursor: pointer; font-size: 14px;
+            transition: all 0.3s;
+        }
+        .tab-btn.active {
+            background: rgba(0, 210, 255, 0.1); color: var(--neon-blue);
+            border-color: var(--neon-blue); box-shadow: 0 0 10px rgba(0, 210, 255, 0.5);
+        }
+        .user-info { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+        .logout-btn { background: var(--neon-red); color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
+
+        /* 文字雲展示區 */
+        .cloud-canvas {
+            flex-grow: 1; position: relative; background: #050505;
+            overflow: hidden;
+            background-image: radial-gradient(circle, #1a1a1f 1px, transparent 1px);
+            background-size: 30px 30px;
+        }
+
+        .cloud-word {
+            position: absolute; padding: 10px 15px; border-radius: 20px;
+            background: rgba(10, 10, 10, 0.8); backdrop-filter: blur(5px);
+            white-space: nowrap; cursor: default; user-select: none;
+            animation: floatAnim 6s ease-in-out infinite alternate;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);
+            transition: transform 0.2s;
+        }
+        .cloud-word:hover { transform: scale(1.2); z-index: 100; border-color: #fff; }
+        
+        .word-author { font-size: 0.7em; opacity: 0.8; margin-bottom: 2px; }
+        .word-text { font-weight: bold; text-shadow: 0 0 5px currentColor; }
+
+        @keyframes floatAnim {
+            0% { transform: translateY(0px) translateX(0px); }
+            100% { transform: translateY(-15px) translateX(10px); }
+        }
+
+        /* 底部輸入區 */
+        .input-area {
+            background: #111; border-top: 1px solid #333;
+            display: flex; align-items: center; padding: 15px 20px; gap: 10px; flex-shrink: 0;
+        }
+        .input-box {
+            background: #222; color: #fff; border: 1px solid #555;
+            padding: 12px; border-radius: 10px; font-size: 16px; outline: none; width: 100%;
+        }
+        .input-box:focus { border-color: var(--neon-blue); }
+        #msgInput { flex-grow: 1; }
+        .send-btn {
+            background: var(--neon-orange); color: #000; border: none;
+            padding: 12px 25px; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; white-space: nowrap;
+        }
+
+        @media (max-width: 600px) {
+            .header { flex-direction: column; gap: 15px; align-items: flex-start; }
+            .tabs { width: 100%; overflow-x: auto; padding-bottom: 5px; }
+            .user-info { width: 100%; justify-content: space-between; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- 登入/註冊畫面 -->
+<div id="loginOverlay" class="overlay">
+    <div style="max-width: 400px; text-align: center; width: 100%;">
+        <h1 id="authTitle" style="font-size: 32px; color: var(--neon-orange); margin-bottom: 20px;">學生登入</h1>
+        
+        <input type="text" id="regNameInput" placeholder="你的真實姓名" class="input-box" style="margin-bottom: 15px; display: none;">
+        <input type="email" id="emailInput" placeholder="電子郵件" class="input-box" style="margin-bottom: 15px;">
+        <input type="password" id="passwordInput" placeholder="密碼 (至少6碼)" class="input-box" style="margin-bottom: 20px;">
+        
+        <button class="key action" id="authBtn" style="padding: 12px; font-size: 18px; width: 100%;" onclick="handleAuth()">登入</button>
+        <div class="toggle-text" onclick="toggleAuthMode()" id="toggleModeText">沒有帳號？點此註冊</div>
+        <div id="loginMessage" style="color: var(--neon-red); font-size: 14px; margin-top: 10px;"></div>
+    </div>
+</div>
+
+<!-- 系統主畫面 -->
+<div class="app-wrapper" id="appWrapper">
+    <div class="header">
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchMode(1)" id="tab1">1. 公開留言</button>
+            <button class="tab-btn" onclick="switchMode(2)" id="tab2">2. 半匿名留言</button>
+            <button class="tab-btn" onclick="switchMode(3)" id="tab3">3. 完全匿名留言</button>
+        </div>
+        <div class="user-info">
+            <span id="displayEmail" style="color:var(--neon-green);"></span>
+            <span id="adminBadge" style="display:none; background:var(--neon-red); color:white; padding:2px 6px; border-radius:5px;">教師</span>
+            <button class="logout-btn" onclick="logout()">登出</button>
+        </div>
+    </div>
+
+    <!-- 文字雲畫布 -->
+    <div class="cloud-canvas" id="cloudCanvas"></div>
+
+    <!-- 輸入區 -->
+    <div class="input-area">
+        <input type="text" id="msgInput" class="input-box" placeholder="在這裡輸入想說的話..." onkeypress="handleEnter(event)">
+        <button class="send-btn" onclick="sendMessage()">發送</button>
+    </div>
+</div>
+
+<script>
+    // ==========================================
+    // 指定教師 (管理者) 帳號
+    // ==========================================
+    const ADMIN_EMAIL = "a776663@gmail.com"; 
+
+    let currentUser = null;
+    let currentUserName = "無名氏"; // 記錄從資料庫抓出來的名字
+    let isAdmin = false;
+    let currentMode = 1;
+    let unsubscribeSnapshot = null;
+    let isRegisterMode = false; // 判斷目前是登入還是註冊
+
+    const neonColors = ["var(--neon-green)", "var(--neon-orange)", "var(--neon-blue)", "var(--neon-purple)", "var(--neon-pink)", "#fff"];
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        // 監聽登入狀態
+        window.onAuthStateChanged(window.firebaseAuth, async (user) => {
+            if (user) {
+                currentUser = user;
+                isAdmin = (user.email === ADMIN_EMAIL);
+                
+                // 去資料庫抓使用者的「姓名」
+                try {
+                    const userDocRef = window.firebaseDoc(window.firebaseDb, "users", user.uid);
+                    const userDoc = await window.firebaseGetDoc(userDocRef);
+                    if (userDoc.exists()) {
+                        currentUserName = userDoc.data().name;
+                    } else {
+                        currentUserName = user.email.split('@')[0]; // 如果沒姓名，用信箱前半段代替
+                    }
+                } catch (e) { console.error(e); }
+
+                document.getElementById('loginOverlay').style.display = 'none';
+                document.getElementById('appWrapper').style.display = 'flex';
+                document.getElementById('displayEmail').textContent = currentUserName + (isAdmin ? " (教師)" : "");
+                document.getElementById('adminBadge').style.display = isAdmin ? 'inline' : 'none';
+                
+                switchMode(1);
+            } else {
+                currentUser = null;
+                isAdmin = false;
+                document.getElementById('loginOverlay').style.display = 'flex';
+                document.getElementById('appWrapper').style.display = 'none';
+                if(unsubscribeSnapshot) unsubscribeSnapshot();
+            }
+        });
+    });
+
+    // 切換 登入 / 註冊 模式
+    function toggleAuthMode() {
+        isRegisterMode = !isRegisterMode;
+        document.getElementById('regNameInput').style.display = isRegisterMode ? 'block' : 'none';
+        document.getElementById('authTitle').innerText = isRegisterMode ? '學生註冊' : '學生登入';
+        document.getElementById('authBtn').innerText = isRegisterMode ? '建立帳號' : '登入';
+        document.getElementById('toggleModeText').innerText = isRegisterMode ? '已有帳號？點此登入' : '沒有帳號？點此註冊';
+        document.getElementById('loginMessage').innerText = "";
+    }
+
+    // 處理登入或註冊邏輯
+    async function handleAuth() {
+        const email = document.getElementById('emailInput').value.trim();
+        const pwd = document.getElementById('passwordInput').value.trim();
+        const name = document.getElementById('regNameInput').value.trim();
+        const msgDiv = document.getElementById('loginMessage');
+        
+        if (!email || !pwd) { msgDiv.textContent = "信箱與密碼不可為空！"; return; }
+        if (isRegisterMode && !name) { msgDiv.textContent = "註冊時必須填寫真實姓名！"; return; }
+        
+        msgDiv.textContent = "處理中...";
+
+        try {
+            if (isRegisterMode) {
+                // 註冊
+                const userCredential = await window.createUserWithEmailAndPassword(window.firebaseAuth, email, pwd);
+                const user = userCredential.user;
+                // 將姓名寫入資料庫
+                await window.firebaseSetDoc(window.firebaseDoc(window.firebaseDb, "users", user.uid), {
+                    name: name,
+                    email: email
+                });
+            } else {
+                // 登入
+                await window.signInWithEmailAndPassword(window.firebaseAuth, email, pwd);
+            }
+            msgDiv.textContent = "";
+        } catch (error) {
+            msgDiv.textContent = "錯誤: " + (error.code === 'auth/email-already-in-use' ? '信箱已註冊' : error.message);
+        }
+    }
+
+    async function logout() { await window.signOut(window.firebaseAuth); }
+
+    function switchMode(mode) {
+        currentMode = mode;
+        for(let i=1; i<=3; i++) {
+            document.getElementById(`tab${i}`).classList.toggle('active', i === mode);
+        }
+        
+        const inputBase = document.getElementById('msgInput');
+        if (mode === 1) inputBase.placeholder = "輸入公開留言... (將顯示你的姓名)";
+        else if (mode === 2) inputBase.placeholder = "輸入半匿名留言... (只有老師看得到是誰)";
+        else inputBase.placeholder = "輸入完全匿名留言... (絕對保密)";
+
+        loadCloudWords();
+    }
+
+    function loadCloudWords() {
+        if (unsubscribeSnapshot) unsubscribeSnapshot();
+
+        const canvas = document.getElementById('cloudCanvas');
+        canvas.innerHTML = ''; 
+
+        const msgRef = window.firebaseCollection(window.firebaseDb, "wordcloud_msgs");
+        const q = window.firebaseQuery(msgRef, window.firebaseOrderBy("timestamp", "asc"));
+
+        unsubscribeSnapshot = window.firebaseOnSnapshot(q, (snapshot) => {
+            canvas.innerHTML = ''; 
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                if (data.mode !== currentMode) return; 
+                createWordBubble(data);
+            });
+        });
+    }
+
+    function createWordBubble(data) {
+        const canvas = document.getElementById('cloudCanvas');
+        const div = document.createElement('div');
+        div.className = 'cloud-word';
+
+        let authorText = "";
+        if (currentMode === 1) {
+            authorText = escapeHtml(data.authorName || "無名氏");
+        } else if (currentMode === 2) {
+            if (isAdmin) authorText = `[${escapeHtml(data.authorName)} / ${escapeHtml(data.authorEmail)}]`;
+        }
+
+        let innerHTML = '';
+        if (authorText) innerHTML += `<div class="word-author" style="color: #aaa;">${authorText}</div>`;
+        innerHTML += `<div class="word-text">${escapeHtml(data.text)}</div>`;
+        div.innerHTML = innerHTML;
+
+        // 隨機樣式
+        const fontSize = Math.floor(Math.random() * 16) + 16;
+        div.style.fontSize = `${fontSize}px`;
+
+        const color = neonColors[Math.floor(Math.random() * neonColors.length)];
+        div.style.color = color;
+        div.style.borderColor = color;
+
+        // 避免文字超出畫面邊界，範圍抓在 5% ~ 80% 之間
+        div.style.left = `${Math.floor(Math.random() * 75) + 5}%`;
+        div.style.top = `${Math.floor(Math.random() * 75) + 5}%`;
+
+        div.style.animationDelay = `-${(Math.random() * 5).toFixed(2)}s`; 
+        canvas.appendChild(div);
+    }
+
+    async function sendMessage() {
+        const msgInput = document.getElementById('msgInput');
+        const text = msgInput.value.trim();
+        
+        if (!text) return;
+        if (!currentUser) { alert("請先登入"); return; }
+
+        msgInput.value = ""; 
+
+        try {
+            await window.firebaseAddDoc(window.firebaseCollection(window.firebaseDb, "wordcloud_msgs"), {
+                text: text,
+                mode: currentMode,
+                authorUid: currentUser.uid,
+                authorEmail: currentUser.email,
+                authorName: currentUserName, // 系統自動帶入登入者的姓名
+                timestamp: window.firebaseServerTimestamp()
+            });
+        } catch (error) {
+            console.error("發送失敗:", error);
+            alert("發送失敗，請檢查連線與資料庫規則。");
+        }
+    }
+
+    function handleEnter(e) { if (e.key === 'Enter') sendMessage(); }
+
+    function escapeHtml(unsafe) {
+        if (!unsafe) return "";
+        return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+</script>
+</body>
+</html>
