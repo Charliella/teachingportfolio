@@ -1,0 +1,997 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Cloud Class Cats 雲端教室 RPG</title>
+  <style>
+    :root {
+      --bg-top: #c3efff; --bg-bottom: #fef7d7;
+      --ink: #283446; --muted: #5f7086;
+      --line: rgba(40, 52, 70, 0.12);
+      --panel: rgba(255, 255, 255, 0.92);
+      --panel-strong: rgba(255, 255, 255, 0.98);
+      --navy: #28425f; --gold: #f5b041; --crystal: #a569bd;
+      --shadow: 0 8px 24px rgba(39, 74, 105, 0.12);
+      font-family: "Segoe UI", "Microsoft JhengHei", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    
+    html, body { 
+      margin: 0; padding: 0; width: 100vw; height: 100vh; height: 100dvh; 
+      overflow: hidden; color: var(--ink); 
+      background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom)); 
+      user-select: none; touch-action: manipulation;
+    }
+    input, textarea, select { user-select: auto; }
+    button, input, select { font: inherit; outline: none; }
+    button { cursor: pointer; transition: transform 0.1s; }
+    button:active { transform: scale(0.96); }
+
+    .app-shell { display: flex; flex-direction: column; height: 100%; width: 100%; max-width: 1800px; margin: 0 auto; padding: 12px; gap: 12px; }
+
+    #toastContainer { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none;}
+    .toast { background: rgba(40, 66, 95, 0.95); color: white; padding: 12px 24px; border-radius: 12px; font-weight: bold; box-shadow: 0 8px 20px rgba(0,0,0,0.2); transition: opacity 0.3s; }
+    .toast.warn { background: rgba(231, 76, 60, 0.95); border: 2px solid #ffb8b8; color: #fff; }
+
+    .hero-panel { display: flex; justify-content: space-between; align-items: center; padding: 12px 24px; border-radius: 16px; background: var(--panel); box-shadow: var(--shadow); flex-shrink: 0; }
+    .hero-panel h1 { margin: 0; font-size: 1.6rem; color: var(--navy); }
+    .hero-panel p { margin: 4px 0 0; color: var(--muted); font-size: 0.85rem;}
+    
+    .status-badges { display: flex; gap: 12px; }
+    .badge { padding: 6px 12px; border-radius: 10px; background: white; border: 1px solid var(--line); text-align: center; }
+    .badge span { display: block; font-size: 0.65rem; color: var(--muted); margin-bottom: 2px; font-weight: bold;}
+    .badge strong { font-size: 1.1rem; color: var(--navy); }
+
+    .workspace { display: flex; flex: 1; gap: 12px; min-height: 0; }
+    .classroom-container { flex: 1; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+    .classroom-panel { flex: 1; background: var(--panel); border-radius: 16px; box-shadow: var(--shadow); position: relative; }
+    .board-wrapper { position: absolute; inset: 12px; border-radius: 12px; border: 2px solid var(--line); background: #f4f1ea; overflow: hidden; }
+    
+    .classroom-board { 
+      width: 100%; height: 100%; position: relative; 
+      background-image: linear-gradient(rgba(200, 200, 200, 0.25) 1px, transparent 1px), linear-gradient(90deg, rgba(200, 200, 200, 0.25) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    /* 教室場景物件 */
+    .room-object { position: absolute; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1rem; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: 2px solid rgba(255,255,255,0.6); color: rgba(0,0,0,0.6); pointer-events: none; text-align: center; line-height: 1.2; transform: translate(-50%, -50%);}
+    
+    /* 可佈置物件 */
+    .blackboard { width: 40%; height: 6%; background: #4a6657; color: #fff; }
+    .tv-screen { width: 8%; height: 6%; background: #2c3e50; color: #a1c4fd; font-size: 0.8rem; }
+    .piano { width: 10%; height: 6%; background: #2c2c2c; color: #fff; font-size: 0.8rem; border-radius: 4px; }
+    .teacher-desk-obj { width: 8%; height: 8%; background: #dcb38a; }
+    .plant-top-left, .plant-bottom-right { width: 5%; height: 7%; background: #27ae60; border-radius: 50%; font-size: 0.7rem; color: white;}
+    .aquarium { width: 8%; height: 8%; background: #a4ebf3; color: #1f618d; border: 3px solid #3498db; }
+    .lockers { width: 4%; height: 45%; background: #e0d5a3; font-size: 0.8rem; writing-mode: vertical-rl; }
+    .bulletin-board { width: 40%; height: 5%; background: #f0e68c; font-size: 0.85rem;}
+    .bookshelf { width: 20%; height: 8%; background: #8b5a2b; color: white; font-size: 0.85rem; }
+    .reading-corner { width: 18%; height: 18%; background: #ffdfa3; }
+    .sink { width: 8%; height: 6%; background: #bdc3c7; border-radius: 8px 8px 0 0; font-size: 0.8rem;}
+    .cleaning-corner { width: 10%; height: 15%; background: #a3e0c0; border: 3px solid #2ecc71; box-shadow: 0 0 15px rgba(46, 204, 113, 0.4); }
+    .trash-can { width: 5%; height: 6%; background: #7f8c8d; border-radius: 50%; font-size: 0.7rem;}
+    .desk-group { width: 12%; height: 10%; background: #e8ded1; }
+    .desk-single { width: 5%; height: 6%; background: #e8ded1; border-radius: 4px; border: 1px solid #c2b5a3; font-size: 0.65rem; }
+
+    /* 固定牆面物件 */
+    .front-door { top: 12%; right: 0; width: 3%; height: 12%; background: #bd9a7a; border-radius: 4px 0 0 4px; transform:translate(0,-50%);}
+    .back-door { bottom: 12%; right: 0; width: 3%; height: 12%; background: #bd9a7a; border-radius: 4px 0 0 4px; transform:translate(0,50%);}
+    .window { left: 0; width: 2%; height: 12%; background: rgba(135, 206, 235, 0.5); border: 3px solid #fff; border-radius: 0 4px 4px 0; transform:translate(0,-50%);}
+    .w1 { top: 20%; } .w2 { top: 50%; } .w3 { top: 80%; }
+
+    /* 佈置模式專用 */
+    .movable.arranging { border: 3px dashed #e74c3c !important; pointer-events: auto !important; cursor: grab !important; z-index: 100; opacity: 0.9;}
+    .movable.arranging:active { cursor: grabbing !important; }
+
+    #questPins, #messLayer, #catLayer { position: absolute; inset: 0; pointer-events: none; }
+
+    /* 全新重製小貓角色 */
+    .cat { position: absolute; width: 36px; height: 36px; transform: translate(-50%, -50%); transition: left 0.1s linear, top 0.1s linear; pointer-events: auto; z-index: 10; cursor: pointer; }
+    .cat.me { z-index: 20; filter: drop-shadow(0 0 8px rgba(255, 111, 134, 0.8)); cursor: default; }
+
+    /* 呼吸動畫 */
+    @keyframes breathe { 0%, 100% { transform: scaleY(1) translateY(0); } 50% { transform: scaleY(0.96) translateY(1px); } }
+    @keyframes tail-wag { 0%, 100% { transform: translateX(-50%) rotate(25deg); } 50% { transform: translateX(-50%) rotate(45deg); } }
+
+    .cat-body { 
+      position: absolute; inset: 0; background: var(--cat-color); 
+      border: 2px solid var(--ink); border-radius: 50% 50% 45% 45%; z-index: 2; 
+      animation: breathe 2.5s infinite ease-in-out;
+      box-shadow: inset -3px -4px 0 rgba(0,0,0,0.15); /* 立體陰影 */
+    }
+    .cat-ear { 
+      position: absolute; top: -6px; width: 14px; height: 16px; 
+      background: var(--cat-color); border: 2px solid var(--ink); z-index: 1; 
+      overflow: hidden;
+    }
+    .cat-ear::after { /* 內耳 */
+      content: ''; position: absolute; bottom: 0; left: 2px; right: 2px; top: 5px;
+      background: rgba(255,255,255,0.4); border-radius: 50% 50% 0 0;
+    }
+    .cat-ear.left { left: 0px; border-radius: 12px 4px 0 0; transform: rotate(-22deg); }
+    .cat-ear.right { right: 0px; border-radius: 4px 12px 0 0; transform: rotate(22deg); }
+    
+    .cat-tail { 
+      position: absolute; bottom: 2px; left: 50%; width: 8px; height: 20px; 
+      background: var(--cat-color); border: 2px solid var(--ink); border-radius: 4px; 
+      transform-origin: bottom center; animation: tail-wag 3s infinite ease-in-out; z-index: 0; 
+    }
+    
+    .cat-face { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); width: 22px; height: 10px; }
+    .cat-eye { position: absolute; top: 0; width: 5px; height: 6px; background: var(--ink); border-radius: 50%; }
+    .cat-eye::after { /* 眼睛高光 */
+      content:''; position:absolute; top: 1px; right: 1px; width: 2px; height: 2px; background: #fff; border-radius: 50%;
+    }
+    .cat-eye.left { left: 2px; } .cat-eye.right { right: 2px; }
+    
+    .cat-nose { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); width: 5px; height: 3px; background: #ff7f7f; border-radius: 50%; }
+    .cat-nose::before, .cat-nose::after { /* 貓咪鬍鬚 */
+      content: ''; position: absolute; top: 1px; width: 7px; height: 1px; background: rgba(40,52,70,0.5);
+    }
+    .cat-nose::before { left: -10px; transform: rotate(10deg); box-shadow: 0 -3px 0 rgba(40,52,70,0.5); }
+    .cat-nose::after { right: -10px; transform: rotate(-10deg); box-shadow: 0 -3px 0 rgba(40,52,70,0.5); }
+
+    .cat-label { position: absolute; bottom: -24px; left: 50%; transform: translateX(-50%); background: rgba(255,255,255,0.9); padding: 2px 4px; border-radius: 6px; border: 1px solid var(--line); font-size: 0.65rem; font-weight: bold; text-align: center; white-space: nowrap; line-height: 1.2; z-index: 5;}
+    
+    /* 改良對話泡泡 (容納30字不斷行切斷) */
+    .chat-bubble { 
+      position: absolute; bottom: 45px; left: 50%; transform: translateX(-50%); 
+      background: white; border: 2px solid var(--navy); border-radius: 10px; 
+      padding: 6px 10px; font-size: 0.8rem; font-weight: bold; color: var(--navy); 
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15); z-index: 30; pointer-events: none; 
+      width: max-content; max-width: 220px; text-align: center;
+      white-space: pre-wrap; word-break: break-all; line-height: 1.3;
+    }
+    .chat-bubble.whisper { border-color: #a569bd; color: #a569bd; background: #f4ecf7; font-style: italic;}
+    .chat-bubble::after { content:''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%) rotate(45deg); width: 10px; height: 10px; background: inherit; border-right: 2px solid inherit; border-bottom: 2px solid inherit; }
+
+    .mess-obj { position: absolute; font-size: 1.5rem; transform: translate(-50%, -50%); z-index: 5; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)); }
+
+    /* 遊戲操作區 */
+    .controls-overlay { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-shrink: 0; }
+    .d-pad-container { display: flex; gap: 12px; align-items: center; }
+    .d-pad { display: grid; grid-template-columns: repeat(3, 45px); grid-template-rows: repeat(3, 45px); gap: 6px; }
+    .d-btn { background: var(--panel-strong); border: 2px solid var(--line); border-radius: 12px; font-size: 1.2rem; color: var(--navy); box-shadow: 0 4px 0 var(--line); }
+    .d-btn:active { transform: translateY(4px); box-shadow: 0 0 0 var(--line); background: #e9f5ff; }
+    #btnUp { grid-column: 2; grid-row: 1; } #btnLeft { grid-column: 1; grid-row: 2; }
+    #btnRight { grid-column: 3; grid-row: 2; } #btnDown { grid-column: 2; grid-row: 3; }
+
+    #contextActionBtn { display: none; padding: 12px 20px; font-size: 1rem; font-weight: bold; background: #3498db; color: white; border: none; border-radius: 12px; box-shadow: 0 6px 0 #2980b9; animation: pulse 1.5s infinite; white-space: nowrap;}
+    #contextActionBtn:active { transform: translateY(4px); box-shadow: 0 2px 0 #2980b9; }
+    @keyframes pulse { 0% { box-shadow: 0 6px 0 #2980b9, 0 0 0 0 rgba(52, 152, 219, 0.7); } 70% { box-shadow: 0 6px 0 #2980b9, 0 0 0 15px rgba(52, 152, 219, 0); } 100% { box-shadow: 0 6px 0 #2980b9, 0 0 0 0 rgba(52, 152, 219, 0); } }
+
+    .chat-bar { flex: 1; display: flex; gap: 10px; align-items: center; background: var(--panel-strong); padding: 8px 12px; border-radius: 16px; box-shadow: var(--shadow); border: 1px solid var(--line);}
+    .chat-bar input { flex: 1; padding: 10px; border: 2px solid var(--line); border-radius: 10px; font-size: 1rem; }
+    .chat-bar button { padding: 0 16px; background: var(--navy); color: white; border: none; border-radius: 10px; font-weight: bold; height: 100%;}
+
+    .quest-pin { position: absolute; width: 140px; padding: 10px; background: rgba(255, 255, 255, 0.95); border: 2px solid #ff9166; border-radius: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.15); transform: translate(-50%, -100%); pointer-events: auto; text-align: center; z-index: 15; }
+    .quest-pin::after { content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%) rotate(45deg); width: 10px; height: 10px; background: white; border-right: 2px solid #ff9166; border-bottom: 2px solid #ff9166; }
+    .quest-pin strong { display: block; font-size: 0.9rem; color: var(--navy); }
+    .quest-pin .rewards { font-size: 0.75rem; color: var(--muted); margin: 6px 0; font-weight: bold;}
+    .quest-pin button { width: 100%; padding: 6px; border: none; border-radius: 6px; background: linear-gradient(135deg, #ff9166, #ff6f86); color: white; font-weight: bold; }
+
+    /* 右側面板 */
+    .sidebar { width: 360px; display: flex; flex-direction: column; background: var(--panel); padding: 16px; border-radius: 16px; box-shadow: var(--shadow); overflow-y: auto; flex-shrink: 0;}
+    .sidebar-nav { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; flex-shrink: 0;}
+    .sidebar-nav button { flex: 1; padding: 8px 4px; border: 1px solid var(--line); border-radius: 8px; background: white; color: var(--muted); font-weight: bold; font-size: 0.8rem;}
+    .sidebar-nav button.active { background: var(--navy); color: white; border-color: var(--navy); }
+    .panel-section { display: none; flex-direction: column; gap: 12px;} 
+    .panel-section.active { display: flex; }
+    h2.sec-title { margin: 0; font-size: 1.05rem; border-bottom: 2px solid var(--line); padding-bottom: 6px; color: var(--navy);}
+    
+    .auth-form { display: grid; gap: 10px; }
+    .auth-form label { display: grid; gap: 4px; font-size: 0.85rem; font-weight: bold; color: var(--muted); }
+    .auth-form input, .auth-form select { width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 8px; }
+    .primary-button { background: var(--navy); color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; width: 100%;}
+    .danger-button { background: #ff6f86; color: white; border: none; padding: 8px 12px; border-radius: 8px; font-weight: bold; }
+
+    .player-card, .quest-card, .shop-item, .supply-item { background: white; padding: 12px; border-radius: 12px; border: 1px solid var(--line); }
+    .stat-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; text-align: center; }
+    .stat-row div { background: white; padding: 8px; border-radius: 10px; border: 1px solid var(--line); }
+    .inventory-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .inv-item { background: #fdfdfd; border: 1px solid var(--line); padding: 8px; border-radius: 8px; font-size: 0.8rem; font-weight: bold; display: flex; justify-content: space-between;}
+    
+    .quest-card.pending { border-color: #f5b041; background: #fffaf0; }
+    .teacher-action-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;}
+    .btn-approve { background: #2ecc71; color: white; border: none; padding: 6px; border-radius: 6px; font-weight: bold;}
+    .btn-reject { background: #e74c3c; color: white; border: none; padding: 6px; border-radius: 6px; font-weight: bold;}
+    .btn-prank { background: #8e44ad; color: white; border: none; padding: 8px; border-radius: 8px; font-weight: bold; flex: 1;}
+    .btn-arrange { background: #95a5a6; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; width: 100%; }
+
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px);}
+    .modal-overlay.active { display: flex; }
+    .modal-box { background: var(--panel-strong); width: 90%; max-width: 450px; border-radius: 20px; padding: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); border: 1px solid var(--line); position: relative;}
+    .close-modal { position: absolute; top: 16px; right: 16px; background: #eee; border: none; border-radius: 50%; width: 32px; height: 32px; font-weight: bold; color: var(--navy); }
+    .interact-btns { display: grid; gap: 10px; margin: 20px 0; }
+    .interact-btn { padding: 12px; border: 2px solid var(--line); border-radius: 12px; background: white; font-size: 1rem; font-weight: bold; color: var(--navy); display: flex; align-items: center; gap: 10px; }
+  </style>
+</head>
+<body>
+  <div id="toastContainer"></div>
+
+  <div class="app-shell">
+    <header class="hero-panel">
+      <div>
+        <h1>Cloud Class Cats 雲端教室</h1>
+        <p>老師可於下課時間重新佈置教室 • 互動附帶 1% 驚喜彩蛋！</p>
+      </div>
+      <div class="status-badges">
+        <div class="badge"><span>教室狀態</span><strong id="badgeGameState">關閉中</strong></div>
+        <div class="badge"><span>在線人數</span><strong id="badgeOnline">0</strong></div>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <!-- 教室主地圖區 -->
+      <section class="classroom-container">
+        <div class="classroom-panel">
+          <div class="board-wrapper">
+            <div class="classroom-board" id="classroomBoard">
+              <!-- 可佈置的教室物件 -->
+              <div class="room-object blackboard movable" id="obj-blackboard">大黑板</div>
+              <div class="room-object tv-screen movable" id="obj-tv">班級電視</div>
+              <div class="room-object piano movable" id="obj-piano">鋼琴</div>
+              <div class="room-object teacher-desk-obj movable" id="obj-desk">老師講桌</div>
+              <div class="room-object plant-top-left movable" id="obj-plant1">盆栽</div>
+              <div class="room-object aquarium movable" id="obj-aquarium">生態水族箱</div>
+              <div class="room-object lockers movable" id="obj-lockers">學生置物櫃</div>
+              <div class="room-object bulletin-board movable" id="obj-bulletin">後方佈告欄</div>
+              <div class="room-object bookshelf movable" id="obj-bookshelf">閱讀區大書架</div>
+              <div class="room-object reading-corner movable" id="obj-reading">圖書角</div>
+              <div class="room-object sink movable" id="obj-sink">洗手台</div>
+              <div class="room-object cleaning-corner movable" id="obj-cabinet">掃除用具櫃</div>
+              <div class="room-object trash-can movable" id="obj-trashcan">垃圾桶</div>
+              <div class="room-object plant-bottom-right movable" id="obj-plant2">盆栽</div>
+
+              <div class="room-object desk-group movable" id="obj-g1">第一組</div>
+              <div class="room-object desk-group movable" id="obj-g2">第二組</div>
+              <div class="room-object desk-group movable" id="obj-g3">第三組</div>
+              <div class="room-object desk-group movable" id="obj-g4">第四組</div>
+              <div class="room-object desk-group movable" id="obj-g5">第五組</div>
+              <div class="room-object desk-group movable" id="obj-g6">第六組</div>
+              <div class="room-object desk-group movable" id="obj-g7">第七組</div>
+              <div class="room-object desk-group movable" id="obj-g8">第八組</div>
+              
+              <!-- JavaScript 動態生成 obj-d1 ~ obj-d30 (個人座位) 於此 -->
+
+              <!-- 固定不動的牆壁物件 -->
+              <div class="room-object window w1">窗戶</div>
+              <div class="room-object window w2">窗戶</div>
+              <div class="room-object window w3">窗戶</div>
+              <div class="room-object front-door">前門</div>
+              <div class="room-object back-door">後門</div>
+
+              <div id="questPins"></div>
+              <div id="messLayer"></div>
+              <div id="catLayer"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="controls-overlay">
+          <div class="d-pad-container">
+            <div class="d-pad">
+              <button class="d-btn" id="btnUp" oncontextmenu="return false;">▲</button><button class="d-btn" id="btnLeft" oncontextmenu="return false;">◀</button>
+              <button class="d-btn" id="btnRight" oncontextmenu="return false;">▶</button><button class="d-btn" id="btnDown" oncontextmenu="return false;">▼</button>
+            </div>
+            <button id="contextActionBtn">互動按鈕</button>
+          </div>
+          
+          <form id="chatForm" class="chat-bar">
+            <input type="text" id="chatInput" placeholder="說話... (30字內)" maxlength="30" autocomplete="off" required>
+            <button type="submit" id="chatBtn">發言</button>
+            <span id="chatTimer" style="min-width: 40px;">就緒</span>
+          </form>
+        </div>
+      </section>
+
+      <!-- 右側資訊與控制面板 -->
+      <aside class="sidebar" id="mainSidebar">
+        <!-- 登入前 -->
+        <div id="authSection" class="panel-section active">
+          <h2 class="sec-title">帳號登入 / 註冊</h2>
+          <div class="sidebar-nav">
+            <button type="button" id="tabLogin" class="active">登入</button>
+            <button type="button" id="tabRegister">註冊 (學生)</button>
+          </div>
+          <form id="authForm" class="auth-form">
+            <label id="nameLabel" style="display:none;">小貓名稱 <input type="text" id="inName" placeholder="例如：小米糕" /></label>
+            <label>Email <input type="email" id="inEmail" placeholder="student@school.tw" required /></label>
+            <label>密碼 <input type="password" id="inPass" required minlength="6" /></label>
+            <button type="submit" id="authSubmitBtn" class="primary-button">登入</button>
+          </form>
+        </div>
+
+        <!-- 導覽列 -->
+        <div id="userNav" style="display:none;">
+          <div class="sidebar-nav" id="mainTabs">
+            <button data-target="tabPlayer" class="active">背包</button>
+            <button data-target="tabShop">福利社</button>
+            <button data-target="tabQuests">任務板</button>
+            <button data-target="tabTeacher" id="navTeacherBtn" style="display:none; background:#ffe79c; color:var(--navy);">👨‍🏫 老師</button>
+          </div>
+        </div>
+
+        <!-- 背包 -->
+        <div id="tabPlayer" class="panel-section">
+          <div><h2 class="sec-title" style="display:inline-block; border:none;">我的狀態</h2> <button id="logoutBtn" class="danger-button" style="float:right;">登出</button></div>
+          <div class="player-card" id="playerCard"></div>
+          <div class="stat-row"><div><span>金幣 🪙</span><strong id="pGold">0</strong></div><div><span>水晶 💎</span><strong id="pCrystal">0</strong></div></div>
+          <h2 class="sec-title">我的道具欄</h2>
+          <div id="inventoryList" class="inventory-grid">空</div>
+        </div>
+
+        <!-- 商店 -->
+        <div id="tabShop" class="panel-section">
+          <h2 class="sec-title">教室福利社</h2>
+          <div id="shopList">架上沒有商品喔。</div>
+        </div>
+
+        <!-- 任務列表 -->
+        <div id="tabQuests" class="panel-section">
+          <h2 class="sec-title">活躍與待處理任務</h2>
+          <div id="questList">沒有任務。</div>
+          <h2 class="sec-title">教室廣播動態</h2>
+          <ul id="activityLog" style="margin:0; padding-left:20px; font-size:0.85rem; color:var(--muted); line-height:1.6;"></ul>
+        </div>
+
+        <!-- 教師後台 -->
+        <div id="tabTeacher" class="panel-section">
+          <h2 class="sec-title" style="color:#e67e22;">👨‍🏫 教師專屬控制台</h2>
+          <div style="display:flex; flex-direction:column; gap:10px; margin-bottom: 8px;">
+            <select id="layoutSelect" class="auth-form" style="padding:8px; border-radius:8px; border:1px solid var(--line);">
+              <option value="1">配置 1：預設小組桌椅 (8組)</option>
+              <option value="2">配置 2：個人座位 (6直排 x 5人)</option>
+              <option value="3">配置 3：無桌椅 (適合團康/空地)</option>
+              <option value="4">配置 4：完全空教室 (無任何物品)</option>
+            </select>
+            <div style="display:flex; gap:10px;">
+              <button class="primary-button" id="toggleGameBtn" style="flex:1;">開啟教室</button>
+              <button class="danger-button" id="clearQuestsBtn" style="flex:1;">清空任務</button>
+            </div>
+          </div>
+          <button class="btn-arrange" id="btnArrange" style="margin-bottom: 12px;">🛠️ 手動佈置模式 (下課可用)</button>
+          
+          <h3 style="font-size:0.95rem; margin:8px 0;">📋 進行中 & 待審核任務</h3>
+          <div id="pendingQuestList" style="font-size:0.85rem; color:var(--muted);">目前沒有待處理的任務。</div>
+
+          <h3 style="font-size:0.95rem; margin:16px 0 8px;">♻️ 回收學生物品 (抽獎/兌換)</h3>
+          <div class="auth-form" style="display:grid; grid-template-columns:1fr 1fr auto; gap:8px; align-items:end;">
+            <label>選擇學生
+              <select id="trStudent" onchange="window.updateReclaimItems()"><option value="">選擇學生...</option></select>
+            </label>
+            <label>選擇物品
+              <select id="trItem"><option value="">先選擇學生...</option></select>
+            </label>
+            <button type="button" class="primary-button" onclick="window.reclaimItem()" style="background:#e74c3c;">回收</button>
+          </div>
+
+          <h3 style="font-size:0.95rem; margin:16px 0 8px;">😈 / ✨ 老師場景技能</h3>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn-prank" style="background:#00bcd4; flex:1 1 100%;" onclick="window.cleanMagic()">✨ 潔淨魔法 (清空垃圾)</button>
+            <button class="btn-prank" onclick="window.spawnMess('trash')">丟垃圾</button>
+            <button class="btn-prank" onclick="window.spawnMess('puddle')">打翻水</button>
+            <button class="btn-prank" onclick="window.spawnMess('dust')">撒灰塵</button>
+          </div>
+
+          <h3 style="font-size:0.95rem; margin:16px 0 8px;">📜 投遞新任務</h3>
+          <form id="tQuestForm" class="auth-form">
+            <label>任務類型
+              <select id="tqType">
+                <option value="gathering">👥 集結任務 (需湊滿人數)</option>
+                <option value="general">⏳ 一般任務 (不限人數，老師手動發獎)</option>
+              </select>
+            </label>
+            <label>任務標題 <input type="text" id="tqTitle" required></label>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              <label>獎勵金幣🪙 <input type="number" id="tqGold" value="10" min="0"></label>
+              <label>獎勵水晶💎 <input type="number" id="tqCrystal" value="0" min="0"></label>
+            </div>
+            <div id="typeGatheringOpts">
+              <label>需滿人數 <input type="number" id="tqMin" min="1" max="25" value="2"></label>
+            </div>
+            <button type="submit" class="primary-button" style="background:#f5b041;">發布任務</button>
+          </form>
+          
+          <h3 style="font-size:0.95rem; margin:16px 0 8px;">🛍️ 上架商店商品</h3>
+          <form id="tShopForm" class="auth-form" style="margin-bottom: 24px;">
+            <label>商品名稱 <input type="text" id="tsName" required></label>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              <label>價格 <input type="number" id="tsPrice" value="50" min="1"></label>
+              <label>貨幣 <select id="tsCurrency"><option value="gold">金幣</option><option value="crystal">水晶</option></select></label>
+            </div>
+            <button type="submit" class="primary-button" style="background:#a569bd;">上架商品</button>
+          </form>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <!-- Modal: 掃具櫃 -->
+  <div class="modal-overlay" id="modalSupply">
+    <div class="modal-box">
+      <button class="close-modal" onclick="closeModal('modalSupply')">✕</button>
+      <h2 class="sec-title">班級公共掃具櫃</h2>
+      <p style="font-size:0.85rem; color:var(--muted);">借用對應的掃具才能打掃教室髒亂喔！</p>
+      <div id="supplyList">讀取中...</div>
+    </div>
+  </div>
+
+  <!-- Modal: 互動選單 -->
+  <div class="modal-overlay" id="modalInteract">
+    <div class="modal-box">
+      <button class="close-modal" onclick="closeModal('modalInteract')">✕</button>
+      <h2 class="sec-title" id="interactTitle">互動</h2>
+      <div class="interact-btns">
+        <button class="interact-btn" id="btnWhisper">🤫 講悄悄話 (限附近的人聽到)</button>
+        <button class="interact-btn" id="btnPassNote">📝 傳紙條 (私訊，老師會攔截)</button>
+        <button class="interact-btn" id="btnInspect">🎒 觀察對方的背包</button>
+      </div>
+      <div id="inspectArea" style="display:none; margin-top:16px; border-top:2px dashed var(--line); padding-top:16px;">
+        <h3 style="font-size:0.9rem; margin:0 0 10px;">對方身上的物品：</h3>
+        <div id="inspectContent" class="inventory-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    // === 替換成你的 Firebase 設定碼 ===
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-auth.js";
+    import { getDatabase, ref, onValue, set, update, push, onDisconnect, get, increment, runTransaction, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-database.js";
+
+    // 🔴 請把下方這塊替換成你剛剛在 Firebase 複製的程式碼 🔴
+    const firebaseConfig = {
+      apiKey: "AIzaSyBW5gpxJbiSM8RgsZ9xSO1OYaZfGexo13k",
+      authDomain: "cloudclassrpg.firebaseapp.com",
+      databaseURL: "https://cloudclassrpg-default-rtdb.firebaseio.com",
+      projectId: "cloudclassrpg",
+      storageBucket: "cloudclassrpg.firebasestorage.app",
+      messagingSenderId: "986767622004",
+      appId: "1:986767622004:web:fdf613743bfdff3dacf621"
+    };
+
+    let app, auth, db;
+    try { app = initializeApp(firebaseConfig); auth = getAuth(app); db = getDatabase(app); } catch(e) { alert("Firebase 尚未設定！"); }
+
+    const state = { gameOpen: false, isTeacher: false, cats: {}, quests: {}, shop: {}, supplies: {}, messes: {}, classroomObjects: null, logs: [] };
+    let currentUser = null; let targetUidForInteract = null;
+    const catColors = ["#ffcf8f", "#ffd6eb", "#c7f0ac", "#9fd7ff", "#ffe79c", "#d9c7ff"];
+    const supplyNames = { broom: "掃把", mop: "拖把", rag: "抹布", dustpan: "畚箕", bucket: "水桶" };
+    const supplyMax = { broom: 6, mop: 6, rag: 10, dustpan: 6, bucket: 6 };
+    const messIcons = { trash: '🗑️', puddle: '💧', dust: '💨' };
+    const cleanReqs = { trash: '掃把', puddle: '拖把', dust: '抹布' };
+
+    // 初始化動態生成個人座位 DOM (obj-d1 ~ obj-d30)
+    const cBoardInner = document.getElementById('classroomBoard');
+    for(let i = 1; i <= 30; i++) {
+        const d = document.createElement('div');
+        d.className = 'room-object desk-single movable';
+        d.id = 'obj-d' + i; d.textContent = i;
+        d.style.display = 'none'; // 預設隱藏
+        cBoardInner.appendChild(d);
+    }
+
+    // 教室預設物件中心座標 (配置1: 小組桌椅)
+    const getBaseLayout = () => ({
+      'obj-blackboard': {x: 50, y: 4}, 'obj-tv': {x: 19, y: 4}, 'obj-piano': {x: 80, y: 4},
+      'obj-desk': {x: 34, y: 14}, 'obj-plant1': {x: 4.5, y: 4.5}, 'obj-aquarium': {x: 94, y: 14},
+      'obj-lockers': {x: 98, y: 44.5}, 'obj-bookshelf': {x: 45, y: 86}, 'obj-reading': {x: 14, y: 83},
+      'obj-sink': {x: 76, y: 96}, 'obj-cabinet': {x: 89, y: 84.5}, 'obj-trashcan': {x: 89.5, y: 96},
+      'obj-plant2': {x: 95.5, y: 95.5}, 'obj-bulletin': {x: 45, y: 97.5},
+      'obj-g1': {x: 28, y: 30}, 'obj-g2': {x: 51, y: 30}, 'obj-g3': {x: 74, y: 30},
+      'obj-g4': {x: 28, y: 55}, 'obj-g5': {x: 51, y: 55}, 'obj-g6': {x: 74, y: 55},
+      'obj-g7': {x: 28, y: 80}, 'obj-g8': {x: 74, y: 80}
+    });
+
+    const defaultObjects = getBaseLayout();
+
+    // 互動點位清單 (有隱藏特別事件 1% 機率)
+    const interactables = [
+      { id: 'obj-cabinet', r: 12, label: '打開掃具櫃', type: 'cabinet' },
+      { id: 'obj-piano', r: 12, label: '🎹 彈鋼琴', type: 'object', msg: '叮叮咚咚～彈了一首小蜜蜂 🎶', specialMsg: '🎹 居然彈出了貝多芬的命運交響曲！全班驚呆了！' },
+      { id: 'obj-blackboard', r: 16, label: '🖍️ 畫黑板', type: 'object', msg: '在黑板上畫了一隻大烏龜！🐢', specialMsg: '🖍️ 畫出了蒙娜麗莎的微笑... 太神啦！' },
+      { id: 'obj-tv', r: 10, label: '📺 看電視', type: 'object', msg: '偷看卡通...啊！是教學影片😅', specialMsg: '📺 電視突然播出了未來的樂透號碼！？' },
+      { id: 'obj-aquarium', r: 10, label: '🐟 看水族箱', type: 'object', msg: '咕嚕咕嚕...小魚好可愛！🐠', specialMsg: '🐟 魚竟然跳出水面後空翻了一圈！' },
+      { id: 'obj-sink', r: 10, label: '🚰 洗手', type: 'object', msg: '玩水囉！嘩啦嘩啦～ 💦', specialMsg: '🚰 水龍頭流出了珍珠奶茶！？' },
+      { id: 'obj-trashcan', r: 10, label: '🗑️ 丟垃圾', type: 'object', msg: '三分球！完美命中垃圾桶！🏀', specialMsg: '🗑️ 丟進去的時候裡面發出了『謝謝光臨』的聲音...' },
+      { id: 'obj-bookshelf', r: 12, label: '📚 拿書看', type: 'object', msg: '假裝看書，其實在打瞌睡... 😴', specialMsg: '📚 翻到了一本夾著藏寶圖的神秘古書！' },
+      { id: 'obj-lockers', r: 10, label: '🎒 開置物櫃', type: 'object', msg: '忘記帶課本了，糟糕！ 😱', specialMsg: '🎒 打開櫃子... 裡面竟然藏著一隻正在睡覺的小怪獸！' },
+    ];
+
+    window.showToast = (msg, isWarn = false) => {
+      const toast = document.createElement('div'); toast.className = `toast ${isWarn ? 'warn' : ''}`; toast.innerText = msg;
+      document.getElementById('toastContainer').appendChild(toast);
+      setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
+    };
+
+    window.openModal = (id) => document.getElementById(id).classList.add('active');
+    window.closeModal = (id) => { document.getElementById(id).classList.remove('active'); if(id === 'modalInteract') document.getElementById('inspectArea').style.display = 'none'; };
+
+    const tabLogin = document.getElementById('tabLogin'); const tabRegister = document.getElementById('tabRegister'); let isLoginMode = true;
+    tabLogin.onclick = () => { isLoginMode = true; tabLogin.className='active'; tabRegister.className=''; document.getElementById('nameLabel').style.display='none'; document.getElementById('authSubmitBtn').textContent='登入'; };
+    tabRegister.onclick = () => { isLoginMode = false; tabRegister.className='active'; tabLogin.className=''; document.getElementById('nameLabel').style.display='grid'; document.getElementById('authSubmitBtn').textContent='註冊並進入'; };
+
+    document.getElementById('mainTabs').addEventListener('click', (e) => {
+      if(e.target.tagName !== 'BUTTON') return;
+      document.querySelectorAll('#mainTabs button').forEach(b => b.classList.remove('active')); e.target.classList.add('active');
+      document.querySelectorAll('.panel-section').forEach(p => p.classList.remove('active')); document.getElementById(e.target.dataset.target).classList.add('active');
+    });
+
+    document.getElementById('authForm').onsubmit = async (e) => {
+      e.preventDefault(); const email = document.getElementById('inEmail').value; const pass = document.getElementById('inPass').value; const name = document.getElementById('inName').value;
+      try {
+        if (isLoginMode) await signInWithEmailAndPassword(auth, email, pass);
+        else {
+          if (!name) return alert("請輸入小貓顯示名稱！");
+          const cred = await createUserWithEmailAndPassword(auth, email, pass); await updateProfile(cred.user, { displayName: name });
+          await set(ref(db, `cats/${cred.user.uid}`), { name, email, x: 50, y: 80, color: catColors[Math.floor(Math.random() * catColors.length)], gold: 0, crystal: 0, online: true, status: '剛報到' });
+        }
+      } catch (err) { alert("驗證失敗：" + err.message); }
+    };
+    document.getElementById('logoutBtn').onclick = async () => { if (currentUser) { await update(ref(db, `cats/${currentUser.uid}`), { online: false }); signOut(auth); } };
+
+    if(auth) {
+      onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          currentUser = user; state.isTeacher = (user.email === 'a776663@st.tc.edu.tw');
+          document.getElementById('authSection').classList.remove('active'); document.getElementById('userNav').style.display = 'flex'; document.getElementById('tabPlayer').classList.add('active');
+          if(state.isTeacher) document.getElementById('navTeacherBtn').style.display = 'block';
+
+          const myCatRef = ref(db, `cats/${user.uid}`); const snap = await get(myCatRef);
+          if (!snap.exists()) { await set(myCatRef, { name: user.displayName || '老師', email: user.email, x: 34, y: 14, color: catColors[0], gold: 9999, crystal: 9999, online: true, status: '巡視中' }); } 
+          else { await update(myCatRef, { online: true }); }
+          onDisconnect(myCatRef).update({ online: false }); addLog(`✨ ${snap.val()?.name || user.displayName} 進入了教室。`);
+        } else {
+          currentUser = null; state.isTeacher = false; document.getElementById('userNav').style.display = 'none';
+          document.querySelectorAll('.panel-section').forEach(p => p.classList.remove('active')); document.getElementById('authSection').classList.add('active');
+        }
+      });
+    }
+
+    if(db) {
+      onValue(ref(db, 'gameState'), (s) => { 
+        state.gameOpen = !!(s.val()?.isOpen); 
+        document.getElementById('badgeGameState').textContent = state.gameOpen ? "🟢 上課中" : "🔴 下課中"; 
+        document.getElementById('toggleGameBtn').textContent = state.gameOpen ? "關閉教室" : "開啟教室"; 
+        if(state.gameOpen && window.isArranging) window.toggleArrangeMode(false);
+      });
+      onValue(ref(db, 'classroomObjects'), (s) => {
+        if (!s.exists() && state.isTeacher) { set(ref(db, 'classroomObjects'), defaultObjects); } 
+        else if (s.exists()) { state.classroomObjects = s.val(); renderObjects(); }
+      });
+      onValue(ref(db, 'cats'), (s) => { 
+        state.cats = s.val() || {}; document.getElementById('badgeOnline').textContent = Object.values(state.cats).filter(c=>c.online).length; 
+        renderPlayer(); renderCats(); if(state.isTeacher) window.updateReclaimSelects();
+      });
+      onValue(ref(db, 'quests'), (s) => { state.quests = s.val() || {}; renderQuests(); renderTeacherQuests(); });
+      onValue(ref(db, 'messes'), (s) => { state.messes = s.val() || {}; renderMesses(); });
+      onValue(ref(db, 'shop'), (s) => { state.shop = s.val() || {}; renderShop(); });
+      onValue(ref(db, 'cleaningSupplies'), (s) => { if(!s.exists() && state.isTeacher) set(ref(db, 'cleaningSupplies'), supplyMax); state.supplies = s.val() || supplyMax; renderSupplies(); });
+      onValue(query(ref(db, 'logs'), limitToLast(8)), (s) => {
+        const arr = []; s.forEach(c => { arr.push(c.val()); }); const ul = document.getElementById('activityLog'); ul.innerHTML = '';
+        arr.reverse().forEach(log => { ul.innerHTML += `<li>[${new Date(log.time).toLocaleTimeString('zh-TW', {hour:'2-digit', minute:'2-digit'})}] ${log.text}</li>`; });
+      });
+      let initialNoteLoad = true;
+      onValue(query(ref(db, 'notes'), limitToLast(1)), (s) => {
+        if(initialNoteLoad) { initialNoteLoad = false; return; }
+        s.forEach(child => {
+          const note = child.val();
+          if (Date.now() - note.time < 10000 && currentUser) {
+            if (note.to === currentUser.uid) showToast(`📝 收到來自 ${note.fromName} 的紙條: ${note.text}`);
+            else if (state.isTeacher && note.from !== currentUser.uid) showToast(`👀 老師攔截到紙條！ ${note.fromName} 傳給 ${note.toName}: ${note.text}`, true);
+          }
+        });
+      });
+    }
+    function addLog(text) { if(db) push(ref(db, 'logs'), { text, time: Date.now() }); }
+
+    // === 開關教室與 4 種場景佈置 ===
+    document.getElementById('toggleGameBtn').onclick = () => { 
+      if(!state.isTeacher) return;
+      const willOpen = !state.gameOpen;
+      
+      // 若是開啟教室，則套用下拉選單所選的場景
+      if(willOpen) {
+         const layoutVal = document.getElementById('layoutSelect').value;
+         let newObj = getBaseLayout();
+         
+         if(layoutVal === '1') {
+            // 配置 1：預設小組桌椅 (8組)，隱藏個人座位
+            for(let i=1; i<=30; i++) newObj['obj-d'+i] = { hidden: true };
+         } 
+         else if(layoutVal === '2') {
+            // 配置 2：個人座位 (6排x5人)，隱藏小組
+            for(let i=1; i<=8; i++) newObj['obj-g'+i] = { hidden: true };
+            for(let col=0; col<6; col++) {
+               for(let row=0; row<5; row++) {
+                  newObj['obj-d' + (col*5 + row + 1)] = { x: 18 + col*12.5, y: 30 + row*12.5, hidden: false };
+               }
+            }
+         } 
+         else if(layoutVal === '3') {
+            // 配置 3：無桌椅 (空地)，隱藏所有桌椅
+            for(let i=1; i<=8; i++) newObj['obj-g'+i] = { hidden: true };
+            for(let i=1; i<=30; i++) newObj['obj-d'+i] = { hidden: true };
+         } 
+         else if(layoutVal === '4') {
+            // 配置 4：完全空教室，隱藏所有可動物品
+            Object.keys(newObj).forEach(k => newObj[k].hidden = true);
+            for(let i=1; i<=30; i++) newObj['obj-d'+i] = { hidden: true };
+         }
+         
+         set(ref(db, 'classroomObjects'), newObj);
+         addLog(`🛠️ 老師切換了場景配置 (配置 ${layoutVal})`);
+      }
+      set(ref(db, 'gameState/isOpen'), willOpen); 
+    };
+
+    // === 教室佈置拖曳系統 (Teacher) ===
+    window.isArranging = false;
+    let draggingObjId = null;
+    window.toggleArrangeMode = (forceState) => {
+        if (!state.isTeacher) return;
+        if (state.gameOpen) return showToast("上課中不能佈置喔！請先關閉教室。", true);
+        window.isArranging = forceState !== undefined ? forceState : !window.isArranging;
+        const btn = document.getElementById('btnArrange');
+        btn.textContent = window.isArranging ? "✅ 儲存佈置" : "🛠️ 手動佈置模式 (下課可用)";
+        btn.style.background = window.isArranging ? "#2ecc71" : "#95a5a6";
+        
+        document.querySelectorAll('.movable').forEach(el => {
+            if (window.isArranging) el.classList.add('arranging'); else el.classList.remove('arranging');
+        });
+        if(window.isArranging) showToast("請拖曳畫面上帶有虛線的物品來佈置教室！");
+    };
+    document.getElementById('btnArrange').onclick = () => window.toggleArrangeMode();
+
+    const getBoardPos = (e) => {
+        const board = document.getElementById('classroomBoard');
+        const rect = board.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        let x = ((clientX - rect.left) / rect.width) * 100;
+        let y = ((clientY - rect.top) / rect.height) * 100;
+        return { x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) };
+    };
+
+    const startDrag = (e) => {
+        if (!window.isArranging) return;
+        const target = e.target.closest('.movable');
+        if (target) { e.preventDefault(); draggingObjId = target.id; }
+    };
+    const moveDrag = (e) => {
+        if (draggingObjId && window.isArranging) {
+            e.preventDefault();
+            const { x, y } = getBoardPos(e);
+            const el = document.getElementById(draggingObjId);
+            el.style.left = x + '%'; el.style.top = y + '%';
+            if (state.classroomObjects && state.classroomObjects[draggingObjId]) {
+                state.classroomObjects[draggingObjId].x = x;
+                state.classroomObjects[draggingObjId].y = y;
+            }
+        }
+    };
+    const endDrag = () => {
+        if (draggingObjId && window.isArranging) {
+            const el = document.getElementById(draggingObjId);
+            const x = parseFloat(el.style.left); const y = parseFloat(el.style.top);
+            update(ref(db, `classroomObjects/${draggingObjId}`), { x, y });
+            draggingObjId = null;
+        }
+    };
+    const cBoard = document.getElementById('classroomBoard');
+    cBoard.addEventListener('mousedown', startDrag); cBoard.addEventListener('touchstart', startDrag, {passive: false});
+    document.addEventListener('mousemove', moveDrag); document.addEventListener('touchmove', moveDrag, {passive: false});
+    document.addEventListener('mouseup', endDrag); document.addEventListener('touchend', endDrag);
+
+    function renderObjects() {
+        if(!state.classroomObjects) return;
+        document.querySelectorAll('.movable').forEach(el => {
+            const pos = state.classroomObjects[el.id];
+            if(!pos || pos.hidden) { 
+                el.style.display = 'none'; 
+            } else { 
+                el.style.display = 'flex'; 
+                el.style.left = pos.x + '%'; 
+                el.style.top = pos.y + '%'; 
+            }
+        });
+    }
+
+    // === 移動與物品互動邏輯 ===
+    const dirState = { up: false, down: false, left: false, right: false };
+    const bindBtn = (id, dir) => {
+      const btn = document.getElementById(id);
+      const start = (e) => { e.preventDefault(); dirState[dir] = true; }; const end = (e) => { e.preventDefault(); dirState[dir] = false; };
+      btn.addEventListener('mousedown', start); btn.addEventListener('touchstart', start); btn.addEventListener('mouseup', end); btn.addEventListener('touchend', end); btn.addEventListener('mouseleave', end);
+    };
+    bindBtn('btnUp', 'up'); bindBtn('btnDown', 'down'); bindBtn('btnLeft', 'left'); bindBtn('btnRight', 'right');
+
+    const actionBtn = document.getElementById('contextActionBtn');
+    let currentAction = null;
+
+    actionBtn.onclick = () => {
+      if(!currentAction) return;
+      if(currentAction.type === 'cabinet') window.openModal('modalSupply');
+      else if(currentAction.type === 'clean') window.cleanMess(currentAction.id, currentAction.messType);
+      else if(currentAction.type === 'object') window.interactWithObject(currentAction.id, currentAction.msg, currentAction.specialMsg);
+    };
+
+    window.interactWithObject = async (objId, msg, specialMsg) => {
+      if(!currentUser) return;
+      let success = false;
+      await runTransaction(ref(db, `objects/${objId}`), (obj) => {
+         const now = Date.now();
+         if (obj && obj.inUseBy && (now - obj.timestamp < 3000)) return; 
+         success = true; return { inUseBy: currentUser.uid, timestamp: now };
+      });
+      if (success) { 
+        let finalMsg = msg;
+        if (Math.random() < 0.01 && specialMsg) {
+            finalMsg = specialMsg; showToast("✨ 觸發了隱藏的特別事件！！");
+        }
+        update(ref(db, `cats/${currentUser.uid}/chat`), { text: finalMsg, time: Date.now(), type: 'normal' }); 
+      } else { showToast('大家都在用這個，請等一下喔！', true); }
+    };
+
+    function moveLoop() {
+      if (currentUser && (state.gameOpen || state.isTeacher) && !window.isArranging) {
+        const myCat = state.cats[currentUser.uid];
+        if (myCat) {
+          let dx = 0, dy = 0;
+          if (dirState.up) dy -= 0.6; if (dirState.down) dy += 0.6;
+          if (dirState.left) dx -= 0.6; if (dirState.right) dx += 0.6;
+          if (dx !== 0 || dy !== 0) {
+            myCat.x = Math.max(1, Math.min(99, myCat.x + dx)); myCat.y = Math.max(1, Math.min(99, myCat.y + dy)); renderCats(); 
+          }
+          
+          let closestMess = null; let minDistMess = 6;
+          Object.entries(state.messes).forEach(([mId, m]) => {
+             const dist = Math.hypot(myCat.x - m.x, myCat.y - m.y);
+             if(dist < minDistMess) { minDistMess = dist; closestMess = { id: mId, ...m }; }
+          });
+
+          let closestInt = null; let minDistInt = 999;
+          interactables.forEach(item => {
+             const objPos = state.classroomObjects ? state.classroomObjects[item.id] : defaultObjects[item.id];
+             if(objPos && !objPos.hidden) {
+                 const dist = Math.hypot(myCat.x - objPos.x, myCat.y - objPos.y);
+                 if(dist < minDistInt && dist <= item.r) { minDistInt = dist; closestInt = item; }
+             }
+          });
+
+          if (closestMess) {
+            currentAction = { type: 'clean', id: closestMess.id, messType: closestMess.type };
+            actionBtn.textContent = `🧹 打掃 ${closestMess.type === 'trash' ? '垃圾' : closestMess.type === 'puddle' ? '水漬' : '灰塵'}`;
+            actionBtn.style.display = 'block'; actionBtn.style.background = '#e67e22'; actionBtn.style.boxShadow = '0 6px 0 #d35400';
+          } else if (closestInt) {
+            currentAction = closestInt;
+            actionBtn.textContent = closestInt.label;
+            actionBtn.style.display = 'block'; actionBtn.style.background = '#3498db'; actionBtn.style.boxShadow = '0 6px 0 #2980b9';
+            if(closestInt.type === 'cabinet') { actionBtn.style.background = '#2ecc71'; actionBtn.style.boxShadow = '0 6px 0 #27ae60'; }
+          } else {
+            actionBtn.style.display = 'none'; currentAction = null;
+          }
+        }
+      }
+      requestAnimationFrame(moveLoop);
+    }
+    requestAnimationFrame(moveLoop);
+
+    setInterval(() => {
+      if (currentUser && (state.gameOpen || state.isTeacher) && (dirState.up||dirState.down||dirState.left||dirState.right) && !window.isArranging) {
+        const myCat = state.cats[currentUser.uid]; if(myCat) update(ref(db, `cats/${currentUser.uid}`), { x: myCat.x, y: myCat.y, status: '移動中...' });
+      }
+    }, 200);
+    document.addEventListener('mouseup', () => { if(!dirState.up && !dirState.down && !dirState.left && !dirState.right && currentUser) update(ref(db, `cats/${currentUser.uid}`), { status: '發呆中' }); });
+
+    // === 任務審核雙軌制與踢人 ===
+    document.getElementById('tqType').onchange = (e) => {
+      document.getElementById('typeGatheringOpts').style.display = e.target.value === 'gathering' ? 'block' : 'none';
+    };
+
+    function renderQuests() {
+      const qList = document.getElementById('questList'); const pins = document.getElementById('questPins'); qList.innerHTML = '';
+      Object.entries(state.quests).forEach(([qId, q]) => {
+        const isDone = q.status === 'done'; const isPending = q.status === 'pending'; const jCount = q.joinedBy ? Object.keys(q.joinedBy).length : 0;
+        const isGen = q.type === 'general';
+        let reqText = isGen ? `⏳ 一般任務` : `👥 ${q.minPlayers}人集結`;
+        let btnText = isDone ? '✅ 已完成' : isPending ? '⏳ 等待老師審核...' : (isGen ? `👉 加入任務` : '👉 派小貓支援');
+
+        qList.innerHTML += `<div class="quest-card ${isPending?'pending':''}"><strong>${q.title}</strong><p>獎勵：🪙 ${q.rewardGold || 0} / 💎 ${q.rewardCrystal || 0}</p><div><span class="tag">${reqText}</span><span class="tag">${jCount}人已加入</span></div><button onclick="window.joinQuest('${qId}')" ${isDone||isPending?'disabled':''} style="width:100%; margin-top:8px; padding:8px; background:${isDone?'#eee':isPending?'#f5b041':'#ffe79c'}; border:none; border-radius:6px; font-weight:bold;">${btnText}</button></div>`;
+
+        let pin = document.getElementById(`pin-${qId}`);
+        if (!pin && !isDone) { pin = document.createElement('div'); pin.id = `pin-${qId}`; pin.className = 'quest-pin'; pins.appendChild(pin); }
+        if (isDone) { if(pin) pin.remove(); }
+        else if (pin) {
+          pin.style.left = q.x + '%'; pin.style.top = q.y + '%';
+          if(isPending) { pin.innerHTML = `<strong>${q.title}</strong><span style="color:#f39c12; font-weight:bold; display:block; margin-top:6px;">⏳ 審核中</span>`; }
+          else { pin.innerHTML = `<strong>${q.title}</strong><div class="rewards">🪙 ${q.rewardGold||0} | 💎 ${q.rewardCrystal||0}</div><span style="color:${isGen?'#3498db':'#5f7086'}; font-weight:bold;">${isGen?'不限人數參與':`缺 ${q.minPlayers - jCount} 人`}</span><button onclick="window.joinQuest('${qId}')">加入小隊</button>`; }
+        }
+      });
+      Array.from(pins.children).forEach(child => { const qId = child.id.replace('pin-', ''); if (!state.quests[qId] || state.quests[qId].status === 'done') child.remove(); });
+    }
+
+    window.joinQuest = async (qId) => {
+      if (!currentUser) return; if (!state.gameOpen && !state.isTeacher) return showToast("下課中無法解任務", true);
+      const myUid = currentUser.uid; const myCat = state.cats[myUid]; const qRef = ref(db, `quests/${qId}`);
+      const snap = await get(qRef); const q = snap.val(); if (!q || q.status !== 'waiting') return;
+      if (Math.hypot(myCat.x - q.x, myCat.y - q.y) > 12) return showToast("距離太遠了！請靠近地圖上的圖釘喔。", true);
+
+      let wentPending = false;
+      await runTransaction(qRef, (quest) => {
+        if (quest) { 
+          if (quest.status !== 'waiting') return quest; 
+          if (!quest.joinedBy) quest.joinedBy = {}; 
+          if (quest.joinedBy[myUid]) return quest; 
+          quest.joinedBy[myUid] = true; 
+          if (quest.type === 'gathering' && Object.keys(quest.joinedBy).length >= quest.minPlayers) { 
+              quest.status = 'pending'; wentPending = true; 
+          } 
+        }
+        return quest;
+      });
+      if (wentPending) { showToast(`集結完畢！等待審核中...`); addLog(`⏳ [${q.title}] 已集結完畢，等待老師審核！`); }
+      else { showToast(`成功加入 [${q.title}] ！`); }
+    };
+
+    function renderTeacherQuests() {
+      if(!state.isTeacher) return;
+      const list = document.getElementById('pendingQuestList'); list.innerHTML = '';
+      const active = Object.entries(state.quests).filter(([_, q]) => q.status === 'pending' || (q.status === 'waiting' && q.type === 'general'));
+      if(active.length === 0) { list.innerHTML = "目前沒有待處理的任務。"; return; }
+      active.forEach(([qId, q]) => { 
+        const jCount = Object.keys(q.joinedBy||{}).length;
+        let joinedHtml = '';
+        Object.keys(q.joinedBy || {}).forEach(uid => {
+            const sName = state.cats[uid]?.name || '未知';
+            joinedHtml += `<span class="tag" style="background:#fce4ec; color:#c2185b; display:inline-flex; align-items:center; gap:4px; margin-bottom:4px; font-size:0.75rem;">${sName} <button style="background:transparent; border:none; padding:0; cursor:pointer; font-size:10px;" onclick="window.kickFromQuest('${qId}', '${uid}')">❌</button></span> `;
+        });
+
+        if (q.status === 'pending') {
+           list.innerHTML += `<div class="quest-card" style="border-color:#f5b041;"><strong>${q.title} (${jCount}人集結完畢)</strong><div>${joinedHtml}</div><div class="teacher-action-btns"><button class="btn-approve" onclick="window.approveQuest('${qId}')">✅ 核准發獎勵</button><button class="btn-reject" onclick="window.rejectQuest('${qId}')">❌ 退回重解</button></div></div>`; 
+        } else {
+           list.innerHTML += `<div class="quest-card" style="border-color:#3498db;"><strong>${q.title} (${jCount}人已加入)</strong><div>${joinedHtml}</div><div class="teacher-action-btns"><button class="btn-approve" style="background:#3498db;" onclick="window.approveQuest('${qId}')">✅ 結算發獎勵</button><button class="btn-reject" onclick="window.rejectQuest('${qId}')">❌ 撤銷任務</button></div></div>`; 
+        }
+      });
+    }
+
+    window.kickFromQuest = async (qId, sUid) => {
+        if (!state.isTeacher) return;
+        const sName = state.cats[sUid]?.name || "學生";
+        await runTransaction(ref(db, `quests/${qId}`), (quest) => {
+            if (quest && quest.joinedBy && quest.joinedBy[sUid]) {
+                delete quest.joinedBy[sUid];
+                if (quest.type === 'gathering' && Object.keys(quest.joinedBy).length < quest.minPlayers) {
+                    quest.status = 'waiting';
+                }
+            }
+            return quest;
+        });
+        addLog(`👨‍🏫 老師說 ${sName} 沒有完成任務喔！`);
+    };
+
+    window.approveQuest = async (qId) => {
+      if(!state.isTeacher) return; const qRef = ref(db, `quests/${qId}`); let joined = []; let rG = 0, rC = 0, t = "";
+      await runTransaction(qRef, (q) => { 
+          if(q && (q.status === 'pending' || (q.status === 'waiting' && q.type === 'general'))) { 
+              q.status = 'done'; joined = Object.keys(q.joinedBy||{}); rG = q.rewardGold||0; rC = q.rewardCrystal||0; t = q.title; 
+          } return q; 
+      });
+      if(joined.length > 0) {
+        const updates = {}; joined.forEach(uid => { updates[`cats/${uid}/gold`] = increment(rG); updates[`cats/${uid}/crystal`] = increment(rC); updates[`cats/${uid}/status`] = '解完任務！'; });
+        await update(ref(db), updates); addLog(`👨‍🏫 老師發放了 [${t}] 的獎勵！`);
+      } else if (t) { addLog(`👨‍🏫 老師結算了 [${t}]，但沒有人加入...`); }
+    };
+    window.rejectQuest = async (qId) => { if(!state.isTeacher) return; await update(ref(db, `quests/${qId}`), { status: 'waiting', joinedBy: null }); addLog(`❌ 老師退回/撤銷了某個任務。`); };
+
+    // === 回收物品 ===
+    window.updateReclaimSelects = () => {
+      if (!state.isTeacher) return; const stuSel = document.getElementById('trStudent'); const itemSel = document.getElementById('trItem');
+      if (document.activeElement === stuSel || document.activeElement === itemSel) return;
+      const currUid = stuSel.value; stuSel.innerHTML = '<option value="">選擇學生...</option>';
+      Object.entries(state.cats).forEach(([uid, cat]) => { stuSel.innerHTML += `<option value="${uid}">${cat.name}</option>`; });
+      stuSel.value = currUid; window.updateReclaimItems();
+    };
+
+    window.updateReclaimItems = () => {
+        const uid = document.getElementById('trStudent').value; const iSel = document.getElementById('trItem'); const currItem = iSel.value;
+        iSel.innerHTML = '';
+        if (!uid || !state.cats[uid]) { iSel.innerHTML = '<option value="">先選擇學生...</option>'; return; }
+        const inv = state.cats[uid].inventory || {}; let hasItem = false;
+        Object.entries(inv).forEach(([itemName, qty]) => { if (qty > 0) { hasItem = true; iSel.innerHTML += `<option value="${itemName}">${itemName} (剩 ${qty})</option>`; } });
+        if (!hasItem) iSel.innerHTML = '<option value="">背包沒有可回收物品</option>'; else { iSel.value = currItem; if(!iSel.value) iSel.selectedIndex = 0; }
+    };
+
+    window.reclaimItem = async () => {
+        if (!state.isTeacher) return; const uid = document.getElementById('trStudent').value; const itemName = document.getElementById('trItem').value;
+        if (!uid || !itemName) return showToast("請選擇學生與物品", true);
+        let success = false; let studentName = state.cats[uid]?.name || "學生";
+        await runTransaction(ref(db, `cats/${uid}`), (cat) => { if (cat && cat.inventory && cat.inventory[itemName] > 0) { cat.inventory[itemName] -= 1; success = true; } return cat; });
+        if (success) { showToast(`已成功回收 ${studentName} 的 ${itemName}`); addLog(`♻️ 老師從 ${studentName} 那裡回收了 1 個 [${itemName}]。`); } 
+        else { showToast("回收失敗，學生可能沒有該物品了。", true); }
+    };
+
+    // === 打掃與潔淨魔法 ===
+    window.cleanMess = async (mId, type) => {
+      if(!currentUser) return; const myCat = state.cats[currentUser.uid]; const reqTool = cleanReqs[type];
+      if(!myCat.inventory || !myCat.inventory[reqTool]) return showToast(`你需要去掃具櫃借用「${reqTool}」才能打掃！`, true);
+      let success = false; await runTransaction(ref(db, `messes/${mId}`), (m) => { if(m) { success = true; return null; } return m; });
+      if(success) { await update(ref(db, `cats/${currentUser.uid}/gold`), increment(2)); showToast(`✨ 打掃完成！獲得 2 金幣！`); addLog(`🧹 ${myCat.name} 幫忙清理了教室！`); } else { showToast(`已經被別人掃掉囉！`, true); }
+    };
+    function renderMesses() { const layer = document.getElementById('messLayer'); layer.innerHTML = ''; Object.entries(state.messes).forEach(([mId, m]) => { layer.innerHTML += `<div class="mess-obj" style="left:${m.x}%; top:${m.y}%;">${messIcons[m.type]}</div>`; }); }
+    
+    window.spawnMess = (type) => { if(!state.isTeacher) return; push(ref(db, 'messes'), { type: type, x: 10 + Math.random() * 80, y: 10 + Math.random() * 80 }); showToast(`已製造髒亂！`); };
+    window.cleanMagic = () => { if(state.isTeacher) { set(ref(db, 'messes'), null); addLog('✨ 老師施展了潔淨魔法，教室變得一塵不染！'); showToast('✨ 已清除所有髒亂！'); } };
+
+    let lastChatTime = 0; let chatCooldownTimer = null;
+    document.getElementById('chatForm').onsubmit = (e) => {
+      e.preventDefault(); if(!currentUser) return; const now = Date.now(); if(now - lastChatTime < 10000) return;
+      const text = document.getElementById('chatInput').value.trim(); if(!text) return;
+      update(ref(db, `cats/${currentUser.uid}/chat`), { text, time: now, type: 'normal' }); document.getElementById('chatInput').value = ''; lastChatTime = now;
+      const btn = document.getElementById('chatBtn'); const timerSpan = document.getElementById('chatTimer'); btn.disabled = true; let left = 10;
+      chatCooldownTimer = setInterval(() => { left--; timerSpan.textContent = `${left}s`; if(left <= 0) { clearInterval(chatCooldownTimer); btn.disabled = false; timerSpan.textContent = '就緒'; } }, 1000);
+    };
+    setInterval(renderCats, 1000);
+
+    document.getElementById('classroomBoard').addEventListener('click', (e) => {
+      const catEl = e.target.closest('.cat');
+      if(catEl && currentUser && !window.isArranging) {
+        const uid = catEl.id.replace('cat-', ''); if(uid === currentUser.uid) return;
+        const myCat = state.cats[currentUser.uid]; const targetCat = state.cats[uid]; if(!myCat || !targetCat) return;
+        if(Math.hypot(myCat.x - targetCat.x, myCat.y - targetCat.y) > 15) return showToast(`太遠了！請走到 ${targetCat.name} 旁邊。`, true);
+        targetUidForInteract = uid; document.getElementById('interactTitle').textContent = `和 ${targetCat.name} 互動`; window.openModal('modalInteract');
+      }
+    });
+
+    document.getElementById('btnWhisper').onclick = () => { const text = prompt("輸入悄悄話 (30字內)："); if(text && text.trim().length > 0) { update(ref(db, `cats/${currentUser.uid}/chat`), { text: text.substring(0,30), time: Date.now(), type: 'whisper' }); showToast("已發出悄悄話！"); window.closeModal('modalInteract'); } };
+    document.getElementById('btnPassNote').onclick = () => { const text = prompt("輸入紙條內容 (30字內)："); if(text && text.trim().length > 0 && targetUidForInteract) { push(ref(db, 'notes'), { from: currentUser.uid, fromName: state.cats[currentUser.uid].name, to: targetUidForInteract, toName: state.cats[targetUidForInteract].name, text: text.substring(0,30), time: Date.now() }); showToast(`已丟紙條！`); window.closeModal('modalInteract'); } };
+    document.getElementById('btnInspect').onclick = () => { if(!targetUidForInteract) return; const tCat = state.cats[targetUidForInteract]; const div = document.getElementById('inspectContent'); div.innerHTML = `<div class="inv-item" style="border-color:#f5b041;"><span>金幣 🪙</span><span>${tCat.gold||0}</span></div><div class="inv-item" style="border-color:#a569bd;"><span>水晶 💎</span><span>${tCat.crystal||0}</span></div>`; if(tCat.inventory) { Object.entries(tCat.inventory).forEach(([item, qty]) => { if(qty > 0) div.innerHTML += `<div class="inv-item"><span>${item}</span><span>x${qty}</span></div>`; }); } else { div.innerHTML += `<div style="grid-column:1/-1; color:#888; font-size:0.8rem; text-align:center;">背包空空。</div>`; } document.getElementById('inspectArea').style.display = 'block'; };
+
+    function renderPlayer() {
+      if (!currentUser) return; const myCat = state.cats[currentUser.uid]; if (!myCat) return;
+      document.getElementById('playerCard').innerHTML = `<div style="width:40px;height:40px;background:${myCat.color};border-radius:10px;border:2px solid #333;"></div><div><strong style="font-size:1.1rem; color:var(--navy);">${myCat.name}</strong><br><span style="font-size:0.8rem; color:var(--muted);">${state.isTeacher?'👨‍🏫 老師':'🐱 學生'}</span></div>`;
+      document.getElementById('pGold').textContent = myCat.gold || 0; document.getElementById('pCrystal').textContent = myCat.crystal || 0;
+      const invList = document.getElementById('inventoryList'); invList.innerHTML = '';
+      if(myCat.inventory) { Object.entries(myCat.inventory).forEach(([item, qty]) => { if(qty > 0) invList.innerHTML += `<div class="inv-item"><span>${item}</span><span>x${qty}</span></div>`; }); }
+      if(invList.innerHTML === '') invList.innerHTML = '<div style="grid-column:1/-1; color:#888; font-size:0.8rem;">背包空空。</div>';
+    }
+
+    function renderCats() {
+      const layer = document.getElementById('catLayer'); const now = Date.now(); const myCat = currentUser ? state.cats[currentUser.uid] : null;
+      Object.entries(state.cats).forEach(([uid, cat]) => {
+        if (!cat.online) { const el = document.getElementById(`cat-${uid}`); if (el) el.remove(); return; }
+        let el = document.getElementById(`cat-${uid}`);
+        if (!el) { el = document.createElement('div'); el.id = `cat-${uid}`; el.className = 'cat' + (currentUser && uid === currentUser.uid ? ' me' : ''); el.innerHTML = `<div class="cat-tail" style="--cat-color:${cat.color}"></div><div class="cat-ear left" style="--cat-color:${cat.color}"></div><div class="cat-ear right" style="--cat-color:${cat.color}"></div><div class="cat-body" style="--cat-color:${cat.color}"><div class="cat-face"><div class="cat-eye left"></div><div class="cat-eye right"></div><div class="cat-nose"></div></div></div><div class="cat-label">${cat.name}</div><div class="chat-bubble" style="display:none;"></div>`; layer.appendChild(el); }
+        el.style.left = cat.x + '%'; el.style.top = cat.y + '%';
+        const bubble = el.querySelector('.chat-bubble');
+        if (cat.chat && (now - cat.chat.time < 10000)) {
+          let msg = cat.chat.text; bubble.className = 'chat-bubble';
+          if (cat.chat.type === 'whisper') { bubble.classList.add('whisper'); const dist = myCat ? Math.hypot(myCat.x - cat.x, myCat.y - cat.y) : 999; if (uid !== (currentUser?.uid) && dist > 15 && !state.isTeacher) { msg = "🤫 (悄悄話...)"; } }
+          bubble.style.display = 'block'; bubble.textContent = msg;
+        } else { bubble.style.display = 'none'; }
+      });
+      Array.from(layer.children).forEach(child => { const uid = child.id.replace('cat-', ''); if (!state.cats[uid] || !state.cats[uid].online) child.remove(); });
+    }
+
+    function renderShop() { const list = document.getElementById('shopList'); list.innerHTML = ''; Object.entries(state.shop).forEach(([sId, item]) => { list.innerHTML += `<div class="shop-item"><div class="shop-info"><strong>${item.name}</strong><span>${item.currency==='gold'?'🪙':'💎'} ${item.price}</span></div><button class="buy-btn" onclick="window.buyShopItem('${sId}')">購買</button></div>`; }); }
+    window.buyShopItem = async (sId) => { if(!currentUser) return; const item = state.shop[sId]; let success = false, msg = ""; await runTransaction(ref(db, `cats/${currentUser.uid}`), (cat) => { if(cat) { if (item.currency === 'gold' && (cat.gold||0) >= item.price) { cat.gold -= item.price; if(!cat.inventory) cat.inventory = {}; cat.inventory[item.name] = (cat.inventory[item.name]||0) + 1; success = true; } else if (item.currency === 'crystal' && (cat.crystal||0) >= item.price) { cat.crystal -= item.price; if(!cat.inventory) cat.inventory = {}; cat.inventory[item.name] = (cat.inventory[item.name]||0) + 1; success = true; } else { msg = "餘額不足！"; } } return cat; }); if(success) showToast(`購買：${item.name}`); else showToast(msg, true); };
+
+    function renderSupplies() { const list = document.getElementById('supplyList'); list.innerHTML = ''; Object.keys(supplyNames).forEach(key => { const count = state.supplies[key] !== undefined ? state.supplies[key] : supplyMax[key]; list.innerHTML += `<div class="supply-item"><div class="shop-info"><strong style="font-size:1.1rem;">${supplyNames[key]}</strong><span>剩餘公用：${count} / ${supplyMax[key]}</span></div><div><button class="borrow-btn" onclick="window.borrowSupply('${key}')">借用</button> <button class="return-btn" onclick="window.returnSupply('${key}')">歸還</button></div></div>`; }); }
+    window.borrowSupply = async (key) => { if(!currentUser) return; const supRef = ref(db, `cleaningSupplies/${key}`); let success = false; await runTransaction(supRef, (val) => { let current = val === null ? supplyMax[key] : val; if (current > 0) { success = true; return current - 1; } return current; }); if (success) { await update(ref(db, `cats/${currentUser.uid}/inventory/${supplyNames[key]}`), increment(1)); showToast(`借用了 ${supplyNames[key]}`); } else { showToast(`${supplyNames[key]} 被借光了！`, true); } };
+    window.returnSupply = async (key) => { if(!currentUser) return; const myInvRef = ref(db, `cats/${currentUser.uid}/inventory/${supplyNames[key]}`); const snap = await get(myInvRef); if (snap.val() && snap.val() > 0) { await update(myInvRef, increment(-1)); await update(ref(db, `cleaningSupplies/${key}`), increment(1)); showToast(`已歸還 ${supplyNames[key]}`); } else { showToast(`你沒有 ${supplyNames[key]}`, true); } };
+
+    document.getElementById('clearQuestsBtn').onclick = () => { if(state.isTeacher) set(ref(db, 'quests'), null); };
+    document.getElementById('tQuestForm').onsubmit = (e) => {
+      e.preventDefault(); if (!state.isTeacher) return;
+      const type = document.getElementById('tqType').value;
+      const qData = { title: document.getElementById('tqTitle').value, rewardGold: parseInt(document.getElementById('tqGold').value), rewardCrystal: parseInt(document.getElementById('tqCrystal').value), type: type, x: 20+Math.random()*60, y: 20+Math.random()*60, status: 'waiting', joinedBy: {} };
+      if (type === 'gathering') qData.minPlayers = parseInt(document.getElementById('tqMin').value);
+      push(ref(db, 'quests'), qData); addLog(`📜 老師發布了新任務！`); e.target.reset();
+    };
+    document.getElementById('tShopForm').onsubmit = (e) => { e.preventDefault(); if (!state.isTeacher) return; push(ref(db, 'shop'), { name: document.getElementById('tsName').value, price: parseInt(document.getElementById('tsPrice').value), currency: document.getElementById('tsCurrency').value }); e.target.reset(); };
+  </script>
+</body>
+</html>
