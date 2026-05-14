@@ -631,10 +631,14 @@
           sessionStartedAt = Date.now();
           currentUser = user; state.isTeacher = (user.email === 'a776663@st.tc.edu.tw');
           const activeSnap = await get(ref(db, 'activeRoom'));
-          if (activeSnap.exists()) activeRoomId = activeSnap.val();
+          if (activeSnap.exists()) activeRoomId = activeSnap.val() || currentRoomId;
+          else if (state.isTeacher) await set(ref(db, 'activeRoom'), currentRoomId);
           if (!state.isTeacher) {
-            currentRoomId = activeRoomId;
-            localStorage.setItem('cloudClassCatsRoom', currentRoomId);
+            if (activeRoomId !== currentRoomId) {
+              localStorage.setItem('cloudClassCatsRoom', activeRoomId);
+              location.reload();
+              return;
+            }
             document.getElementById('roomSelect').value = currentRoomId;
             document.getElementById('roomSelect').disabled = true;
           } else {
