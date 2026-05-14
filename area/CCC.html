@@ -84,6 +84,7 @@
     /* 佈置模式專用 */
     .movable.arranging { border: 3px dashed #e74c3c !important; pointer-events: auto !important; cursor: grab !important; z-index: 100; opacity: 0.9;}
     .movable.arranging:active { cursor: grabbing !important; }
+    .movable.arrange-selected { outline: 4px solid #3498db; outline-offset: 3px; box-shadow: 0 0 0 6px rgba(52,152,219,0.18), 0 4px 10px rgba(0,0,0,0.1); }
 
     #questPins, #messLayer, #catLayer { position: absolute; inset: 0; pointer-events: none; }
 
@@ -165,6 +166,8 @@
     .chat-bar { flex: 1; display: flex; gap: 10px; align-items: center; background: var(--panel-strong); padding: 8px 12px; border-radius: 16px; box-shadow: var(--shadow); border: 1px solid var(--line);}
     .chat-bar input { flex: 1; padding: 10px; border: 2px solid var(--line); border-radius: 10px; font-size: 1rem; }
     .chat-bar button { padding: 0 16px; background: var(--navy); color: white; border: none; border-radius: 10px; font-weight: bold; height: 100%;}
+    .rescue-btn { padding: 12px 16px; border: none; border-radius: 12px; background: #16a085; color: white; font-weight: 900; box-shadow: 0 6px 0 #117a65; white-space: nowrap; }
+    .rescue-btn:disabled { background: #b7c6c2; box-shadow: 0 6px 0 #91a29d; cursor: not-allowed; }
 
     .quest-pin { position: absolute; width: 140px; padding: 10px; background: rgba(255, 255, 255, 0.95); border: 2px solid #ff9166; border-radius: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.15); transform: translate(-50%, -100%); pointer-events: auto; text-align: center; z-index: 15; }
     .quest-pin::after { content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%) rotate(45deg); width: 10px; height: 10px; background: white; border-right: 2px solid #ff9166; border-bottom: 2px solid #ff9166; }
@@ -199,6 +202,17 @@
     .btn-reject { background: #e74c3c; color: white; border: none; padding: 6px; border-radius: 6px; font-weight: bold;}
     .btn-prank { background: #8e44ad; color: white; border: none; padding: 8px; border-radius: 8px; font-weight: bold; flex: 1;}
     .btn-arrange { background: #95a5a6; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; width: 100%; }
+    .teacher-toolbox { display: grid; gap: 8px; background: #f8fbff; border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+    .tool-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .tool-row button, .tool-row select { flex: 1; min-width: 92px; }
+    .mini-button { border: 1px solid var(--line); background: white; color: var(--navy); padding: 7px 8px; border-radius: 8px; font-weight: 800; font-size: 0.78rem; }
+    .mini-button.active { background: #3498db; color: white; border-color: #3498db; }
+    .broadcast-item { display: grid; gap: 4px; margin-bottom: 8px; padding: 8px; border-radius: 8px; background: #fff; border: 1px solid var(--line); }
+    .broadcast-time { font-size: 0.72rem; color: var(--muted); font-weight: 800; }
+    .broadcast-actions { display: none; gap: 6px; }
+    .teacher-view .broadcast-actions { display: flex; }
+    .hidden-stat-list { display: grid; gap: 6px; }
+    .hidden-stat-list .inv-item { border-color: #d6eaf8; background: #fbfdff; }
 
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px);}
     .modal-overlay.active { display: flex; }
@@ -218,6 +232,7 @@
         <p>老師可於下課時間重新佈置教室 • 互動附帶 1% 驚喜彩蛋！</p>
       </div>
       <div class="status-badges">
+        <div class="badge"><span>目前教室</span><strong><select id="roomSelect" style="border:none; background:transparent; color:var(--navy); font-weight:900;"><option value="room1">一號</option><option value="room2">二號</option><option value="room3">三號</option><option value="room4">四號</option></select></strong></div>
         <div class="badge"><span>教室狀態</span><strong id="badgeGameState">關閉中</strong></div>
         <div class="badge"><span>在線人數</span><strong id="badgeOnline">0</strong></div>
       </div>
@@ -277,6 +292,7 @@
               <button class="d-btn" id="btnRight" oncontextmenu="return false;">▶</button><button class="d-btn" id="btnDown" oncontextmenu="return false;">▼</button>
             </div>
             <button id="contextActionBtn">互動按鈕</button>
+            <button id="centerRescueBtn" class="rescue-btn" type="button">回教室中心</button>
           </div>
           
           <form id="chatForm" class="chat-bar">
@@ -319,6 +335,29 @@
           <div><h2 class="sec-title" style="display:inline-block; border:none;">我的狀態</h2> <button id="logoutBtn" class="danger-button" style="float:right;">登出</button></div>
           <div class="player-card" id="playerCard"></div>
           <div class="stat-row"><div><span>金幣 🪙</span><strong id="pGold">0</strong></div><div><span>水晶 💎</span><strong id="pCrystal">0</strong></div></div>
+          <div id="teacherHiddenStats" style="display:none;">
+            <h2 class="sec-title">老師可見隱藏數值</h2>
+            <div id="hiddenStatsList" class="hidden-stat-list"></div>
+          </div>
+          <div id="teacherBagTools" style="display:none;">
+            <h2 class="sec-title">老師背包管理</h2>
+            <div class="auth-form">
+              <label>選擇學生
+                <select id="bagStudent" onchange="window.updateBagItems()"><option value="">選擇學生...</option></select>
+              </label>
+              <div style="display:grid; grid-template-columns:1fr auto; gap:8px; align-items:end;">
+                <label>沒收物品
+                  <select id="bagItem"><option value="">先選擇學生...</option></select>
+                </label>
+                <button type="button" class="danger-button" onclick="window.confiscateBagItem()">沒收</button>
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 80px auto; gap:8px; align-items:end;">
+                <label>贈與物品 <input type="text" id="giftItemName" placeholder="物品名稱"></label>
+                <label>數量 <input type="number" id="giftItemQty" min="1" value="1"></label>
+                <button type="button" class="primary-button" onclick="window.giftBagItem()" style="background:#2ecc71;">贈與</button>
+              </div>
+            </div>
+          </div>
           <h2 class="sec-title">我的道具欄</h2>
           <div id="inventoryList" class="inventory-grid">空</div>
         </div>
@@ -334,7 +373,7 @@
           <h2 class="sec-title">活躍與待處理任務</h2>
           <div id="questList">沒有任務。</div>
           <h2 class="sec-title">教室廣播動態</h2>
-          <ul id="activityLog" style="margin:0; padding-left:20px; font-size:0.85rem; color:var(--muted); line-height:1.6;"></ul>
+          <div id="activityLog" style="margin:0; font-size:0.85rem; color:var(--muted); line-height:1.6;"></div>
         </div>
 
         <!-- 教師後台 -->
@@ -353,6 +392,29 @@
             </div>
           </div>
           <button class="btn-arrange" id="btnArrange" style="margin-bottom: 12px;">🛠️ 手動佈置模式 (下課可用)</button>
+          <div class="teacher-toolbox" id="arrangeTools">
+            <div class="tool-row">
+              <button type="button" class="mini-button" id="btnMultiSelect">多選拖曳</button>
+              <button type="button" class="mini-button" id="btnSelectDesks">選取桌椅</button>
+              <button type="button" class="mini-button" id="btnClearSelection">取消選取</button>
+            </div>
+            <div class="tool-row">
+              <label style="font-size:0.8rem; font-weight:bold;"><input type="checkbox" id="snapGrid" checked> 拖曳自動對齊格線</label>
+              <button type="button" class="mini-button" onclick="window.alignSelection('left')">靠左</button>
+              <button type="button" class="mini-button" onclick="window.alignSelection('centerX')">垂直置中</button>
+              <button type="button" class="mini-button" onclick="window.alignSelection('tidyRows')">桌椅排整齊</button>
+            </div>
+          </div>
+
+          <h3 style="font-size:0.95rem; margin:16px 0 8px;">📣 教室廣播管理</h3>
+          <form id="broadcastForm" class="auth-form">
+            <label>直接發布訊息 <input type="text" id="broadcastText" maxlength="80" placeholder="輸入要公告給本教室的訊息" required></label>
+            <button type="submit" class="primary-button" style="background:#3498db;">發布廣播</button>
+          </form>
+          <div class="tool-row">
+            <button type="button" class="mini-button" onclick="window.backupBroadcasts()">備份廣播</button>
+            <button type="button" class="mini-button" onclick="window.clearBroadcasts()">刪除全部廣播</button>
+          </div>
           
           <h3 style="font-size:0.95rem; margin:8px 0;">📋 進行中 & 待審核任務</h3>
           <div id="pendingQuestList" style="font-size:0.85rem; color:var(--muted);">目前沒有待處理的任務。</div>
@@ -382,6 +444,7 @@
               <select id="tqType">
                 <option value="gathering">👥 集結任務 (需湊滿人數)</option>
                 <option value="general">⏳ 一般任務 (不限人數，老師手動發獎)</option>
+                <option value="delivery">📦 交件任務 (需持有指定物品)</option>
               </select>
             </label>
             <label>任務標題 <input type="text" id="tqTitle" required></label>
@@ -391,6 +454,10 @@
             </div>
             <div id="typeGatheringOpts">
               <label>需滿人數 <input type="number" id="tqMin" min="1" max="25" value="2"></label>
+            </div>
+            <div id="typeDeliveryOpts" style="display:none; gap:10px;" class="auth-form">
+              <label>必須持有物品名稱 <input type="text" id="tqRequiredItem" placeholder="例如：作業本"></label>
+              <label>審核通過後收走數量 <input type="number" id="tqRequiredCount" min="1" value="1"></label>
             </div>
             <button type="submit" class="primary-button" style="background:#f5b041;">發布任務</button>
           </form>
@@ -425,6 +492,7 @@
       <button class="close-modal" onclick="closeModal('modalInteract')">✕</button>
       <h2 class="sec-title" id="interactTitle">互動</h2>
       <div class="interact-btns">
+        <button class="interact-btn" id="btnGreet">👋 打招呼</button>
         <button class="interact-btn" id="btnWhisper">🤫 講悄悄話 (限附近的人聽到)</button>
         <button class="interact-btn" id="btnPassNote">📝 傳紙條 (私訊，老師會攔截)</button>
         <button class="interact-btn" id="btnInspect">🎒 觀察對方的背包</button>
@@ -458,6 +526,18 @@
 
     const state = { gameOpen: false, isTeacher: false, cats: {}, quests: {}, shop: {}, supplies: {}, messes: {}, classroomObjects: null, logs: [] };
     let currentUser = null; let targetUidForInteract = null;
+    let currentRoomId = localStorage.getItem('cloudClassCatsRoom') || 'room1';
+    let activeRoomId = currentRoomId;
+    let sessionStartedAt = Date.now();
+    let handledDismissAt = 0;
+    const roomNames = { room1: '一號教室', room2: '二號教室', room3: '三號教室', room4: '四號教室' };
+    const roomPath = (path = '') => `rooms/${currentRoomId}${path ? '/' + path : ''}`;
+    const centerPoint = { x: 50, y: 50 };
+    const CENTER_COOLDOWN = 60 * 1000;
+    const GREET_COOLDOWN = 60 * 60 * 1000;
+    const formatDateTime = (time) => new Date(time || Date.now()).toLocaleString('zh-TW', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+    const escapeHtml = (text = '') => String(text).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+    const sameRoomCats = () => Object.fromEntries(Object.entries(state.cats).filter(([_, cat]) => (cat.roomId || 'room1') === currentRoomId));
     const catColors = ["#ffcf8f", "#ffd6eb", "#c7f0ac", "#9fd7ff", "#ffe79c", "#d9c7ff"];
     const supplyNames = { broom: "掃把", mop: "拖把", rag: "抹布", dustpan: "畚箕", bucket: "水桶" };
     const supplyMax = { broom: 6, mop: 6, rag: 10, dustpan: 6, bucket: 6 };
@@ -520,6 +600,18 @@
       document.querySelectorAll('.panel-section').forEach(p => p.classList.remove('active')); document.getElementById(e.target.dataset.target).classList.add('active');
     });
 
+    document.getElementById('roomSelect').value = currentRoomId;
+    document.getElementById('roomSelect').onchange = async (e) => {
+      if (!state.isTeacher) {
+        e.target.value = currentRoomId;
+        return showToast("只有老師可以切換教室。", true);
+      }
+      currentRoomId = e.target.value;
+      localStorage.setItem('cloudClassCatsRoom', currentRoomId);
+      if (currentUser && db) await update(ref(db, `cats/${currentUser.uid}`), { roomId: currentRoomId, x: centerPoint.x, y: centerPoint.y, status: `前往${roomNames[currentRoomId]}` });
+      location.reload();
+    };
+
     document.getElementById('authForm').onsubmit = async (e) => {
       e.preventDefault(); const email = document.getElementById('inEmail').value; const pass = document.getElementById('inPass').value; const name = document.getElementById('inName').value;
       try {
@@ -527,7 +619,7 @@
         else {
           if (!name) return alert("請輸入小貓顯示名稱！");
           const cred = await createUserWithEmailAndPassword(auth, email, pass); await updateProfile(cred.user, { displayName: name });
-          await set(ref(db, `cats/${cred.user.uid}`), { name, email, x: 50, y: 80, color: catColors[Math.floor(Math.random() * catColors.length)], gold: 0, crystal: 0, online: true, status: '剛報到' });
+          await set(ref(db, `cats/${cred.user.uid}`), { name, email, roomId: currentRoomId, x: 50, y: 80, color: catColors[Math.floor(Math.random() * catColors.length)], gold: 0, crystal: 0, hiddenStats: { kindnessGiven: 0, kindnessReceived: 0 }, online: true, status: '剛報到' });
         }
       } catch (err) { alert("驗證失敗：" + err.message); }
     };
@@ -536,43 +628,81 @@
     if(auth) {
       onAuthStateChanged(auth, async (user) => {
         if (user) {
+          sessionStartedAt = Date.now();
           currentUser = user; state.isTeacher = (user.email === 'a776663@st.tc.edu.tw');
-          document.getElementById('authSection').classList.remove('active'); document.getElementById('userNav').style.display = 'flex'; document.getElementById('tabPlayer').classList.add('active');
+          const activeSnap = await get(ref(db, 'activeRoom'));
+          if (activeSnap.exists()) activeRoomId = activeSnap.val();
+          if (!state.isTeacher) {
+            currentRoomId = activeRoomId;
+            localStorage.setItem('cloudClassCatsRoom', currentRoomId);
+            document.getElementById('roomSelect').value = currentRoomId;
+            document.getElementById('roomSelect').disabled = true;
+          } else {
+            document.getElementById('roomSelect').disabled = false;
+          }
+          document.getElementById('authSection').classList.remove('active'); document.getElementById('userNav').style.display = 'flex'; document.getElementById('tabPlayer').classList.add('active'); document.body.classList.toggle('teacher-view', state.isTeacher);
           if(state.isTeacher) document.getElementById('navTeacherBtn').style.display = 'block';
 
           const myCatRef = ref(db, `cats/${user.uid}`); const snap = await get(myCatRef);
-          if (!snap.exists()) { await set(myCatRef, { name: user.displayName || '老師', email: user.email, x: 34, y: 14, color: catColors[0], gold: 9999, crystal: 9999, online: true, status: '巡視中' }); } 
-          else { await update(myCatRef, { online: true }); }
+          if (!snap.exists()) { await set(myCatRef, { name: user.displayName || '老師', email: user.email, roomId: currentRoomId, x: 34, y: 14, color: catColors[0], gold: 9999, crystal: 9999, hiddenStats: { kindnessGiven: 0, kindnessReceived: 0 }, online: true, status: '巡視中' }); } 
+          else {
+            const cat = snap.val() || {};
+            const repair = { online: true, roomId: currentRoomId, email: user.email, name: cat.name || user.displayName || (state.isTeacher ? '老師' : '小貓') };
+            if (typeof cat.x !== 'number' || typeof cat.y !== 'number') { repair.x = state.isTeacher ? 34 : 50; repair.y = state.isTeacher ? 14 : 80; }
+            if (!cat.color) repair.color = state.isTeacher ? catColors[0] : catColors[Math.floor(Math.random() * catColors.length)];
+            if (!cat.hiddenStats) repair.hiddenStats = { kindnessGiven: 0, kindnessReceived: 0 };
+            await update(myCatRef, repair);
+          }
           onDisconnect(myCatRef).update({ online: false }); addLog(`✨ ${snap.val()?.name || user.displayName} 進入了教室。`);
         } else {
-          currentUser = null; state.isTeacher = false; document.getElementById('userNav').style.display = 'none';
+          currentUser = null; state.isTeacher = false; document.body.classList.remove('teacher-view'); document.getElementById('userNav').style.display = 'none';
           document.querySelectorAll('.panel-section').forEach(p => p.classList.remove('active')); document.getElementById('authSection').classList.add('active');
         }
       });
     }
 
     if(db) {
-      onValue(ref(db, 'gameState'), (s) => { 
+      onValue(ref(db, 'activeRoom'), async (s) => {
+        activeRoomId = s.val() || currentRoomId;
+        if (!state.isTeacher && currentUser && activeRoomId !== currentRoomId) {
+          currentRoomId = activeRoomId;
+          localStorage.setItem('cloudClassCatsRoom', currentRoomId);
+          document.getElementById('roomSelect').value = currentRoomId;
+          await update(ref(db, `cats/${currentUser.uid}`), { roomId: currentRoomId, x: centerPoint.x, y: centerPoint.y, status: `進入${roomNames[currentRoomId]}` });
+          location.reload();
+        }
+      });
+      onValue(ref(db, roomPath('gameState')), (s) => { 
         state.gameOpen = !!(s.val()?.isOpen); 
         document.getElementById('badgeGameState').textContent = state.gameOpen ? "🟢 上課中" : "🔴 下課中"; 
         document.getElementById('toggleGameBtn').textContent = state.gameOpen ? "關閉教室" : "開啟教室"; 
         if(state.gameOpen && window.isArranging) window.toggleArrangeMode(false);
       });
-      onValue(ref(db, 'classroomObjects'), (s) => {
-        if (!s.exists() && state.isTeacher) { set(ref(db, 'classroomObjects'), defaultObjects); } 
+      onValue(ref(db, roomPath('dismissNotice')), async (s) => {
+        const notice = s.val();
+        if (!notice || state.isTeacher || !currentUser) return;
+        if ((notice.time || 0) <= sessionStartedAt || handledDismissAt === notice.time) return;
+        handledDismissAt = notice.time;
+        alert(notice.message || "老師說放學囉！離開教室吧！");
+        await update(ref(db, `cats/${currentUser.uid}`), { online: false, status: '已放學' });
+        await signOut(auth);
+      });
+      onValue(ref(db, roomPath('classroomObjects')), (s) => {
+        if (!s.exists() && state.isTeacher) { set(ref(db, roomPath('classroomObjects')), defaultObjects); } 
         else if (s.exists()) { state.classroomObjects = s.val(); renderObjects(); }
       });
       onValue(ref(db, 'cats'), (s) => { 
-        state.cats = s.val() || {}; document.getElementById('badgeOnline').textContent = Object.values(state.cats).filter(c=>c.online).length; 
-        renderPlayer(); renderCats(); if(state.isTeacher) window.updateReclaimSelects();
+        state.cats = s.val() || {}; document.getElementById('badgeOnline').textContent = Object.values(state.cats).filter(c=>c.online && (c.roomId || 'room1') === currentRoomId).length; 
+        renderPlayer(); renderCats(); if(state.isTeacher) { window.updateReclaimSelects(); window.updateBagSelects(); }
       });
-      onValue(ref(db, 'quests'), (s) => { state.quests = s.val() || {}; renderQuests(); renderTeacherQuests(); });
-      onValue(ref(db, 'messes'), (s) => { state.messes = s.val() || {}; renderMesses(); });
-      onValue(ref(db, 'shop'), (s) => { state.shop = s.val() || {}; renderShop(); });
-      onValue(ref(db, 'cleaningSupplies'), (s) => { if(!s.exists() && state.isTeacher) set(ref(db, 'cleaningSupplies'), supplyMax); state.supplies = s.val() || supplyMax; renderSupplies(); });
-      onValue(query(ref(db, 'logs'), limitToLast(8)), (s) => {
-        const arr = []; s.forEach(c => { arr.push(c.val()); }); const ul = document.getElementById('activityLog'); ul.innerHTML = '';
-        arr.reverse().forEach(log => { ul.innerHTML += `<li>[${new Date(log.time).toLocaleTimeString('zh-TW', {hour:'2-digit', minute:'2-digit'})}] ${log.text}</li>`; });
+      onValue(ref(db, roomPath('quests')), (s) => { state.quests = s.val() || {}; renderQuests(); renderTeacherQuests(); });
+      onValue(ref(db, roomPath('messes')), (s) => { state.messes = s.val() || {}; renderMesses(); });
+      onValue(ref(db, roomPath('shop')), (s) => { state.shop = s.val() || {}; renderShop(); });
+      onValue(ref(db, roomPath('cleaningSupplies')), (s) => { if(!s.exists() && state.isTeacher) set(ref(db, roomPath('cleaningSupplies')), supplyMax); state.supplies = s.val() || supplyMax; renderSupplies(); });
+      onValue(query(ref(db, roomPath('logs')), limitToLast(20)), (s) => {
+        const arr = []; s.forEach(c => { arr.push({ id: c.key, ...c.val() }); }); state.logs = arr;
+        const ul = document.getElementById('activityLog'); ul.innerHTML = '';
+        arr.reverse().forEach(log => { ul.innerHTML += `<div class="broadcast-item"><div class="broadcast-time">${formatDateTime(log.time)}</div><div>${escapeHtml(log.text)}</div><div class="broadcast-actions"><button class="mini-button" onclick="window.editBroadcast('${log.id}')">更新</button><button class="mini-button" onclick="window.deleteBroadcast('${log.id}')">刪除</button></div></div>`; });
       });
       let initialNoteLoad = true;
       onValue(query(ref(db, 'notes'), limitToLast(1)), (s) => {
@@ -586,51 +716,68 @@
         });
       });
     }
-    function addLog(text) { if(db) push(ref(db, 'logs'), { text, time: Date.now() }); }
+    function addLog(text) { if(db) push(ref(db, roomPath('logs')), { text, time: Date.now(), roomId: currentRoomId }); }
 
     // === 開關教室與 4 種場景佈置 ===
-    document.getElementById('toggleGameBtn').onclick = () => { 
+    document.getElementById('toggleGameBtn').onclick = async () => { 
       if(!state.isTeacher) return;
       const willOpen = !state.gameOpen;
       
-      // 若是開啟教室，則套用下拉選單所選的場景
+      // 開啟教室時保留老師已手動佈置好的位置；只有第一次沒有佈置資料才建立預設配置。
       if(willOpen) {
-         const layoutVal = document.getElementById('layoutSelect').value;
-         let newObj = getBaseLayout();
-         
-         if(layoutVal === '1') {
-            // 配置 1：預設小組桌椅 (8組)，隱藏個人座位
-            for(let i=1; i<=30; i++) newObj['obj-d'+i] = { hidden: true };
-         } 
-         else if(layoutVal === '2') {
-            // 配置 2：個人座位 (6排x5人)，隱藏小組
-            for(let i=1; i<=8; i++) newObj['obj-g'+i] = { hidden: true };
-            for(let col=0; col<6; col++) {
-               for(let row=0; row<5; row++) {
-                  newObj['obj-d' + (col*5 + row + 1)] = { x: 18 + col*12.5, y: 30 + row*12.5, hidden: false };
-               }
-            }
-         } 
-         else if(layoutVal === '3') {
-            // 配置 3：無桌椅 (空地)，隱藏所有桌椅
-            for(let i=1; i<=8; i++) newObj['obj-g'+i] = { hidden: true };
-            for(let i=1; i<=30; i++) newObj['obj-d'+i] = { hidden: true };
-         } 
-         else if(layoutVal === '4') {
-            // 配置 4：完全空教室，隱藏所有可動物品
-            Object.keys(newObj).forEach(k => newObj[k].hidden = true);
-            for(let i=1; i<=30; i++) newObj['obj-d'+i] = { hidden: true };
+         const existingLayout = await get(ref(db, roomPath('classroomObjects')));
+         if (!existingLayout.exists()) {
+           const layoutVal = document.getElementById('layoutSelect').value;
+           let newObj = getBaseLayout();
+           if(layoutVal === '1') {
+              for(let i=1; i<=30; i++) newObj['obj-d'+i] = { hidden: true };
+           } else if(layoutVal === '2') {
+              for(let i=1; i<=8; i++) newObj['obj-g'+i] = { hidden: true };
+              for(let col=0; col<6; col++) {
+                 for(let row=0; row<5; row++) {
+                    newObj['obj-d' + (col*5 + row + 1)] = { x: 18 + col*12.5, y: 30 + row*12.5, hidden: false };
+                 }
+              }
+           } else if(layoutVal === '3') {
+              for(let i=1; i<=8; i++) newObj['obj-g'+i] = { hidden: true };
+              for(let i=1; i<=30; i++) newObj['obj-d'+i] = { hidden: true };
+           } else if(layoutVal === '4') {
+              Object.keys(newObj).forEach(k => newObj[k].hidden = true);
+              for(let i=1; i<=30; i++) newObj['obj-d'+i] = { hidden: true };
+           }
+           await set(ref(db, roomPath('classroomObjects')), newObj);
+           addLog(`🛠️ 老師建立了教室初始配置 (配置 ${layoutVal})`);
+         } else {
+           addLog(`🟢 老師開啟教室，保留目前佈置。`);
          }
-         
-         set(ref(db, 'classroomObjects'), newObj);
-         addLog(`🛠️ 老師切換了場景配置 (配置 ${layoutVal})`);
+         const updates = { activeRoom: currentRoomId };
+         Object.keys(roomNames).forEach(roomId => { updates[`rooms/${roomId}/gameState/isOpen`] = roomId === currentRoomId; });
+         await update(ref(db), updates);
+         return;
       }
-      set(ref(db, 'gameState/isOpen'), willOpen); 
+      if (!willOpen) {
+        const updates = {};
+        Object.entries(state.cats).forEach(([uid, cat]) => {
+          const isTeacherCat = cat.email === 'a776663@st.tc.edu.tw';
+          if (!isTeacherCat && cat.online && (cat.roomId || 'room1') === currentRoomId) updates[`cats/${uid}/online`] = false;
+        });
+        updates[roomPath('gameState/isOpen')] = false;
+        updates[roomPath('dismissNotice')] = { time: Date.now(), message: "老師說放學囉！離開教室吧！" };
+        await update(ref(db), updates);
+        addLog("🚪 老師關閉教室，所有人已被請出教室。");
+      }
     };
 
     // === 教室佈置拖曳系統 (Teacher) ===
     window.isArranging = false;
     let draggingObjId = null;
+    let dragStartPos = null;
+    let selectedObjectIds = new Set();
+    let multiSelectMode = false;
+    const visibleMovables = () => Array.from(document.querySelectorAll('.movable')).filter(el => el.style.display !== 'none');
+    const snapValue = (value) => document.getElementById('snapGrid')?.checked ? Math.round(value / 2) * 2 : value;
+    const refreshSelection = () => document.querySelectorAll('.movable').forEach(el => el.classList.toggle('arrange-selected', selectedObjectIds.has(el.id)));
+    const setSelection = (ids) => { selectedObjectIds = new Set(ids); refreshSelection(); };
     window.toggleArrangeMode = (forceState) => {
         if (!state.isTeacher) return;
         if (state.gameOpen) return showToast("上課中不能佈置喔！請先關閉教室。", true);
@@ -640,11 +787,42 @@
         btn.style.background = window.isArranging ? "#2ecc71" : "#95a5a6";
         
         document.querySelectorAll('.movable').forEach(el => {
-            if (window.isArranging) el.classList.add('arranging'); else el.classList.remove('arranging');
+            if (window.isArranging) el.classList.add('arranging'); else el.classList.remove('arranging', 'arrange-selected');
         });
+        if (!window.isArranging) selectedObjectIds.clear();
         if(window.isArranging) showToast("請拖曳畫面上帶有虛線的物品來佈置教室！");
     };
     document.getElementById('btnArrange').onclick = () => window.toggleArrangeMode();
+    document.getElementById('btnMultiSelect').onclick = () => {
+      multiSelectMode = !multiSelectMode;
+      document.getElementById('btnMultiSelect').classList.toggle('active', multiSelectMode);
+      showToast(multiSelectMode ? "多選模式：點選多個物件後可一起拖曳。" : "已關閉多選模式。");
+    };
+    document.getElementById('btnSelectDesks').onclick = () => {
+      if (!window.isArranging) return showToast("請先進入手動佈置模式。", true);
+      setSelection(visibleMovables().filter(el => el.id.startsWith('obj-g') || el.id.startsWith('obj-d')).map(el => el.id));
+    };
+    document.getElementById('btnClearSelection').onclick = () => setSelection([]);
+    window.alignSelection = async (mode) => {
+      if (!state.isTeacher || !window.isArranging) return showToast("請先進入手動佈置模式。", true);
+      const ids = selectedObjectIds.size ? Array.from(selectedObjectIds) : visibleMovables().map(el => el.id);
+      const updates = {};
+      if (mode === 'tidyRows') {
+        const desks = ids.filter(id => id.startsWith('obj-d') || id.startsWith('obj-g'));
+        desks.forEach((id, index) => {
+          const col = index % 6, row = Math.floor(index / 6);
+          updates[`${id}/x`] = 18 + col * 12.5;
+          updates[`${id}/y`] = 28 + row * 12;
+        });
+      } else {
+        const positions = ids.map(id => state.classroomObjects?.[id]).filter(Boolean);
+        if (!positions.length) return;
+        const xTarget = mode === 'left' ? Math.min(...positions.map(p => p.x)) : 50;
+        ids.forEach(id => { if (state.classroomObjects?.[id]) updates[`${id}/x`] = xTarget; });
+      }
+      await update(ref(db, roomPath('classroomObjects')), updates);
+      showToast("佈置已自動對齊。");
+    };
 
     const getBoardPos = (e) => {
         const board = document.getElementById('classroomBoard');
@@ -659,26 +837,52 @@
     const startDrag = (e) => {
         if (!window.isArranging) return;
         const target = e.target.closest('.movable');
-        if (target) { e.preventDefault(); draggingObjId = target.id; }
+        if (target) {
+          e.preventDefault();
+          if (multiSelectMode || e.shiftKey) {
+            if (selectedObjectIds.has(target.id)) selectedObjectIds.delete(target.id); else selectedObjectIds.add(target.id);
+            refreshSelection();
+          }
+          if (!selectedObjectIds.has(target.id)) setSelection([target.id]);
+          draggingObjId = target.id;
+          dragStartPos = { pointer: getBoardPos(e), objects: {} };
+          selectedObjectIds.forEach(id => {
+            const pos = state.classroomObjects?.[id];
+            if (pos) dragStartPos.objects[id] = { x: pos.x, y: pos.y };
+          });
+        }
     };
     const moveDrag = (e) => {
         if (draggingObjId && window.isArranging) {
             e.preventDefault();
-            const { x, y } = getBoardPos(e);
-            const el = document.getElementById(draggingObjId);
-            el.style.left = x + '%'; el.style.top = y + '%';
-            if (state.classroomObjects && state.classroomObjects[draggingObjId]) {
-                state.classroomObjects[draggingObjId].x = x;
-                state.classroomObjects[draggingObjId].y = y;
-            }
+            const posNow = getBoardPos(e);
+            const dx = posNow.x - dragStartPos.pointer.x;
+            const dy = posNow.y - dragStartPos.pointer.y;
+            Object.entries(dragStartPos.objects).forEach(([id, start]) => {
+              const x = Math.max(0, Math.min(100, snapValue(start.x + dx)));
+              const y = Math.max(0, Math.min(100, snapValue(start.y + dy)));
+              const el = document.getElementById(id);
+              if (el) { el.style.left = x + '%'; el.style.top = y + '%'; }
+              if (state.classroomObjects && state.classroomObjects[id]) {
+                state.classroomObjects[id].x = x;
+                state.classroomObjects[id].y = y;
+              }
+            });
         }
     };
     const endDrag = () => {
         if (draggingObjId && window.isArranging) {
-            const el = document.getElementById(draggingObjId);
-            const x = parseFloat(el.style.left); const y = parseFloat(el.style.top);
-            update(ref(db, `classroomObjects/${draggingObjId}`), { x, y });
+            const updates = {};
+            selectedObjectIds.forEach(id => {
+              const el = document.getElementById(id);
+              if (el) {
+                updates[`${id}/x`] = parseFloat(el.style.left);
+                updates[`${id}/y`] = parseFloat(el.style.top);
+              }
+            });
+            update(ref(db, roomPath('classroomObjects')), updates);
             draggingObjId = null;
+            dragStartPos = null;
         }
     };
     const cBoard = document.getElementById('classroomBoard');
@@ -722,7 +926,7 @@
     window.interactWithObject = async (objId, msg, specialMsg) => {
       if(!currentUser) return;
       let success = false;
-      await runTransaction(ref(db, `objects/${objId}`), (obj) => {
+      await runTransaction(ref(db, roomPath(`objects/${objId}`)), (obj) => {
          const now = Date.now();
          if (obj && obj.inUseBy && (now - obj.timestamp < 3000)) return; 
          success = true; return { inUseBy: currentUser.uid, timestamp: now };
@@ -782,7 +986,7 @@
 
     setInterval(() => {
       if (currentUser && (state.gameOpen || state.isTeacher) && (dirState.up||dirState.down||dirState.left||dirState.right) && !window.isArranging) {
-        const myCat = state.cats[currentUser.uid]; if(myCat) update(ref(db, `cats/${currentUser.uid}`), { x: myCat.x, y: myCat.y, status: '移動中...' });
+        const myCat = state.cats[currentUser.uid]; if(myCat) update(ref(db, `cats/${currentUser.uid}`), { x: myCat.x, y: myCat.y, roomId: currentRoomId, status: '移動中...' });
       }
     }, 200);
     document.addEventListener('mouseup', () => { if(!dirState.up && !dirState.down && !dirState.left && !dirState.right && currentUser) update(ref(db, `cats/${currentUser.uid}`), { status: '發呆中' }); });
@@ -790,15 +994,17 @@
     // === 任務審核雙軌制與踢人 ===
     document.getElementById('tqType').onchange = (e) => {
       document.getElementById('typeGatheringOpts').style.display = e.target.value === 'gathering' ? 'block' : 'none';
+      document.getElementById('typeDeliveryOpts').style.display = e.target.value === 'delivery' ? 'grid' : 'none';
     };
 
     function renderQuests() {
       const qList = document.getElementById('questList'); const pins = document.getElementById('questPins'); qList.innerHTML = '';
       Object.entries(state.quests).forEach(([qId, q]) => {
         const isDone = q.status === 'done'; const isPending = q.status === 'pending'; const jCount = q.joinedBy ? Object.keys(q.joinedBy).length : 0;
-        const isGen = q.type === 'general';
-        let reqText = isGen ? `⏳ 一般任務` : `👥 ${q.minPlayers}人集結`;
+        const isGen = q.type === 'general'; const isDelivery = q.type === 'delivery';
+        let reqText = isDelivery ? `📦 需持有 ${q.requiredItem || '指定物品'} x${q.requiredCount || 1}` : (isGen ? `⏳ 一般任務` : `👥 ${q.minPlayers}人集結`);
         let btnText = isDone ? '✅ 已完成' : isPending ? '⏳ 等待老師審核...' : (isGen ? `👉 加入任務` : '👉 派小貓支援');
+        if (isDelivery && !isPending && !isDone) btnText = '📦 交件登記';
 
         qList.innerHTML += `<div class="quest-card ${isPending?'pending':''}"><strong>${q.title}</strong><p>獎勵：🪙 ${q.rewardGold || 0} / 💎 ${q.rewardCrystal || 0}</p><div><span class="tag">${reqText}</span><span class="tag">${jCount}人已加入</span></div><button onclick="window.joinQuest('${qId}')" ${isDone||isPending?'disabled':''} style="width:100%; margin-top:8px; padding:8px; background:${isDone?'#eee':isPending?'#f5b041':'#ffe79c'}; border:none; border-radius:6px; font-weight:bold;">${btnText}</button></div>`;
 
@@ -808,7 +1014,7 @@
         else if (pin) {
           pin.style.left = q.x + '%'; pin.style.top = q.y + '%';
           if(isPending) { pin.innerHTML = `<strong>${q.title}</strong><span style="color:#f39c12; font-weight:bold; display:block; margin-top:6px;">⏳ 審核中</span>`; }
-          else { pin.innerHTML = `<strong>${q.title}</strong><div class="rewards">🪙 ${q.rewardGold||0} | 💎 ${q.rewardCrystal||0}</div><span style="color:${isGen?'#3498db':'#5f7086'}; font-weight:bold;">${isGen?'不限人數參與':`缺 ${q.minPlayers - jCount} 人`}</span><button onclick="window.joinQuest('${qId}')">加入小隊</button>`; }
+          else { pin.innerHTML = `<strong>${q.title}</strong><div class="rewards">🪙 ${q.rewardGold||0} | 💎 ${q.rewardCrystal||0}</div><span style="color:${isGen?'#3498db':isDelivery?'#8e44ad':'#5f7086'}; font-weight:bold;">${isGen?'不限人數參與':isDelivery?`交件：${escapeHtml(q.requiredItem || '指定物品')} x${q.requiredCount || 1}`:`缺 ${q.minPlayers - jCount} 人`}</span><button onclick="window.joinQuest('${qId}')">${isDelivery?'交件登記':'加入小隊'}</button>`; }
         }
       });
       Array.from(pins.children).forEach(child => { const qId = child.id.replace('pin-', ''); if (!state.quests[qId] || state.quests[qId].status === 'done') child.remove(); });
@@ -816,9 +1022,14 @@
 
     window.joinQuest = async (qId) => {
       if (!currentUser) return; if (!state.gameOpen && !state.isTeacher) return showToast("下課中無法解任務", true);
-      const myUid = currentUser.uid; const myCat = state.cats[myUid]; const qRef = ref(db, `quests/${qId}`);
+      const myUid = currentUser.uid; const myCat = state.cats[myUid]; const qRef = ref(db, roomPath(`quests/${qId}`));
       const snap = await get(qRef); const q = snap.val(); if (!q || q.status !== 'waiting') return;
       if (Math.hypot(myCat.x - q.x, myCat.y - q.y) > 12) return showToast("距離太遠了！請靠近地圖上的圖釘喔。", true);
+      if (q.type === 'delivery') {
+        const requiredItem = (q.requiredItem || '').trim(); const requiredCount = Math.max(1, parseInt(q.requiredCount || 1));
+        if (!requiredItem) return showToast("這個交件任務尚未設定指定物品。", true);
+        if (!myCat.inventory || (myCat.inventory[requiredItem] || 0) < requiredCount) return showToast(`需要持有「${requiredItem}」x${requiredCount} 才能加入任務。`, true);
+      }
 
       let wentPending = false;
       await runTransaction(qRef, (quest) => {
@@ -827,7 +1038,9 @@
           if (!quest.joinedBy) quest.joinedBy = {}; 
           if (quest.joinedBy[myUid]) return quest; 
           quest.joinedBy[myUid] = true; 
-          if (quest.type === 'gathering' && Object.keys(quest.joinedBy).length >= quest.minPlayers) { 
+          if (quest.type === 'delivery') {
+              quest.status = 'pending'; wentPending = true;
+          } else if (quest.type === 'gathering' && Object.keys(quest.joinedBy).length >= quest.minPlayers) { 
               quest.status = 'pending'; wentPending = true; 
           } 
         }
@@ -851,7 +1064,8 @@
         });
 
         if (q.status === 'pending') {
-           list.innerHTML += `<div class="quest-card" style="border-color:#f5b041;"><strong>${q.title} (${jCount}人集結完畢)</strong><div>${joinedHtml}</div><div class="teacher-action-btns"><button class="btn-approve" onclick="window.approveQuest('${qId}')">✅ 核准發獎勵</button><button class="btn-reject" onclick="window.rejectQuest('${qId}')">❌ 退回重解</button></div></div>`; 
+           const pendingLabel = q.type === 'delivery' ? `${jCount}人交件待審` : `${jCount}人集結完畢`;
+           list.innerHTML += `<div class="quest-card" style="border-color:#f5b041;"><strong>${q.title} (${pendingLabel})</strong><div>${joinedHtml}</div><div class="teacher-action-btns"><button class="btn-approve" onclick="window.approveQuest('${qId}')">✅ 核准發獎勵</button><button class="btn-reject" onclick="window.rejectQuest('${qId}')">❌ 退回重解</button></div></div>`; 
         } else {
            list.innerHTML += `<div class="quest-card" style="border-color:#3498db;"><strong>${q.title} (${jCount}人已加入)</strong><div>${joinedHtml}</div><div class="teacher-action-btns"><button class="btn-approve" style="background:#3498db;" onclick="window.approveQuest('${qId}')">✅ 結算發獎勵</button><button class="btn-reject" onclick="window.rejectQuest('${qId}')">❌ 撤銷任務</button></div></div>`; 
         }
@@ -861,7 +1075,7 @@
     window.kickFromQuest = async (qId, sUid) => {
         if (!state.isTeacher) return;
         const sName = state.cats[sUid]?.name || "學生";
-        await runTransaction(ref(db, `quests/${qId}`), (quest) => {
+        await runTransaction(ref(db, roomPath(`quests/${qId}`)), (quest) => {
             if (quest && quest.joinedBy && quest.joinedBy[sUid]) {
                 delete quest.joinedBy[sUid];
                 if (quest.type === 'gathering' && Object.keys(quest.joinedBy).length < quest.minPlayers) {
@@ -874,25 +1088,38 @@
     };
 
     window.approveQuest = async (qId) => {
-      if(!state.isTeacher) return; const qRef = ref(db, `quests/${qId}`); let joined = []; let rG = 0, rC = 0, t = "";
+      if(!state.isTeacher) return; const qRef = ref(db, roomPath(`quests/${qId}`)); let joined = []; let rG = 0, rC = 0, t = "", requiredItem = "", requiredCount = 0, isDelivery = false;
       await runTransaction(qRef, (q) => { 
           if(q && (q.status === 'pending' || (q.status === 'waiting' && q.type === 'general'))) { 
-              q.status = 'done'; joined = Object.keys(q.joinedBy||{}); rG = q.rewardGold||0; rC = q.rewardCrystal||0; t = q.title; 
+              q.status = 'done'; joined = Object.keys(q.joinedBy||{}); rG = q.rewardGold||0; rC = q.rewardCrystal||0; t = q.title; requiredItem = q.requiredItem || ""; requiredCount = Math.max(1, parseInt(q.requiredCount || 1)); isDelivery = q.type === 'delivery';
           } return q; 
       });
       if(joined.length > 0) {
-        const updates = {}; joined.forEach(uid => { updates[`cats/${uid}/gold`] = increment(rG); updates[`cats/${uid}/crystal`] = increment(rC); updates[`cats/${uid}/status`] = '解完任務！'; });
-        await update(ref(db), updates); addLog(`👨‍🏫 老師發放了 [${t}] 的獎勵！`);
+        const approved = [];
+        for (const uid of joined) {
+          let canApprove = true;
+          if (isDelivery && requiredItem) {
+            await runTransaction(ref(db, `cats/${uid}/inventory/${requiredItem}`), (qty) => {
+              if ((qty || 0) < requiredCount) { canApprove = false; return qty || 0; }
+              return (qty || 0) - requiredCount;
+            });
+          }
+          if (canApprove) approved.push(uid);
+        }
+        if (approved.length > 0) {
+          const updates = {}; approved.forEach(uid => { updates[`cats/${uid}/gold`] = increment(rG); updates[`cats/${uid}/crystal`] = increment(rC); updates[`cats/${uid}/status`] = '解完任務！'; });
+          await update(ref(db), updates); addLog(`👨‍🏫 老師發放了 [${t}] 的獎勵！${isDelivery && approved.length < joined.length ? '（有學生物品不足，未發獎）' : ''}`);
+        } else { addLog(`👨‍🏫 [${t}] 沒有可通過的交件。`); }
       } else if (t) { addLog(`👨‍🏫 老師結算了 [${t}]，但沒有人加入...`); }
     };
-    window.rejectQuest = async (qId) => { if(!state.isTeacher) return; await update(ref(db, `quests/${qId}`), { status: 'waiting', joinedBy: null }); addLog(`❌ 老師退回/撤銷了某個任務。`); };
+    window.rejectQuest = async (qId) => { if(!state.isTeacher) return; await update(ref(db, roomPath(`quests/${qId}`)), { status: 'waiting', joinedBy: null }); addLog(`❌ 老師退回/撤銷了某個任務。`); };
 
     // === 回收物品 ===
     window.updateReclaimSelects = () => {
       if (!state.isTeacher) return; const stuSel = document.getElementById('trStudent'); const itemSel = document.getElementById('trItem');
       if (document.activeElement === stuSel || document.activeElement === itemSel) return;
       const currUid = stuSel.value; stuSel.innerHTML = '<option value="">選擇學生...</option>';
-      Object.entries(state.cats).forEach(([uid, cat]) => { stuSel.innerHTML += `<option value="${uid}">${cat.name}</option>`; });
+      Object.entries(sameRoomCats()).forEach(([uid, cat]) => { stuSel.innerHTML += `<option value="${uid}">${cat.name}</option>`; });
       stuSel.value = currUid; window.updateReclaimItems();
     };
 
@@ -914,17 +1141,58 @@
         else { showToast("回收失敗，學生可能沒有該物品了。", true); }
     };
 
+    window.updateBagSelects = () => {
+      if (!state.isTeacher) return;
+      const stuSel = document.getElementById('bagStudent'); const itemSel = document.getElementById('bagItem');
+      if (!stuSel || document.activeElement === stuSel || document.activeElement === itemSel) return;
+      const currUid = stuSel.value; stuSel.innerHTML = '<option value="">選擇學生...</option>';
+      Object.entries(sameRoomCats()).forEach(([uid, cat]) => { if (!cat.email?.includes('a776663@st.tc.edu.tw')) stuSel.innerHTML += `<option value="${uid}">${cat.name}</option>`; });
+      stuSel.value = currUid; window.updateBagItems();
+    };
+
+    window.updateBagItems = () => {
+      const uid = document.getElementById('bagStudent').value; const iSel = document.getElementById('bagItem'); const currItem = iSel.value;
+      iSel.innerHTML = '';
+      if (!uid || !state.cats[uid]) { iSel.innerHTML = '<option value="">先選擇學生...</option>'; return; }
+      const inv = state.cats[uid].inventory || {}; let hasItem = false;
+      Object.entries(inv).forEach(([itemName, qty]) => { if (qty > 0) { hasItem = true; iSel.innerHTML += `<option value="${itemName}">${itemName} (剩 ${qty})</option>`; } });
+      if (!hasItem) iSel.innerHTML = '<option value="">背包沒有物品</option>'; else { iSel.value = currItem; if(!iSel.value) iSel.selectedIndex = 0; }
+    };
+
+    window.confiscateBagItem = async () => {
+      if (!state.isTeacher) return;
+      const uid = document.getElementById('bagStudent').value; const itemName = document.getElementById('bagItem').value;
+      if (!uid || !itemName) return showToast("請選擇學生與物品。", true);
+      let success = false; const studentName = state.cats[uid]?.name || "學生";
+      await runTransaction(ref(db, `cats/${uid}/inventory/${itemName}`), (qty) => {
+        if ((qty || 0) <= 0) return qty || 0;
+        success = true; return (qty || 0) - 1;
+      });
+      if (success) { showToast(`已沒收 ${studentName} 的 ${itemName}`); addLog(`🎒 老師沒收了 ${studentName} 的 1 個 [${itemName}]。`); }
+      else showToast("沒收失敗，學生可能沒有該物品了。", true);
+    };
+
+    window.giftBagItem = async () => {
+      if (!state.isTeacher) return;
+      const uid = document.getElementById('bagStudent').value; const itemName = document.getElementById('giftItemName').value.trim();
+      const qty = Math.max(1, parseInt(document.getElementById('giftItemQty').value || 1));
+      if (!uid || !itemName) return showToast("請選擇學生並輸入物品名稱。", true);
+      await update(ref(db, `cats/${uid}/inventory/${itemName}`), increment(qty));
+      showToast(`已贈與 ${state.cats[uid]?.name || "學生"}：${itemName} x${qty}`);
+      addLog(`🎁 老師贈與 ${state.cats[uid]?.name || "學生"} [${itemName}] x${qty}。`);
+    };
+
     // === 打掃與潔淨魔法 ===
     window.cleanMess = async (mId, type) => {
       if(!currentUser) return; const myCat = state.cats[currentUser.uid]; const reqTool = cleanReqs[type];
       if(!myCat.inventory || !myCat.inventory[reqTool]) return showToast(`你需要去掃具櫃借用「${reqTool}」才能打掃！`, true);
-      let success = false; await runTransaction(ref(db, `messes/${mId}`), (m) => { if(m) { success = true; return null; } return m; });
+      let success = false; await runTransaction(ref(db, roomPath(`messes/${mId}`)), (m) => { if(m) { success = true; return null; } return m; });
       if(success) { await update(ref(db, `cats/${currentUser.uid}/gold`), increment(2)); showToast(`✨ 打掃完成！獲得 2 金幣！`); addLog(`🧹 ${myCat.name} 幫忙清理了教室！`); } else { showToast(`已經被別人掃掉囉！`, true); }
     };
     function renderMesses() { const layer = document.getElementById('messLayer'); layer.innerHTML = ''; Object.entries(state.messes).forEach(([mId, m]) => { layer.innerHTML += `<div class="mess-obj" style="left:${m.x}%; top:${m.y}%;">${messIcons[m.type]}</div>`; }); }
     
-    window.spawnMess = (type) => { if(!state.isTeacher) return; push(ref(db, 'messes'), { type: type, x: 10 + Math.random() * 80, y: 10 + Math.random() * 80 }); showToast(`已製造髒亂！`); };
-    window.cleanMagic = () => { if(state.isTeacher) { set(ref(db, 'messes'), null); addLog('✨ 老師施展了潔淨魔法，教室變得一塵不染！'); showToast('✨ 已清除所有髒亂！'); } };
+    window.spawnMess = (type) => { if(!state.isTeacher) return; push(ref(db, roomPath('messes')), { type: type, x: 10 + Math.random() * 80, y: 10 + Math.random() * 80 }); showToast(`已製造髒亂！`); };
+    window.cleanMagic = () => { if(state.isTeacher) { set(ref(db, roomPath('messes')), null); addLog('✨ 老師施展了潔淨魔法，教室變得一塵不染！'); showToast('✨ 已清除所有髒亂！'); } };
 
     let lastChatTime = 0; let chatCooldownTimer = null;
     document.getElementById('chatForm').onsubmit = (e) => {
@@ -949,11 +1217,47 @@
     document.getElementById('btnWhisper').onclick = () => { const text = prompt("輸入悄悄話 (30字內)："); if(text && text.trim().length > 0) { update(ref(db, `cats/${currentUser.uid}/chat`), { text: text.substring(0,30), time: Date.now(), type: 'whisper' }); showToast("已發出悄悄話！"); window.closeModal('modalInteract'); } };
     document.getElementById('btnPassNote').onclick = () => { const text = prompt("輸入紙條內容 (30字內)："); if(text && text.trim().length > 0 && targetUidForInteract) { push(ref(db, 'notes'), { from: currentUser.uid, fromName: state.cats[currentUser.uid].name, to: targetUidForInteract, toName: state.cats[targetUidForInteract].name, text: text.substring(0,30), time: Date.now() }); showToast(`已丟紙條！`); window.closeModal('modalInteract'); } };
     document.getElementById('btnInspect').onclick = () => { if(!targetUidForInteract) return; const tCat = state.cats[targetUidForInteract]; const div = document.getElementById('inspectContent'); div.innerHTML = `<div class="inv-item" style="border-color:#f5b041;"><span>金幣 🪙</span><span>${tCat.gold||0}</span></div><div class="inv-item" style="border-color:#a569bd;"><span>水晶 💎</span><span>${tCat.crystal||0}</span></div>`; if(tCat.inventory) { Object.entries(tCat.inventory).forEach(([item, qty]) => { if(qty > 0) div.innerHTML += `<div class="inv-item"><span>${item}</span><span>x${qty}</span></div>`; }); } else { div.innerHTML += `<div style="grid-column:1/-1; color:#888; font-size:0.8rem; text-align:center;">背包空空。</div>`; } document.getElementById('inspectArea').style.display = 'block'; };
+    document.getElementById('btnGreet').onclick = async () => {
+      if (!currentUser || !targetUidForInteract) return;
+      const myCat = state.cats[currentUser.uid]; const targetCat = state.cats[targetUidForInteract];
+      if (!myCat || !targetCat) return;
+      const now = Date.now(); const last = myCat.greetCooldowns?.[targetUidForInteract] || 0;
+      if (now - last < GREET_COOLDOWN) return showToast(`剛剛跟${targetCat.name}打過招呼了！`, true);
+      const updates = {};
+      updates[`cats/${currentUser.uid}/greetCooldowns/${targetUidForInteract}`] = now;
+      updates[`cats/${currentUser.uid}/hiddenStats/kindnessGiven`] = increment(1);
+      updates[`cats/${targetUidForInteract}/hiddenStats/kindnessReceived`] = increment(1);
+      updates[`cats/${currentUser.uid}/chat`] = { text: `向 ${targetCat.name} 打招呼：你好！`, time: now, type: 'normal' };
+      await update(ref(db), updates);
+      addLog(`👋 ${myCat.name} 向 ${targetCat.name} 打招呼。`);
+      showToast(`已向 ${targetCat.name} 打招呼！`);
+      window.closeModal('modalInteract');
+    };
+
+    document.getElementById('centerRescueBtn').onclick = async () => {
+      if (!currentUser) return;
+      const myCat = state.cats[currentUser.uid]; const now = Date.now();
+      if (!state.isTeacher && myCat?.lastCenterRescueAt && now - myCat.lastCenterRescueAt < CENTER_COOLDOWN) {
+        const left = Math.ceil((CENTER_COOLDOWN - (now - myCat.lastCenterRescueAt)) / 1000);
+        return showToast(`回中心冷卻中，還要 ${left} 秒。`, true);
+      }
+      await update(ref(db, `cats/${currentUser.uid}`), { x: centerPoint.x, y: centerPoint.y, roomId: currentRoomId, lastCenterRescueAt: now, status: '回到教室中心' });
+      showToast(state.isTeacher ? "老師已回到教室中心。" : "已回到教室中心。");
+    };
 
     function renderPlayer() {
       if (!currentUser) return; const myCat = state.cats[currentUser.uid]; if (!myCat) return;
       document.getElementById('playerCard').innerHTML = `<div style="width:40px;height:40px;background:${myCat.color};border-radius:10px;border:2px solid #333;"></div><div><strong style="font-size:1.1rem; color:var(--navy);">${myCat.name}</strong><br><span style="font-size:0.8rem; color:var(--muted);">${state.isTeacher?'👨‍🏫 老師':'🐱 學生'}</span></div>`;
       document.getElementById('pGold').textContent = myCat.gold || 0; document.getElementById('pCrystal').textContent = myCat.crystal || 0;
+      document.getElementById('teacherHiddenStats').style.display = state.isTeacher ? 'block' : 'none';
+      document.getElementById('teacherBagTools').style.display = state.isTeacher ? 'block' : 'none';
+      if (state.isTeacher) {
+        const statsList = document.getElementById('hiddenStatsList'); statsList.innerHTML = '';
+        Object.entries(sameRoomCats()).forEach(([uid, cat]) => {
+          const stats = cat.hiddenStats || {};
+          statsList.innerHTML += `<div class="inv-item"><span>${escapeHtml(cat.name || '未命名')}</span><span>善待他人 ${stats.kindnessGiven || 0} / 受到善待 ${stats.kindnessReceived || 0}</span></div>`;
+        });
+      }
       const invList = document.getElementById('inventoryList'); invList.innerHTML = '';
       if(myCat.inventory) { Object.entries(myCat.inventory).forEach(([item, qty]) => { if(qty > 0) invList.innerHTML += `<div class="inv-item"><span>${item}</span><span>x${qty}</span></div>`; }); }
       if(invList.innerHTML === '') invList.innerHTML = '<div style="grid-column:1/-1; color:#888; font-size:0.8rem;">背包空空。</div>';
@@ -962,7 +1266,7 @@
     function renderCats() {
       const layer = document.getElementById('catLayer'); const now = Date.now(); const myCat = currentUser ? state.cats[currentUser.uid] : null;
       Object.entries(state.cats).forEach(([uid, cat]) => {
-        if (!cat.online) { const el = document.getElementById(`cat-${uid}`); if (el) el.remove(); return; }
+        if (!cat.online || (cat.roomId || 'room1') !== currentRoomId) { const el = document.getElementById(`cat-${uid}`); if (el) el.remove(); return; }
         let el = document.getElementById(`cat-${uid}`);
         if (!el) { el = document.createElement('div'); el.id = `cat-${uid}`; el.className = 'cat' + (currentUser && uid === currentUser.uid ? ' me' : ''); el.innerHTML = `<div class="cat-tail" style="--cat-color:${cat.color}"></div><div class="cat-ear left" style="--cat-color:${cat.color}"></div><div class="cat-ear right" style="--cat-color:${cat.color}"></div><div class="cat-body" style="--cat-color:${cat.color}"><div class="cat-face"><div class="cat-eye left"></div><div class="cat-eye right"></div><div class="cat-nose"></div></div></div><div class="cat-label">${cat.name}</div><div class="chat-bubble" style="display:none;"></div>`; layer.appendChild(el); }
         el.style.left = cat.x + '%'; el.style.top = cat.y + '%';
@@ -973,25 +1277,51 @@
           bubble.style.display = 'block'; bubble.textContent = msg;
         } else { bubble.style.display = 'none'; }
       });
-      Array.from(layer.children).forEach(child => { const uid = child.id.replace('cat-', ''); if (!state.cats[uid] || !state.cats[uid].online) child.remove(); });
+      Array.from(layer.children).forEach(child => { const uid = child.id.replace('cat-', ''); if (!state.cats[uid] || !state.cats[uid].online || (state.cats[uid].roomId || 'room1') !== currentRoomId) child.remove(); });
     }
 
     function renderShop() { const list = document.getElementById('shopList'); list.innerHTML = ''; Object.entries(state.shop).forEach(([sId, item]) => { list.innerHTML += `<div class="shop-item"><div class="shop-info"><strong>${item.name}</strong><span>${item.currency==='gold'?'🪙':'💎'} ${item.price}</span></div><button class="buy-btn" onclick="window.buyShopItem('${sId}')">購買</button></div>`; }); }
     window.buyShopItem = async (sId) => { if(!currentUser) return; const item = state.shop[sId]; let success = false, msg = ""; await runTransaction(ref(db, `cats/${currentUser.uid}`), (cat) => { if(cat) { if (item.currency === 'gold' && (cat.gold||0) >= item.price) { cat.gold -= item.price; if(!cat.inventory) cat.inventory = {}; cat.inventory[item.name] = (cat.inventory[item.name]||0) + 1; success = true; } else if (item.currency === 'crystal' && (cat.crystal||0) >= item.price) { cat.crystal -= item.price; if(!cat.inventory) cat.inventory = {}; cat.inventory[item.name] = (cat.inventory[item.name]||0) + 1; success = true; } else { msg = "餘額不足！"; } } return cat; }); if(success) showToast(`購買：${item.name}`); else showToast(msg, true); };
 
     function renderSupplies() { const list = document.getElementById('supplyList'); list.innerHTML = ''; Object.keys(supplyNames).forEach(key => { const count = state.supplies[key] !== undefined ? state.supplies[key] : supplyMax[key]; list.innerHTML += `<div class="supply-item"><div class="shop-info"><strong style="font-size:1.1rem;">${supplyNames[key]}</strong><span>剩餘公用：${count} / ${supplyMax[key]}</span></div><div><button class="borrow-btn" onclick="window.borrowSupply('${key}')">借用</button> <button class="return-btn" onclick="window.returnSupply('${key}')">歸還</button></div></div>`; }); }
-    window.borrowSupply = async (key) => { if(!currentUser) return; const supRef = ref(db, `cleaningSupplies/${key}`); let success = false; await runTransaction(supRef, (val) => { let current = val === null ? supplyMax[key] : val; if (current > 0) { success = true; return current - 1; } return current; }); if (success) { await update(ref(db, `cats/${currentUser.uid}/inventory/${supplyNames[key]}`), increment(1)); showToast(`借用了 ${supplyNames[key]}`); } else { showToast(`${supplyNames[key]} 被借光了！`, true); } };
-    window.returnSupply = async (key) => { if(!currentUser) return; const myInvRef = ref(db, `cats/${currentUser.uid}/inventory/${supplyNames[key]}`); const snap = await get(myInvRef); if (snap.val() && snap.val() > 0) { await update(myInvRef, increment(-1)); await update(ref(db, `cleaningSupplies/${key}`), increment(1)); showToast(`已歸還 ${supplyNames[key]}`); } else { showToast(`你沒有 ${supplyNames[key]}`, true); } };
+    window.borrowSupply = async (key) => { if(!currentUser) return; const supRef = ref(db, roomPath(`cleaningSupplies/${key}`)); let success = false; await runTransaction(supRef, (val) => { let current = val === null ? supplyMax[key] : val; if (current > 0) { success = true; return current - 1; } return current; }); if (success) { await update(ref(db, `cats/${currentUser.uid}/inventory/${supplyNames[key]}`), increment(1)); showToast(`借用了 ${supplyNames[key]}`); } else { showToast(`${supplyNames[key]} 被借光了！`, true); } };
+    window.returnSupply = async (key) => { if(!currentUser) return; const myInvRef = ref(db, `cats/${currentUser.uid}/inventory/${supplyNames[key]}`); const snap = await get(myInvRef); if (snap.val() && snap.val() > 0) { await update(myInvRef, increment(-1)); await update(ref(db, roomPath(`cleaningSupplies/${key}`)), increment(1)); showToast(`已歸還 ${supplyNames[key]}`); } else { showToast(`你沒有 ${supplyNames[key]}`, true); } };
 
-    document.getElementById('clearQuestsBtn').onclick = () => { if(state.isTeacher) set(ref(db, 'quests'), null); };
+    document.getElementById('broadcastForm').onsubmit = (e) => {
+      e.preventDefault(); if (!state.isTeacher) return;
+      const text = document.getElementById('broadcastText').value.trim();
+      if (!text) return;
+      addLog(`📣 ${text}`); e.target.reset(); showToast("已發布教室廣播。");
+    };
+    window.editBroadcast = async (logId) => {
+      if (!state.isTeacher) return;
+      const log = state.logs.find(item => item.id === logId); if (!log) return;
+      const text = prompt("更新廣播訊息：", log.text);
+      if (text && text.trim()) await update(ref(db, roomPath(`logs/${logId}`)), { text: text.trim(), time: Date.now(), edited: true });
+    };
+    window.deleteBroadcast = (logId) => { if (state.isTeacher && confirm("確定刪除這則廣播？")) set(ref(db, roomPath(`logs/${logId}`)), null); };
+    window.clearBroadcasts = () => { if (state.isTeacher && confirm("確定刪除本教室所有廣播動態？")) set(ref(db, roomPath('logs')), null); };
+    window.backupBroadcasts = async () => {
+      if (!state.isTeacher) return;
+      const payload = JSON.stringify({ room: roomNames[currentRoomId], exportedAt: formatDateTime(Date.now()), logs: state.logs }, null, 2);
+      try { await navigator.clipboard.writeText(payload); showToast("廣播備份已複製到剪貼簿。"); }
+      catch { prompt("請複製以下備份資料：", payload); }
+    };
+
+    document.getElementById('clearQuestsBtn').onclick = () => { if(state.isTeacher) set(ref(db, roomPath('quests')), null); };
     document.getElementById('tQuestForm').onsubmit = (e) => {
       e.preventDefault(); if (!state.isTeacher) return;
       const type = document.getElementById('tqType').value;
       const qData = { title: document.getElementById('tqTitle').value, rewardGold: parseInt(document.getElementById('tqGold').value), rewardCrystal: parseInt(document.getElementById('tqCrystal').value), type: type, x: 20+Math.random()*60, y: 20+Math.random()*60, status: 'waiting', joinedBy: {} };
       if (type === 'gathering') qData.minPlayers = parseInt(document.getElementById('tqMin').value);
-      push(ref(db, 'quests'), qData); addLog(`📜 老師發布了新任務！`); e.target.reset();
+      if (type === 'delivery') {
+        qData.requiredItem = document.getElementById('tqRequiredItem').value.trim();
+        qData.requiredCount = Math.max(1, parseInt(document.getElementById('tqRequiredCount').value || 1));
+        if (!qData.requiredItem) return showToast("交件任務需要指定物品名稱。", true);
+      }
+      push(ref(db, roomPath('quests')), qData); addLog(`📜 老師發布了新任務！`); e.target.reset(); document.getElementById('typeGatheringOpts').style.display = 'block'; document.getElementById('typeDeliveryOpts').style.display = 'none';
     };
-    document.getElementById('tShopForm').onsubmit = (e) => { e.preventDefault(); if (!state.isTeacher) return; push(ref(db, 'shop'), { name: document.getElementById('tsName').value, price: parseInt(document.getElementById('tsPrice').value), currency: document.getElementById('tsCurrency').value }); e.target.reset(); };
+    document.getElementById('tShopForm').onsubmit = (e) => { e.preventDefault(); if (!state.isTeacher) return; push(ref(db, roomPath('shop')), { name: document.getElementById('tsName').value, price: parseInt(document.getElementById('tsPrice').value), currency: document.getElementById('tsCurrency').value }); e.target.reset(); };
   </script>
 </body>
 </html>
