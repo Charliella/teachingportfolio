@@ -220,10 +220,23 @@
     .close-modal { position: absolute; top: 16px; right: 16px; background: #eee; border: none; border-radius: 50%; width: 32px; height: 32px; font-weight: bold; color: var(--navy); }
     .interact-btns { display: grid; gap: 10px; margin: 20px 0; }
     .interact-btn { padding: 12px; border: 2px solid var(--line); border-radius: 12px; background: white; font-size: 1rem; font-weight: bold; color: var(--navy); display: flex; align-items: center; gap: 10px; }
+    .closed-screen { display: none; position: fixed; inset: 0; z-index: 3000; background: rgba(248,251,255,0.96); align-items: center; justify-content: center; text-align: center; padding: 24px; }
+    .closed-screen.active { display: flex; }
+    .closed-screen-box { max-width: 420px; background: white; border: 3px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); padding: 28px; }
+    .closed-screen-box h2 { margin: 0 0 12px; color: var(--navy); font-size: 1.4rem; }
+    .admin-grid { display: grid; gap: 8px; }
+    .admin-row { display: grid; grid-template-columns: 1.1fr 0.8fr 0.8fr; gap: 8px; align-items: end; }
+    .admin-row textarea { min-height: 72px; resize: vertical; font-size: 0.82rem; }
   </style>
 </head>
 <body>
   <div id="toastContainer"></div>
+  <div id="closedScreen" class="closed-screen">
+    <div class="closed-screen-box">
+      <h2>目前教室關閉中，無法登入系統</h2>
+      <p>請等老師開啟教室後再重新登入。</p>
+    </div>
+  </div>
 
   <div class="app-shell">
     <header class="hero-panel">
@@ -232,7 +245,7 @@
         <p>老師可於下課時間重新佈置教室 • 互動附帶 1% 驚喜彩蛋！</p>
       </div>
       <div class="status-badges">
-        <div class="badge"><span>目前教室</span><strong><select id="roomSelect" style="border:none; background:transparent; color:var(--navy); font-weight:900;"><option value="room1">一號</option><option value="room2">二號</option><option value="room3">三號</option><option value="room4">四號</option></select></strong></div>
+        <div class="badge"><span>目前教室</span><strong><select id="roomSelect" style="border:none; background:transparent; color:var(--navy); font-weight:900;"><option value="room1">主教室</option></select></strong></div>
         <div class="badge"><span>教室狀態</span><strong id="badgeGameState">關閉中</strong></div>
         <div class="badge"><span>在線人數</span><strong id="badgeOnline">0</strong></div>
       </div>
@@ -430,6 +443,25 @@
             <button type="button" class="primary-button" onclick="window.reclaimItem()" style="background:#e74c3c;">回收</button>
           </div>
 
+          <h3 style="font-size:0.95rem; margin:16px 0 8px;">🛠️ 終極後台：學生資料總管</h3>
+          <div class="teacher-toolbox admin-grid">
+            <label>選擇學生
+              <select id="adminStudent" onchange="window.loadAdminStudent()"><option value="">選擇學生...</option></select>
+            </label>
+            <div class="admin-row">
+              <label>名稱 <input type="text" id="adminName"></label>
+              <label>金幣 <input type="number" id="adminGold" value="0"></label>
+              <label>水晶 <input type="number" id="adminCrystal" value="0"></label>
+            </div>
+            <label>背包 / 物品（每行：物品名稱=數量）
+              <textarea id="adminInventory" placeholder="掃把=1&#10;抹布=2"></textarea>
+            </label>
+            <div class="tool-row">
+              <button type="button" class="primary-button" onclick="window.saveAdminStudent()" style="background:#2ecc71; flex:1;">儲存學生資料</button>
+              <button type="button" class="danger-button" onclick="window.kickAdminStudent()" style="flex:1;">強制踢出學生</button>
+            </div>
+          </div>
+
           <h3 style="font-size:0.95rem; margin:16px 0 8px;">😈 / ✨ 老師場景技能</h3>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
             <button class="btn-prank" style="background:#00bcd4; flex:1 1 100%;" onclick="window.cleanMagic()">✨ 潔淨魔法 (清空垃圾)</button>
@@ -524,13 +556,14 @@
     let app, auth, db;
     try { app = initializeApp(firebaseConfig); auth = getAuth(app); db = getDatabase(app); } catch(e) { alert("Firebase 尚未設定！"); }
 
-    const state = { gameOpen: false, isTeacher: false, cats: {}, quests: {}, shop: {}, supplies: {}, messes: {}, classroomObjects: null, logs: [] };
+    const state = { gameOpen: false, isTeacher: false, cats: {}, quests: {}, shop: {}, supplies: {}, messes: {}, classroomObjects: null, logs: [], forceClosed: false };
     let currentUser = null; let targetUidForInteract = null;
-    let currentRoomId = localStorage.getItem('cloudClassCatsRoom') || 'room1';
+    let currentRoomId = 'room1';
+    localStorage.setItem('cloudClassCatsRoom', currentRoomId);
     let activeRoomId = currentRoomId;
     let sessionStartedAt = Date.now();
     let handledDismissAt = 0;
-    const roomNames = { room1: '一號教室', room2: '二號教室', room3: '三號教室', room4: '四號教室' };
+    const roomNames = { room1: '主教室' };
     const roomPath = (path = '') => `rooms/${currentRoomId}${path ? '/' + path : ''}`;
     const centerPoint = { x: 50, y: 50 };
     const CENTER_COOLDOWN = 60 * 1000;
@@ -542,7 +575,16 @@
     const supplyNames = { broom: "掃把", mop: "拖把", rag: "抹布", dustpan: "畚箕", bucket: "水桶" };
     const supplyMax = { broom: 6, mop: 6, rag: 10, dustpan: 6, bucket: 6 };
     const messIcons = { trash: '🗑️', puddle: '💧', dust: '💨' };
-    const cleanReqs = { trash: '掃把', puddle: '拖把', dust: '抹布' };
+    const cleanReqs = { trash: ['掃把', '畚箕'], puddle: ['拖把', '水桶'], dust: ['抹布'] };
+    const supplyItemSet = new Set(Object.values(supplyNames));
+    const classroomClosedForStudent = () => !state.isTeacher && (!state.gameOpen || state.forceClosed);
+    const showClosedScreen = (show) => document.getElementById('closedScreen').classList.toggle('active', !!show);
+    const guardOpenClassroom = () => {
+      if (!classroomClosedForStudent()) return true;
+      showClosedScreen(true);
+      showToast("目前教室關閉中，無法使用系統。", true);
+      return false;
+    };
 
     // 初始化動態生成個人座位 DOM (obj-d1 ~ obj-d30)
     const cBoardInner = document.getElementById('classroomBoard');
@@ -602,14 +644,11 @@
 
     document.getElementById('roomSelect').value = currentRoomId;
     document.getElementById('roomSelect').onchange = async (e) => {
-      if (!state.isTeacher) {
-        e.target.value = currentRoomId;
-        return showToast("只有老師可以切換教室。", true);
-      }
-      currentRoomId = e.target.value;
+      e.target.value = 'room1';
+      currentRoomId = 'room1';
       localStorage.setItem('cloudClassCatsRoom', currentRoomId);
-      if (currentUser && db) await update(ref(db, `cats/${currentUser.uid}`), { roomId: currentRoomId, x: centerPoint.x, y: centerPoint.y, status: `前往${roomNames[currentRoomId]}` });
-      location.reload();
+      if (currentUser && db) await update(ref(db, `cats/${currentUser.uid}`), { roomId: currentRoomId, x: centerPoint.x, y: centerPoint.y, status: `留在${roomNames[currentRoomId]}` });
+      showToast("目前只有一間主教室，請用配置選單更換座位排列。");
     };
 
     document.getElementById('authForm').onsubmit = async (e) => {
@@ -630,15 +669,21 @@
         if (user) {
           sessionStartedAt = Date.now();
           currentUser = user; state.isTeacher = (user.email === 'a776663@st.tc.edu.tw');
-          const activeSnap = await get(ref(db, 'activeRoom'));
-          if (activeSnap.exists()) activeRoomId = activeSnap.val() || currentRoomId;
-          else if (state.isTeacher) await set(ref(db, 'activeRoom'), currentRoomId);
+          currentRoomId = 'room1';
+          activeRoomId = currentRoomId;
+          localStorage.setItem('cloudClassCatsRoom', currentRoomId);
+          const gameSnap = await get(ref(db, roomPath('gameState')));
+          state.gameOpen = !!(gameSnap.val()?.isOpen);
+          if (!state.isTeacher && !state.gameOpen) {
+            state.forceClosed = true;
+            alert("目前教室關閉中，無法登入系統");
+            showClosedScreen(true);
+            await update(ref(db, `cats/${user.uid}`), { online: false, roomId: currentRoomId, status: '教室關閉中' }).catch(() => {});
+            await signOut(auth);
+            return;
+          }
+          await set(ref(db, 'activeRoom'), currentRoomId);
           if (!state.isTeacher) {
-            if (activeRoomId !== currentRoomId) {
-              localStorage.setItem('cloudClassCatsRoom', activeRoomId);
-              location.reload();
-              return;
-            }
             document.getElementById('roomSelect').value = currentRoomId;
             document.getElementById('roomSelect').disabled = true;
           } else {
@@ -648,10 +693,15 @@
           if(state.isTeacher) document.getElementById('navTeacherBtn').style.display = 'block';
 
           const myCatRef = ref(db, `cats/${user.uid}`); const snap = await get(myCatRef);
-          if (!snap.exists()) { await set(myCatRef, { name: user.displayName || '老師', email: user.email, roomId: currentRoomId, x: 34, y: 14, color: catColors[0], gold: 9999, crystal: 9999, hiddenStats: { kindnessGiven: 0, kindnessReceived: 0 }, online: true, status: '巡視中' }); } 
+          if (!snap.exists()) {
+            const fallbackName = state.isTeacher ? '老師' : (user.displayName || (user.email ? user.email.split('@')[0] : '小貓'));
+            await set(myCatRef, { name: fallbackName, email: user.email, roomId: currentRoomId, x: state.isTeacher ? 34 : 50, y: state.isTeacher ? 14 : 80, color: state.isTeacher ? catColors[0] : catColors[Math.floor(Math.random() * catColors.length)], gold: state.isTeacher ? 9999 : 0, crystal: state.isTeacher ? 9999 : 0, hiddenStats: { kindnessGiven: 0, kindnessReceived: 0 }, online: true, status: state.isTeacher ? '巡視中' : '剛報到' });
+          } 
           else {
             const cat = snap.val() || {};
-            const repair = { online: true, roomId: currentRoomId, email: user.email, name: cat.name || user.displayName || (state.isTeacher ? '老師' : '小貓') };
+            let fixedName = cat.name || user.displayName || (user.email ? user.email.split('@')[0] : '小貓');
+            if (!state.isTeacher && fixedName === '老師') fixedName = (user.displayName && user.displayName !== '老師') ? user.displayName : (user.email ? user.email.split('@')[0] : '小貓');
+            const repair = { online: true, roomId: currentRoomId, email: user.email, name: state.isTeacher ? '老師' : fixedName };
             if (typeof cat.x !== 'number' || typeof cat.y !== 'number') { repair.x = state.isTeacher ? 34 : 50; repair.y = state.isTeacher ? 14 : 80; }
             if (!cat.color) repair.color = state.isTeacher ? catColors[0] : catColors[Math.floor(Math.random() * catColors.length)];
             if (!cat.hiddenStats) repair.hiddenStats = { kindnessGiven: 0, kindnessReceived: 0 };
@@ -667,17 +717,13 @@
 
     if(db) {
       onValue(ref(db, 'activeRoom'), async (s) => {
-        activeRoomId = s.val() || currentRoomId;
-        if (!state.isTeacher && currentUser && activeRoomId !== currentRoomId) {
-          currentRoomId = activeRoomId;
-          localStorage.setItem('cloudClassCatsRoom', currentRoomId);
-          document.getElementById('roomSelect').value = currentRoomId;
-          await update(ref(db, `cats/${currentUser.uid}`), { roomId: currentRoomId, x: centerPoint.x, y: centerPoint.y, status: `進入${roomNames[currentRoomId]}` });
-          location.reload();
-        }
+        activeRoomId = 'room1';
+        if (s.val() !== 'room1') set(ref(db, 'activeRoom'), 'room1');
       });
       onValue(ref(db, roomPath('gameState')), (s) => { 
         state.gameOpen = !!(s.val()?.isOpen); 
+        if (state.gameOpen) state.forceClosed = false;
+        showClosedScreen(classroomClosedForStudent());
         document.getElementById('badgeGameState').textContent = state.gameOpen ? "🟢 上課中" : "🔴 下課中"; 
         document.getElementById('toggleGameBtn').textContent = state.gameOpen ? "關閉教室" : "開啟教室"; 
         if(state.gameOpen && window.isArranging) window.toggleArrangeMode(false);
@@ -687,7 +733,9 @@
         if (!notice || state.isTeacher || !currentUser) return;
         if ((notice.time || 0) <= sessionStartedAt || handledDismissAt === notice.time) return;
         handledDismissAt = notice.time;
+        state.forceClosed = true;
         alert(notice.message || "老師說放學囉！離開教室吧！");
+        showClosedScreen(true);
         await update(ref(db, `cats/${currentUser.uid}`), { online: false, status: '已放學' });
         await signOut(auth);
       });
@@ -697,7 +745,7 @@
       });
       onValue(ref(db, 'cats'), (s) => { 
         state.cats = s.val() || {}; document.getElementById('badgeOnline').textContent = Object.values(state.cats).filter(c=>c.online && (c.roomId || 'room1') === currentRoomId).length; 
-        renderPlayer(); renderCats(); if(state.isTeacher) { window.updateReclaimSelects(); window.updateBagSelects(); }
+        renderPlayer(); renderCats(); if(state.isTeacher) { window.updateReclaimSelects(); window.updateBagSelects(); window.updateAdminSelects(); }
       });
       onValue(ref(db, roomPath('quests')), (s) => { state.quests = s.val() || {}; renderQuests(); renderTeacherQuests(); });
       onValue(ref(db, roomPath('messes')), (s) => { state.messes = s.val() || {}; renderMesses(); });
@@ -910,9 +958,25 @@
 
     // === 移動與物品互動邏輯 ===
     const dirState = { up: false, down: false, left: false, right: false };
+    const MOVE_STEP = 4;
+    let lastStepAt = 0;
+    const moveOneCell = async (dir) => {
+      if (!currentUser || window.isArranging || classroomClosedForStudent()) return guardOpenClassroom();
+      const now = Date.now();
+      if (now - lastStepAt < 120) return;
+      const myCat = state.cats[currentUser.uid];
+      if (!myCat) return;
+      const delta = { up: [0, -MOVE_STEP], down: [0, MOVE_STEP], left: [-MOVE_STEP, 0], right: [MOVE_STEP, 0] }[dir];
+      lastStepAt = now;
+      myCat.x = Math.max(1, Math.min(99, (myCat.x || centerPoint.x) + delta[0]));
+      myCat.y = Math.max(1, Math.min(99, (myCat.y || centerPoint.y) + delta[1]));
+      renderCats();
+      await update(ref(db, `cats/${currentUser.uid}`), { x: myCat.x, y: myCat.y, roomId: currentRoomId, status: '移動中...' });
+      setTimeout(() => { if (currentUser) set(ref(db, `cats/${currentUser.uid}/status`), '待機中'); }, 500);
+    };
     const bindBtn = (id, dir) => {
       const btn = document.getElementById(id);
-      const start = (e) => { e.preventDefault(); dirState[dir] = true; }; const end = (e) => { e.preventDefault(); dirState[dir] = false; };
+      const start = (e) => { e.preventDefault(); moveOneCell(dir); }; const end = (e) => { e.preventDefault(); dirState[dir] = false; };
       btn.addEventListener('mousedown', start); btn.addEventListener('touchstart', start); btn.addEventListener('mouseup', end); btn.addEventListener('touchend', end); btn.addEventListener('mouseleave', end);
     };
     bindBtn('btnUp', 'up'); bindBtn('btnDown', 'down'); bindBtn('btnLeft', 'left'); bindBtn('btnRight', 'right');
@@ -922,13 +986,14 @@
 
     actionBtn.onclick = () => {
       if(!currentAction) return;
+      if(!guardOpenClassroom()) return;
       if(currentAction.type === 'cabinet') window.openModal('modalSupply');
       else if(currentAction.type === 'clean') window.cleanMess(currentAction.id, currentAction.messType);
       else if(currentAction.type === 'object') window.interactWithObject(currentAction.id, currentAction.msg, currentAction.specialMsg);
     };
 
     window.interactWithObject = async (objId, msg, specialMsg) => {
-      if(!currentUser) return;
+      if(!currentUser || !guardOpenClassroom()) return;
       let success = false;
       await runTransaction(ref(db, roomPath(`objects/${objId}`)), (obj) => {
          const now = Date.now();
@@ -945,16 +1010,9 @@
     };
 
     function moveLoop() {
-      if (currentUser && (state.gameOpen || state.isTeacher) && !window.isArranging) {
+      if (currentUser && !classroomClosedForStudent() && (state.gameOpen || state.isTeacher) && !window.isArranging) {
         const myCat = state.cats[currentUser.uid];
         if (myCat) {
-          let dx = 0, dy = 0;
-          if (dirState.up) dy -= 0.6; if (dirState.down) dy += 0.6;
-          if (dirState.left) dx -= 0.6; if (dirState.right) dx += 0.6;
-          if (dx !== 0 || dy !== 0) {
-            myCat.x = Math.max(1, Math.min(99, myCat.x + dx)); myCat.y = Math.max(1, Math.min(99, myCat.y + dy)); renderCats(); 
-          }
-          
           let closestMess = null; let minDistMess = 6;
           Object.entries(state.messes).forEach(([mId, m]) => {
              const dist = Math.hypot(myCat.x - m.x, myCat.y - m.y);
@@ -1025,7 +1083,7 @@
     }
 
     window.joinQuest = async (qId) => {
-      if (!currentUser) return; if (!state.gameOpen && !state.isTeacher) return showToast("下課中無法解任務", true);
+      if (!currentUser || !guardOpenClassroom()) return; if (!state.gameOpen && !state.isTeacher) return showToast("下課中無法解任務", true);
       const myUid = currentUser.uid; const myCat = state.cats[myUid]; const qRef = ref(db, roomPath(`quests/${qId}`));
       const snap = await get(qRef); const q = snap.val(); if (!q || q.status !== 'waiting') return;
       if (Math.hypot(myCat.x - q.x, myCat.y - q.y) > 12) return showToast("距離太遠了！請靠近地圖上的圖釘喔。", true);
@@ -1181,17 +1239,89 @@
       const uid = document.getElementById('bagStudent').value; const itemName = document.getElementById('giftItemName').value.trim();
       const qty = Math.max(1, parseInt(document.getElementById('giftItemQty').value || 1));
       if (!uid || !itemName) return showToast("請選擇學生並輸入物品名稱。", true);
-      await update(ref(db, `cats/${uid}/inventory/${itemName}`), increment(qty));
+      await runTransaction(ref(db, `cats/${uid}/inventory/${itemName}`), (oldQty) => (oldQty || 0) + qty);
       showToast(`已贈與 ${state.cats[uid]?.name || "學生"}：${itemName} x${qty}`);
       addLog(`🎁 老師贈與 ${state.cats[uid]?.name || "學生"} [${itemName}] x${qty}。`);
     };
 
+    window.updateAdminSelects = () => {
+      if (!state.isTeacher) return;
+      const sel = document.getElementById('adminStudent');
+      if (!sel || document.activeElement === sel) return;
+      const currUid = sel.value;
+      sel.innerHTML = '<option value="">選擇學生...</option>';
+      Object.entries(state.cats).forEach(([uid, cat]) => {
+        if (cat.email !== 'a776663@st.tc.edu.tw') sel.innerHTML += `<option value="${uid}">${escapeHtml(cat.name || cat.email || uid)}</option>`;
+      });
+      sel.value = currUid;
+    };
+
+    window.loadAdminStudent = () => {
+      if (!state.isTeacher) return;
+      const uid = document.getElementById('adminStudent').value;
+      const cat = state.cats[uid];
+      document.getElementById('adminName').value = cat?.name || '';
+      document.getElementById('adminGold').value = cat?.gold || 0;
+      document.getElementById('adminCrystal').value = cat?.crystal || 0;
+      document.getElementById('adminInventory').value = Object.entries(cat?.inventory || {}).filter(([_, qty]) => qty > 0).map(([item, qty]) => `${item}=${qty}`).join('\n');
+    };
+
+    window.saveAdminStudent = async () => {
+      if (!state.isTeacher) return;
+      const uid = document.getElementById('adminStudent').value;
+      if (!uid || !state.cats[uid]) return showToast("請先選擇學生。", true);
+      const inventory = {};
+      const lines = document.getElementById('adminInventory').value.split('\n').map(line => line.trim()).filter(Boolean);
+      for (const line of lines) {
+        const [rawName, rawQty = '1'] = line.split('=');
+        const itemName = (rawName || '').trim();
+        const qty = Math.max(0, parseInt(rawQty, 10) || 0);
+        if (itemName && qty > 0) inventory[itemName] = qty;
+      }
+      await update(ref(db, `cats/${uid}`), {
+        name: document.getElementById('adminName').value.trim() || '學生',
+        gold: Math.max(0, parseInt(document.getElementById('adminGold').value || 0, 10)),
+        crystal: Math.max(0, parseInt(document.getElementById('adminCrystal').value || 0, 10)),
+        inventory
+      });
+      showToast("已儲存學生資料。");
+      addLog(`🛠️ 老師更新了 ${state.cats[uid]?.name || '學生'} 的資料。`);
+    };
+
+    window.kickAdminStudent = async () => {
+      if (!state.isTeacher) return;
+      const uid = document.getElementById('adminStudent').value;
+      if (!uid || !state.cats[uid]) return showToast("請先選擇學生。", true);
+      await update(ref(db, `cats/${uid}`), { online: false, status: '被老師請出教室' });
+      showToast("已強制踢出學生。");
+      addLog(`🚪 老師將 ${state.cats[uid]?.name || '學生'} 請出教室。`);
+    };
+
     // === 打掃與潔淨魔法 ===
     window.cleanMess = async (mId, type) => {
-      if(!currentUser) return; const myCat = state.cats[currentUser.uid]; const reqTool = cleanReqs[type];
-      if(!myCat.inventory || !myCat.inventory[reqTool]) return showToast(`你需要去掃具櫃借用「${reqTool}」才能打掃！`, true);
+      if(!currentUser || !guardOpenClassroom()) return;
+      const myCat = state.cats[currentUser.uid]; const reqTools = cleanReqs[type] || [];
+      if (!myCat) return;
+      let partnerUid = null;
+      if (reqTools.length === 1) {
+        if(!myCat.inventory || !myCat.inventory[reqTools[0]]) return showToast(`你需要去掃具櫃借用「${reqTools[0]}」才能打掃！`, true);
+      } else {
+        const myTool = reqTools.find(tool => (myCat.inventory?.[tool] || 0) > 0);
+        const partnerTool = reqTools.find(tool => tool !== myTool);
+        if (!myTool || !partnerTool) return showToast(`需要兩人合作：一人拿「${reqTools[0]}」，一人拿「${reqTools[1]}」。`, true);
+        const partner = Object.entries(state.cats).find(([uid, cat]) => uid !== currentUser.uid && cat.online && (cat.roomId || 'room1') === currentRoomId && (cat.inventory?.[partnerTool] || 0) > 0 && Math.hypot((cat.x || 0) - (myCat.x || 0), (cat.y || 0) - (myCat.y || 0)) <= 10);
+        if (!partner) return showToast(`請找一位拿著「${partnerTool}」的同學站在旁邊一起打掃。`, true);
+        partnerUid = partner[0];
+      }
       let success = false; await runTransaction(ref(db, roomPath(`messes/${mId}`)), (m) => { if(m) { success = true; return null; } return m; });
-      if(success) { await update(ref(db, `cats/${currentUser.uid}/gold`), increment(2)); showToast(`✨ 打掃完成！獲得 2 金幣！`); addLog(`🧹 ${myCat.name} 幫忙清理了教室！`); } else { showToast(`已經被別人掃掉囉！`, true); }
+      if(success) {
+        const updates = {};
+        updates[`cats/${currentUser.uid}/gold`] = increment(partnerUid ? 5 : 2);
+        if (partnerUid) updates[`cats/${partnerUid}/gold`] = increment(5);
+        await update(ref(db), updates);
+        showToast(partnerUid ? `✨ 合作打掃完成！兩人各獲得 5 金幣！` : `✨ 打掃完成！獲得 2 金幣！`);
+        addLog(partnerUid ? `🧹 ${myCat.name} 和 ${state.cats[partnerUid]?.name || '同學'} 合作清理了教室！` : `🧹 ${myCat.name} 幫忙清理了灰塵！`);
+      } else { showToast(`已經被別人掃掉囉！`, true); }
     };
     function renderMesses() { const layer = document.getElementById('messLayer'); layer.innerHTML = ''; Object.entries(state.messes).forEach(([mId, m]) => { layer.innerHTML += `<div class="mess-obj" style="left:${m.x}%; top:${m.y}%;">${messIcons[m.type]}</div>`; }); }
     
@@ -1200,7 +1330,7 @@
 
     let lastChatTime = 0; let chatCooldownTimer = null;
     document.getElementById('chatForm').onsubmit = (e) => {
-      e.preventDefault(); if(!currentUser) return; const now = Date.now(); if(now - lastChatTime < 10000) return;
+      e.preventDefault(); if(!currentUser || !guardOpenClassroom()) return; const now = Date.now(); if(now - lastChatTime < 10000) return;
       const text = document.getElementById('chatInput').value.trim(); if(!text) return;
       update(ref(db, `cats/${currentUser.uid}/chat`), { text, time: now, type: 'normal' }); document.getElementById('chatInput').value = ''; lastChatTime = now;
       const btn = document.getElementById('chatBtn'); const timerSpan = document.getElementById('chatTimer'); btn.disabled = true; let left = 10;
@@ -1210,7 +1340,7 @@
 
     document.getElementById('classroomBoard').addEventListener('click', (e) => {
       const catEl = e.target.closest('.cat');
-      if(catEl && currentUser && !window.isArranging) {
+      if(catEl && currentUser && !window.isArranging && guardOpenClassroom()) {
         const uid = catEl.id.replace('cat-', ''); if(uid === currentUser.uid) return;
         const myCat = state.cats[currentUser.uid]; const targetCat = state.cats[uid]; if(!myCat || !targetCat) return;
         if(Math.hypot(myCat.x - targetCat.x, myCat.y - targetCat.y) > 15) return showToast(`太遠了！請走到 ${targetCat.name} 旁邊。`, true);
@@ -1218,11 +1348,11 @@
       }
     });
 
-    document.getElementById('btnWhisper').onclick = () => { const text = prompt("輸入悄悄話 (30字內)："); if(text && text.trim().length > 0) { update(ref(db, `cats/${currentUser.uid}/chat`), { text: text.substring(0,30), time: Date.now(), type: 'whisper' }); showToast("已發出悄悄話！"); window.closeModal('modalInteract'); } };
-    document.getElementById('btnPassNote').onclick = () => { const text = prompt("輸入紙條內容 (30字內)："); if(text && text.trim().length > 0 && targetUidForInteract) { push(ref(db, 'notes'), { from: currentUser.uid, fromName: state.cats[currentUser.uid].name, to: targetUidForInteract, toName: state.cats[targetUidForInteract].name, text: text.substring(0,30), time: Date.now() }); showToast(`已丟紙條！`); window.closeModal('modalInteract'); } };
+    document.getElementById('btnWhisper').onclick = () => { if(!guardOpenClassroom()) return; const text = prompt("輸入悄悄話 (30字內)："); if(text && text.trim().length > 0) { update(ref(db, `cats/${currentUser.uid}/chat`), { text: text.substring(0,30), time: Date.now(), type: 'whisper' }); showToast("已發出悄悄話！"); window.closeModal('modalInteract'); } };
+    document.getElementById('btnPassNote').onclick = () => { if(!guardOpenClassroom()) return; const text = prompt("輸入紙條內容 (30字內)："); if(text && text.trim().length > 0 && targetUidForInteract) { push(ref(db, 'notes'), { from: currentUser.uid, fromName: state.cats[currentUser.uid].name, to: targetUidForInteract, toName: state.cats[targetUidForInteract].name, text: text.substring(0,30), time: Date.now() }); showToast(`已丟紙條！`); window.closeModal('modalInteract'); } };
     document.getElementById('btnInspect').onclick = () => { if(!targetUidForInteract) return; const tCat = state.cats[targetUidForInteract]; const div = document.getElementById('inspectContent'); div.innerHTML = `<div class="inv-item" style="border-color:#f5b041;"><span>金幣 🪙</span><span>${tCat.gold||0}</span></div><div class="inv-item" style="border-color:#a569bd;"><span>水晶 💎</span><span>${tCat.crystal||0}</span></div>`; if(tCat.inventory) { Object.entries(tCat.inventory).forEach(([item, qty]) => { if(qty > 0) div.innerHTML += `<div class="inv-item"><span>${item}</span><span>x${qty}</span></div>`; }); } else { div.innerHTML += `<div style="grid-column:1/-1; color:#888; font-size:0.8rem; text-align:center;">背包空空。</div>`; } document.getElementById('inspectArea').style.display = 'block'; };
     document.getElementById('btnGreet').onclick = async () => {
-      if (!currentUser || !targetUidForInteract) return;
+      if (!currentUser || !targetUidForInteract || !guardOpenClassroom()) return;
       const myCat = state.cats[currentUser.uid]; const targetCat = state.cats[targetUidForInteract];
       if (!myCat || !targetCat) return;
       const now = Date.now(); const last = myCat.greetCooldowns?.[targetUidForInteract] || 0;
@@ -1239,7 +1369,7 @@
     };
 
     document.getElementById('centerRescueBtn').onclick = async () => {
-      if (!currentUser) return;
+      if (!currentUser || !guardOpenClassroom()) return;
       const myCat = state.cats[currentUser.uid]; const now = Date.now();
       if (!state.isTeacher && myCat?.lastCenterRescueAt && now - myCat.lastCenterRescueAt < CENTER_COOLDOWN) {
         const left = Math.ceil((CENTER_COOLDOWN - (now - myCat.lastCenterRescueAt)) / 1000);
@@ -1285,11 +1415,31 @@
     }
 
     function renderShop() { const list = document.getElementById('shopList'); list.innerHTML = ''; Object.entries(state.shop).forEach(([sId, item]) => { list.innerHTML += `<div class="shop-item"><div class="shop-info"><strong>${item.name}</strong><span>${item.currency==='gold'?'🪙':'💎'} ${item.price}</span></div><button class="buy-btn" onclick="window.buyShopItem('${sId}')">購買</button></div>`; }); }
-    window.buyShopItem = async (sId) => { if(!currentUser) return; const item = state.shop[sId]; let success = false, msg = ""; await runTransaction(ref(db, `cats/${currentUser.uid}`), (cat) => { if(cat) { if (item.currency === 'gold' && (cat.gold||0) >= item.price) { cat.gold -= item.price; if(!cat.inventory) cat.inventory = {}; cat.inventory[item.name] = (cat.inventory[item.name]||0) + 1; success = true; } else if (item.currency === 'crystal' && (cat.crystal||0) >= item.price) { cat.crystal -= item.price; if(!cat.inventory) cat.inventory = {}; cat.inventory[item.name] = (cat.inventory[item.name]||0) + 1; success = true; } else { msg = "餘額不足！"; } } return cat; }); if(success) showToast(`購買：${item.name}`); else showToast(msg, true); };
+    window.buyShopItem = async (sId) => { if(!currentUser || !guardOpenClassroom()) return; const item = state.shop[sId]; let success = false, msg = ""; await runTransaction(ref(db, `cats/${currentUser.uid}`), (cat) => { if(cat) { if (item.currency === 'gold' && (cat.gold||0) >= item.price) { cat.gold -= item.price; if(!cat.inventory) cat.inventory = {}; cat.inventory[item.name] = (cat.inventory[item.name]||0) + 1; success = true; } else if (item.currency === 'crystal' && (cat.crystal||0) >= item.price) { cat.crystal -= item.price; if(!cat.inventory) cat.inventory = {}; cat.inventory[item.name] = (cat.inventory[item.name]||0) + 1; success = true; } else { msg = "餘額不足！"; } } return cat; }); if(success) showToast(`購買：${item.name}`); else showToast(msg, true); };
 
     function renderSupplies() { const list = document.getElementById('supplyList'); list.innerHTML = ''; Object.keys(supplyNames).forEach(key => { const count = state.supplies[key] !== undefined ? state.supplies[key] : supplyMax[key]; list.innerHTML += `<div class="supply-item"><div class="shop-info"><strong style="font-size:1.1rem;">${supplyNames[key]}</strong><span>剩餘公用：${count} / ${supplyMax[key]}</span></div><div><button class="borrow-btn" onclick="window.borrowSupply('${key}')">借用</button> <button class="return-btn" onclick="window.returnSupply('${key}')">歸還</button></div></div>`; }); }
-    window.borrowSupply = async (key) => { if(!currentUser) return; const supRef = ref(db, roomPath(`cleaningSupplies/${key}`)); let success = false; await runTransaction(supRef, (val) => { let current = val === null ? supplyMax[key] : val; if (current > 0) { success = true; return current - 1; } return current; }); if (success) { await update(ref(db, `cats/${currentUser.uid}/inventory/${supplyNames[key]}`), increment(1)); showToast(`借用了 ${supplyNames[key]}`); } else { showToast(`${supplyNames[key]} 被借光了！`, true); } };
-    window.returnSupply = async (key) => { if(!currentUser) return; const myInvRef = ref(db, `cats/${currentUser.uid}/inventory/${supplyNames[key]}`); const snap = await get(myInvRef); if (snap.val() && snap.val() > 0) { await update(myInvRef, increment(-1)); await update(ref(db, roomPath(`cleaningSupplies/${key}`)), increment(1)); showToast(`已歸還 ${supplyNames[key]}`); } else { showToast(`你沒有 ${supplyNames[key]}`, true); } };
+    window.borrowSupply = async (key) => {
+      if(!currentUser || !guardOpenClassroom()) return;
+      const toolName = supplyNames[key];
+      const myInv = state.cats[currentUser.uid]?.inventory || {};
+      const borrowedTool = Object.keys(myInv).find(item => supplyItemSet.has(item) && myInv[item] > 0);
+      if (borrowedTool) return showToast(`你已經借了「${borrowedTool}」，一次只能借一個掃具。`, true);
+      const supRef = ref(db, roomPath(`cleaningSupplies/${key}`)); let success = false;
+      await runTransaction(supRef, (val) => { let current = val === null ? supplyMax[key] : val; if (current > 0) { success = true; return current - 1; } return current; });
+      if (success) { await runTransaction(ref(db, `cats/${currentUser.uid}/inventory/${toolName}`), (oldQty) => (oldQty || 0) + 1); showToast(`借用了 ${toolName}`); }
+      else { showToast(`${toolName} 被借光了！`, true); }
+    };
+    window.returnSupply = async (key) => {
+      if(!currentUser || !guardOpenClassroom()) return;
+      const toolName = supplyNames[key];
+      const myInvRef = ref(db, `cats/${currentUser.uid}/inventory/${toolName}`);
+      const snap = await get(myInvRef);
+      if (snap.val() && snap.val() > 0) {
+        await runTransaction(myInvRef, (oldQty) => Math.max(0, (oldQty || 0) - 1));
+        await runTransaction(ref(db, roomPath(`cleaningSupplies/${key}`)), (oldQty) => Math.min(supplyMax[key], (oldQty || 0) + 1));
+        showToast(`已歸還 ${toolName}`);
+      } else { showToast(`你沒有 ${toolName}`, true); }
+    };
 
     document.getElementById('broadcastForm').onsubmit = (e) => {
       e.preventDefault(); if (!state.isTeacher) return;
