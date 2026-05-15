@@ -365,7 +365,7 @@
                 <button type="button" class="danger-button" onclick="window.confiscateBagItem()">沒收</button>
               </div>
               <div style="display:grid; grid-template-columns:1fr 80px auto; gap:8px; align-items:end;">
-                <label>贈與物品 <input type="text" id="giftItemName" placeholder="物品名稱"></label>
+                <label>贈與物品 <select id="giftItemName"><option value="">請先建立道具</option></select></label>
                 <label>數量 <input type="number" id="giftItemQty" min="1" value="1"></label>
                 <button type="button" class="primary-button" onclick="window.giftBagItem()" style="background:#2ecc71;">贈與</button>
               </div>
@@ -403,6 +403,7 @@
               <button class="primary-button" id="toggleGameBtn" style="flex:1;">開啟教室</button>
               <button class="danger-button" id="clearQuestsBtn" style="flex:1;">清空任務</button>
             </div>
+            <button class="primary-button" id="applyLayoutBtn" type="button" style="background:#5dade2;">套用目前選擇的教室配置</button>
           </div>
           <button class="btn-arrange" id="btnArrange" style="margin-bottom: 12px;">🛠️ 手動佈置模式 (下課可用)</button>
           <div class="teacher-toolbox" id="arrangeTools">
@@ -427,6 +428,40 @@
           <div class="tool-row">
             <button type="button" class="mini-button" onclick="window.backupBroadcasts()">備份廣播</button>
             <button type="button" class="mini-button" onclick="window.clearBroadcasts()">刪除全部廣播</button>
+          </div>
+
+          <h3 style="font-size:0.95rem; margin:16px 0 8px;">🎒 道具表單</h3>
+          <form id="itemCatalogForm" class="auth-form">
+            <label>新增真實道具 <input type="text" id="catalogItemName" placeholder="例如：作業本、橡皮擦" required></label>
+            <button type="submit" class="primary-button" style="background:#2ecc71;">新增道具</button>
+          </form>
+          <div id="itemCatalogList" class="inventory-grid" style="margin-top:8px;">尚未建立道具。</div>
+
+          <h3 style="font-size:0.95rem; margin:16px 0 8px;">🌟 特殊互動設定</h3>
+          <div class="teacher-toolbox">
+            <div class="admin-row">
+              <label>出現機率(%) <input type="number" id="specialChancePct" min="0" max="100" step="0.01" value="0.1"></label>
+              <label>水晶獎勵 <input type="number" id="specialCrystalReward" min="0" value="10"></label>
+              <button type="button" class="primary-button" onclick="window.saveSpecialSettings()" style="background:#a569bd;">儲存</button>
+            </div>
+          </div>
+
+          <h3 style="font-size:0.95rem; margin:16px 0 8px;">🪄 群體魔法</h3>
+          <div class="teacher-toolbox">
+            <div class="tool-row">
+              <button type="button" class="mini-button" onclick="window.returnAllSupplies()">掃具回歸</button>
+              <button type="button" class="mini-button" onclick="window.toggleClassMagic('muted')">禁言 / 解除</button>
+              <button type="button" class="mini-button" onclick="window.toggleFreeze20()">定身20秒 / 解除</button>
+            </div>
+            <div class="tool-row">
+              <button type="button" class="mini-button" onclick="window.toggleClassMagic('petrified')">石化 / 解除</button>
+              <button type="button" class="mini-button" onclick="window.summonStudent()">召喚指定學生</button>
+              <button type="button" class="mini-button" onclick="window.summonAllStudents()">大召喚</button>
+            </div>
+            <label>召喚學生
+              <select id="magicStudent"><option value="">選擇學生...</option></select>
+            </label>
+            <div id="magicStateText" style="font-size:0.85rem; color:var(--muted);">目前沒有群體魔法。</div>
           </div>
           
           <h3 style="font-size:0.95rem; margin:8px 0;">📋 進行中 & 待審核任務</h3>
@@ -488,15 +523,16 @@
               <label>需滿人數 <input type="number" id="tqMin" min="1" max="25" value="2"></label>
             </div>
             <div id="typeDeliveryOpts" style="display:none; gap:10px;" class="auth-form">
-              <label>必須持有物品名稱 <input type="text" id="tqRequiredItem" placeholder="例如：作業本"></label>
+              <label>必須持有物品名稱 <select id="tqRequiredItem"><option value="">請先建立道具</option></select></label>
               <label>審核通過後收走數量 <input type="number" id="tqRequiredCount" min="1" value="1"></label>
+              <label>最多交件人數 <input type="number" id="tqMaxDeliverers" min="1" max="30" value="1"></label>
             </div>
             <button type="submit" class="primary-button" style="background:#f5b041;">發布任務</button>
           </form>
           
           <h3 style="font-size:0.95rem; margin:16px 0 8px;">🛍️ 上架商店商品</h3>
           <form id="tShopForm" class="auth-form" style="margin-bottom: 24px;">
-            <label>商品名稱 <input type="text" id="tsName" required></label>
+            <label>商品名稱 <select id="tsName" required><option value="">請先建立道具</option></select></label>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
               <label>價格 <input type="number" id="tsPrice" value="50" min="1"></label>
               <label>貨幣 <select id="tsCurrency"><option value="gold">金幣</option><option value="crystal">水晶</option></select></label>
@@ -515,6 +551,20 @@
       <h2 class="sec-title">班級公共掃具櫃</h2>
       <p style="font-size:0.85rem; color:var(--muted);">借用對應的掃具才能打掃教室髒亂喔！</p>
       <div id="supplyList">讀取中...</div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalCleanPartner">
+    <div class="modal-box">
+      <button class="close-modal" onclick="closeModal('modalCleanPartner')">×</button>
+      <h2 class="sec-title">選擇合作打掃對象</h2>
+      <p style="font-size:0.85rem; color:var(--muted);">選好後，兩個人都必須在 2 秒內按下打掃，才會完成合作。</p>
+      <div class="auth-form">
+        <label>附近同學
+          <select id="cleanPartnerSelect"></select>
+        </label>
+        <button type="button" class="primary-button" onclick="window.confirmCleanPartner()" style="background:#2ecc71;">送出合作邀請</button>
+      </div>
     </div>
   </div>
 
@@ -556,7 +606,7 @@
     let app, auth, db;
     try { app = initializeApp(firebaseConfig); auth = getAuth(app); db = getDatabase(app); } catch(e) { alert("Firebase 尚未設定！"); }
 
-    const state = { gameOpen: false, isTeacher: false, cats: {}, quests: {}, shop: {}, supplies: {}, messes: {}, classroomObjects: null, logs: [], forceClosed: false };
+    const state = { gameOpen: false, isTeacher: false, cats: {}, quests: {}, shop: {}, supplies: {}, messes: {}, classroomObjects: null, logs: [], itemCatalog: {}, settings: { specialChance: 0.001, specialCrystalReward: 10 }, magic: {}, forceClosed: false };
     let currentUser = null; let targetUidForInteract = null;
     let currentRoomId = 'room1';
     localStorage.setItem('cloudClassCatsRoom', currentRoomId);
@@ -578,12 +628,19 @@
     const cleanReqs = { trash: ['掃把', '畚箕'], puddle: ['拖把', '水桶'], dust: ['抹布'] };
     const supplyItemSet = new Set(Object.values(supplyNames));
     const classroomClosedForStudent = () => !state.isTeacher && (!state.gameOpen || state.forceClosed);
+    const isMutedForStudent = () => !state.isTeacher && !!(state.magic?.muted || state.magic?.frozenUntil > Date.now() || state.magic?.petrified);
+    const isMovementBlockedForStudent = () => !state.isTeacher && !!(state.magic?.frozenUntil > Date.now() || state.magic?.petrified);
     const showClosedScreen = (show) => document.getElementById('closedScreen').classList.toggle('active', !!show);
     const guardOpenClassroom = () => {
       if (!classroomClosedForStudent()) return true;
       showClosedScreen(true);
       showToast("目前教室關閉中，無法使用系統。", true);
       return false;
+    };
+    const itemExists = (name) => supplyItemSet.has(name) || !!state.itemCatalog?.[name];
+    const normalizeEmailInput = (raw) => {
+      const value = String(raw || '').trim();
+      return value.includes('@') ? value : `${value}@st.tc.edu.tw`;
     };
 
     // 初始化動態生成個人座位 DOM (obj-d1 ~ obj-d30)
@@ -652,7 +709,8 @@
     };
 
     document.getElementById('authForm').onsubmit = async (e) => {
-      e.preventDefault(); const email = document.getElementById('inEmail').value; const pass = document.getElementById('inPass').value; const name = document.getElementById('inName').value;
+      e.preventDefault(); const email = normalizeEmailInput(document.getElementById('inEmail').value); const pass = document.getElementById('inPass').value; const name = document.getElementById('inName').value;
+      document.getElementById('inEmail').value = email;
       try {
         if (isLoginMode) await signInWithEmailAndPassword(auth, email, pass);
         else {
@@ -660,7 +718,7 @@
           const cred = await createUserWithEmailAndPassword(auth, email, pass); await updateProfile(cred.user, { displayName: name });
           await set(ref(db, `cats/${cred.user.uid}`), { name, email, roomId: currentRoomId, x: 50, y: 80, color: catColors[Math.floor(Math.random() * catColors.length)], gold: 0, crystal: 0, hiddenStats: { kindnessGiven: 0, kindnessReceived: 0 }, online: true, status: '剛報到' });
         }
-      } catch (err) { alert("驗證失敗：" + err.message); }
+      } catch (err) { alert("驗證失敗：" + err.message + "\n\n提醒：如果只輸入座號或代碼，系統會自動補成 @st.tc.edu.tw。若教室關閉，學生也會被擋在登入畫面。"); }
     };
     document.getElementById('logoutBtn').onclick = async () => { if (currentUser) { await update(ref(db, `cats/${currentUser.uid}`), { online: false }); signOut(auth); } };
 
@@ -745,12 +803,24 @@
       });
       onValue(ref(db, 'cats'), (s) => { 
         state.cats = s.val() || {}; document.getElementById('badgeOnline').textContent = Object.values(state.cats).filter(c=>c.online && (c.roomId || 'room1') === currentRoomId).length; 
-        renderPlayer(); renderCats(); if(state.isTeacher) { window.updateReclaimSelects(); window.updateBagSelects(); window.updateAdminSelects(); }
+        renderPlayer(); renderCats(); if(state.isTeacher) { window.updateReclaimSelects(); window.updateBagSelects(); window.updateAdminSelects(); window.updateMagicStudentSelect(); }
       });
       onValue(ref(db, roomPath('quests')), (s) => { state.quests = s.val() || {}; renderQuests(); renderTeacherQuests(); });
       onValue(ref(db, roomPath('messes')), (s) => { state.messes = s.val() || {}; renderMesses(); });
       onValue(ref(db, roomPath('shop')), (s) => { state.shop = s.val() || {}; renderShop(); });
-      onValue(ref(db, roomPath('cleaningSupplies')), (s) => { if(!s.exists() && state.isTeacher) set(ref(db, roomPath('cleaningSupplies')), supplyMax); state.supplies = s.val() || supplyMax; renderSupplies(); });
+      onValue(ref(db, roomPath('itemCatalog')), (s) => { state.itemCatalog = s.val() || {}; renderItemCatalog(); });
+      onValue(ref(db, roomPath('settings')), (s) => { state.settings = { specialChance: 0.001, specialCrystalReward: 10, ...(s.val() || {}) }; renderSpecialSettings(); });
+      onValue(ref(db, roomPath('classMagic')), (s) => { state.magic = s.val() || {}; renderMagicState(); });
+      onValue(ref(db, roomPath('cleaningSupplies')), (s) => {
+        const val = s.val() || {};
+        state.supplies = { ...supplyMax, ...val };
+        if(state.isTeacher) {
+          const missing = {};
+          Object.keys(supplyMax).forEach(key => { if (val[key] === undefined) missing[key] = supplyMax[key]; });
+          if (Object.keys(missing).length) update(ref(db, roomPath('cleaningSupplies')), missing);
+        }
+        renderSupplies();
+      });
       onValue(query(ref(db, roomPath('logs')), limitToLast(20)), (s) => {
         const arr = []; s.forEach(c => { arr.push({ id: c.key, ...c.val() }); }); state.logs = arr;
         const ul = document.getElementById('activityLog'); ul.innerHTML = '';
@@ -771,37 +841,45 @@
     function addLog(text) { if(db) push(ref(db, roomPath('logs')), { text, time: Date.now(), roomId: currentRoomId }); }
 
     // === 開關教室與 4 種場景佈置 ===
+    const buildLayoutConfig = (layoutVal) => {
+      let newObj = getBaseLayout();
+      if(layoutVal === '1') {
+        for(let i=1; i<=30; i++) newObj['obj-d'+i] = { hidden: true };
+      } else if(layoutVal === '2') {
+        for(let i=1; i<=8; i++) newObj['obj-g'+i] = { hidden: true };
+        for(let col=0; col<6; col++) {
+          for(let row=0; row<5; row++) {
+            newObj['obj-d' + (col*5 + row + 1)] = { x: 18 + col*12.5, y: 30 + row*12.5, hidden: false };
+          }
+        }
+      } else if(layoutVal === '3') {
+        for(let i=1; i<=8; i++) newObj['obj-g'+i] = { hidden: true };
+        for(let i=1; i<=30; i++) newObj['obj-d'+i] = { hidden: true };
+      } else if(layoutVal === '4') {
+        Object.keys(newObj).forEach(k => newObj[k].hidden = true);
+        for(let i=1; i<=30; i++) newObj['obj-d'+i] = { hidden: true };
+      }
+      return newObj;
+    };
+    window.applySelectedLayout = async () => {
+      if(!state.isTeacher) return;
+      if(state.gameOpen) return showToast("請先關閉教室再套用配置。", true);
+      const layoutVal = document.getElementById('layoutSelect').value;
+      await set(ref(db, roomPath('classroomObjects')), buildLayoutConfig(layoutVal));
+      addLog(`🛠️ 老師套用了教室配置 ${layoutVal}。`);
+      showToast(`已套用配置 ${layoutVal}`);
+    };
+    document.getElementById('applyLayoutBtn').onclick = window.applySelectedLayout;
+
     document.getElementById('toggleGameBtn').onclick = async () => { 
       if(!state.isTeacher) return;
       const willOpen = !state.gameOpen;
       
       // 開啟教室時保留老師已手動佈置好的位置；只有第一次沒有佈置資料才建立預設配置。
       if(willOpen) {
-         const existingLayout = await get(ref(db, roomPath('classroomObjects')));
-         if (!existingLayout.exists()) {
-           const layoutVal = document.getElementById('layoutSelect').value;
-           let newObj = getBaseLayout();
-           if(layoutVal === '1') {
-              for(let i=1; i<=30; i++) newObj['obj-d'+i] = { hidden: true };
-           } else if(layoutVal === '2') {
-              for(let i=1; i<=8; i++) newObj['obj-g'+i] = { hidden: true };
-              for(let col=0; col<6; col++) {
-                 for(let row=0; row<5; row++) {
-                    newObj['obj-d' + (col*5 + row + 1)] = { x: 18 + col*12.5, y: 30 + row*12.5, hidden: false };
-                 }
-              }
-           } else if(layoutVal === '3') {
-              for(let i=1; i<=8; i++) newObj['obj-g'+i] = { hidden: true };
-              for(let i=1; i<=30; i++) newObj['obj-d'+i] = { hidden: true };
-           } else if(layoutVal === '4') {
-              Object.keys(newObj).forEach(k => newObj[k].hidden = true);
-              for(let i=1; i<=30; i++) newObj['obj-d'+i] = { hidden: true };
-           }
-           await set(ref(db, roomPath('classroomObjects')), newObj);
-           addLog(`🛠️ 老師建立了教室初始配置 (配置 ${layoutVal})`);
-         } else {
-           addLog(`🟢 老師開啟教室，保留目前佈置。`);
-         }
+         const layoutVal = document.getElementById('layoutSelect').value;
+         await set(ref(db, roomPath('classroomObjects')), buildLayoutConfig(layoutVal));
+         addLog(`🛠️ 老師開啟教室並套用配置 ${layoutVal}。`);
          const updates = { activeRoom: currentRoomId };
          Object.keys(roomNames).forEach(roomId => { updates[`rooms/${roomId}/gameState/isOpen`] = roomId === currentRoomId; });
          await update(ref(db), updates);
@@ -962,6 +1040,7 @@
     let lastStepAt = 0;
     const moveOneCell = async (dir) => {
       if (!currentUser || window.isArranging || classroomClosedForStudent()) return guardOpenClassroom();
+      if (isMovementBlockedForStudent()) return showToast("你被群體魔法定住了，暫時不能移動。", true);
       const now = Date.now();
       if (now - lastStepAt < 120) return;
       const myCat = state.cats[currentUser.uid];
@@ -1002,8 +1081,11 @@
       });
       if (success) { 
         let finalMsg = msg;
-        if (Math.random() < 0.01 && specialMsg) {
-            finalMsg = specialMsg; showToast("✨ 觸發了隱藏的特別事件！！");
+        if (Math.random() < (state.settings.specialChance ?? 0.001) && specialMsg) {
+            finalMsg = specialMsg;
+            const crystalReward = Math.max(0, parseInt(state.settings.specialCrystalReward ?? 10, 10));
+            if (crystalReward > 0) await runTransaction(ref(db, `cats/${currentUser.uid}/crystal`), (oldQty) => (oldQty || 0) + crystalReward);
+            showToast(`✨ 觸發了隱藏的特別事件！獲得 ${crystalReward} 水晶！`);
         }
         update(ref(db, `cats/${currentUser.uid}/chat`), { text: finalMsg, time: Date.now(), type: 'normal' }); 
       } else { showToast('大家都在用這個，請等一下喔！', true); }
@@ -1086,10 +1168,12 @@
       if (!currentUser || !guardOpenClassroom()) return; if (!state.gameOpen && !state.isTeacher) return showToast("下課中無法解任務", true);
       const myUid = currentUser.uid; const myCat = state.cats[myUid]; const qRef = ref(db, roomPath(`quests/${qId}`));
       const snap = await get(qRef); const q = snap.val(); if (!q || q.status !== 'waiting') return;
+      if (q.rejectedBy?.[myUid]) return showToast("老師已拒絕你參與這個任務。", true);
       if (Math.hypot(myCat.x - q.x, myCat.y - q.y) > 12) return showToast("距離太遠了！請靠近地圖上的圖釘喔。", true);
       if (q.type === 'delivery') {
         const requiredItem = (q.requiredItem || '').trim(); const requiredCount = Math.max(1, parseInt(q.requiredCount || 1));
         if (!requiredItem) return showToast("這個交件任務尚未設定指定物品。", true);
+        if (!itemExists(requiredItem)) return showToast("這個交件物品不在教師道具表單中。", true);
         if (!myCat.inventory || (myCat.inventory[requiredItem] || 0) < requiredCount) return showToast(`需要持有「${requiredItem}」x${requiredCount} 才能加入任務。`, true);
       }
 
@@ -1099,9 +1183,11 @@
           if (quest.status !== 'waiting') return quest; 
           if (!quest.joinedBy) quest.joinedBy = {}; 
           if (quest.joinedBy[myUid]) return quest; 
+          if (quest.rejectedBy && quest.rejectedBy[myUid]) return quest;
           quest.joinedBy[myUid] = true; 
           if (quest.type === 'delivery') {
-              quest.status = 'pending'; wentPending = true;
+              const maxDeliverers = Math.max(1, parseInt(quest.maxDeliverers || 1));
+              if (Object.keys(quest.joinedBy).length >= maxDeliverers) { quest.status = 'pending'; wentPending = true; }
           } else if (quest.type === 'gathering' && Object.keys(quest.joinedBy).length >= quest.minPlayers) { 
               quest.status = 'pending'; wentPending = true; 
           } 
@@ -1115,21 +1201,22 @@
     function renderTeacherQuests() {
       if(!state.isTeacher) return;
       const list = document.getElementById('pendingQuestList'); list.innerHTML = '';
-      const active = Object.entries(state.quests).filter(([_, q]) => q.status === 'pending' || (q.status === 'waiting' && q.type === 'general'));
+      const active = Object.entries(state.quests).filter(([_, q]) => q.status === 'pending' || q.status === 'waiting');
       if(active.length === 0) { list.innerHTML = "目前沒有待處理的任務。"; return; }
       active.forEach(([qId, q]) => { 
         const jCount = Object.keys(q.joinedBy||{}).length;
         let joinedHtml = '';
         Object.keys(q.joinedBy || {}).forEach(uid => {
             const sName = state.cats[uid]?.name || '未知';
-            joinedHtml += `<span class="tag" style="background:#fce4ec; color:#c2185b; display:inline-flex; align-items:center; gap:4px; margin-bottom:4px; font-size:0.75rem;">${sName} <button style="background:transparent; border:none; padding:0; cursor:pointer; font-size:10px;" onclick="window.kickFromQuest('${qId}', '${uid}')">❌</button></span> `;
+            joinedHtml += `<span class="tag" style="background:#fce4ec; color:#c2185b; display:inline-flex; align-items:center; gap:4px; margin-bottom:4px; font-size:0.75rem;">${sName} <button style="background:transparent; border:none; padding:0; cursor:pointer; font-size:10px;" onclick="window.kickFromQuest('${qId}', '${uid}')">踢</button><button style="background:transparent; border:none; padding:0; cursor:pointer; font-size:10px;" onclick="window.rejectQuestStudent('${qId}', '${uid}')">拒</button></span> `;
         });
+        const rejectedHtml = Object.keys(q.rejectedBy || {}).map(uid => `<span class="tag" style="background:#eee; color:#555;">已拒絕 ${escapeHtml(state.cats[uid]?.name || '未知')}</span>`).join(' ');
 
         if (q.status === 'pending') {
            const pendingLabel = q.type === 'delivery' ? `${jCount}人交件待審` : `${jCount}人集結完畢`;
-           list.innerHTML += `<div class="quest-card" style="border-color:#f5b041;"><strong>${q.title} (${pendingLabel})</strong><div>${joinedHtml}</div><div class="teacher-action-btns"><button class="btn-approve" onclick="window.approveQuest('${qId}')">✅ 核准發獎勵</button><button class="btn-reject" onclick="window.rejectQuest('${qId}')">❌ 退回重解</button></div></div>`; 
+           list.innerHTML += `<div class="quest-card" style="border-color:#f5b041;"><strong>${q.title} (${pendingLabel})</strong><div>${joinedHtml}</div><div>${rejectedHtml}</div><div class="teacher-action-btns"><button class="btn-approve" onclick="window.approveQuest('${qId}')">✅ 核准發獎勵</button><button class="btn-reject" onclick="window.rejectQuest('${qId}')">❌ 退回重解</button></div></div>`; 
         } else {
-           list.innerHTML += `<div class="quest-card" style="border-color:#3498db;"><strong>${q.title} (${jCount}人已加入)</strong><div>${joinedHtml}</div><div class="teacher-action-btns"><button class="btn-approve" style="background:#3498db;" onclick="window.approveQuest('${qId}')">✅ 結算發獎勵</button><button class="btn-reject" onclick="window.rejectQuest('${qId}')">❌ 撤銷任務</button></div></div>`; 
+           list.innerHTML += `<div class="quest-card" style="border-color:#3498db;"><strong>${q.title} (${jCount}人已加入)</strong><div>${joinedHtml}</div><div>${rejectedHtml}</div><div class="teacher-action-btns"><button class="btn-approve" style="background:#3498db;" onclick="window.approveQuest('${qId}')">✅ 結算發獎勵</button><button class="btn-reject" onclick="window.rejectQuest('${qId}')">❌ 撤銷任務</button></div></div>`; 
         }
       });
     }
@@ -1147,6 +1234,22 @@
             return quest;
         });
         addLog(`👨‍🏫 老師說 ${sName} 沒有完成任務喔！`);
+    };
+
+    window.rejectQuestStudent = async (qId, sUid) => {
+        if (!state.isTeacher) return;
+        const sName = state.cats[sUid]?.name || "學生";
+        await runTransaction(ref(db, roomPath(`quests/${qId}`)), (quest) => {
+            if (quest) {
+                if (!quest.rejectedBy) quest.rejectedBy = {};
+                quest.rejectedBy[sUid] = true;
+                if (quest.joinedBy && quest.joinedBy[sUid]) delete quest.joinedBy[sUid];
+                if (quest.type === 'gathering' && Object.keys(quest.joinedBy || {}).length < quest.minPlayers) quest.status = 'waiting';
+                if (quest.type === 'delivery' && Object.keys(quest.joinedBy || {}).length < Math.max(1, parseInt(quest.maxDeliverers || 1))) quest.status = 'waiting';
+            }
+            return quest;
+        });
+        addLog(`🚫 老師拒絕 ${sName} 參與任務。`);
     };
 
     window.approveQuest = async (qId) => {
@@ -1239,6 +1342,7 @@
       const uid = document.getElementById('bagStudent').value; const itemName = document.getElementById('giftItemName').value.trim();
       const qty = Math.max(1, parseInt(document.getElementById('giftItemQty').value || 1));
       if (!uid || !itemName) return showToast("請選擇學生並輸入物品名稱。", true);
+      if (!itemExists(itemName)) return showToast("這個道具不在教師道具表單中，不能贈與。", true);
       await runTransaction(ref(db, `cats/${uid}/inventory/${itemName}`), (oldQty) => (oldQty || 0) + qty);
       showToast(`已贈與 ${state.cats[uid]?.name || "學生"}：${itemName} x${qty}`);
       addLog(`🎁 老師贈與 ${state.cats[uid]?.name || "學生"} [${itemName}] x${qty}。`);
@@ -1276,6 +1380,7 @@
         const [rawName, rawQty = '1'] = line.split('=');
         const itemName = (rawName || '').trim();
         const qty = Math.max(0, parseInt(rawQty, 10) || 0);
+        if (itemName && !itemExists(itemName)) return showToast(`「${itemName}」不在道具表單中，不能存入背包。`, true);
         if (itemName && qty > 0) inventory[itemName] = qty;
       }
       await update(ref(db, `cats/${uid}`), {
@@ -1297,7 +1402,172 @@
       addLog(`🚪 老師將 ${state.cats[uid]?.name || '學生'} 請出教室。`);
     };
 
+    const fillItemSelect = (id, keepValue = true) => {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      const current = keepValue ? sel.value : '';
+      sel.innerHTML = '<option value="">請先建立道具</option>';
+      Object.keys(state.itemCatalog || {}).sort((a,b) => a.localeCompare(b, 'zh-Hant')).forEach(name => {
+        sel.innerHTML += `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`;
+      });
+      if (current) sel.value = current;
+    };
+
+    function renderItemCatalog() {
+      fillItemSelect('giftItemName');
+      fillItemSelect('tqRequiredItem');
+      fillItemSelect('tsName');
+      const list = document.getElementById('itemCatalogList');
+      if (!list) return;
+      const items = Object.keys(state.itemCatalog || {}).sort((a,b) => a.localeCompare(b, 'zh-Hant'));
+      list.innerHTML = items.length ? '' : '<div style="grid-column:1/-1; color:#888; font-size:0.8rem;">尚未建立道具。</div>';
+      items.forEach(name => {
+        list.innerHTML += `<div class="inv-item"><span>${escapeHtml(name)}</span><button type="button" class="mini-button" onclick="window.deleteCatalogItem('${escapeHtml(name)}')">刪除</button></div>`;
+      });
+    }
+
+    document.getElementById('itemCatalogForm').onsubmit = async (e) => {
+      e.preventDefault();
+      if (!state.isTeacher) return;
+      const name = document.getElementById('catalogItemName').value.trim();
+      if (!name) return;
+      if (supplyItemSet.has(name)) return showToast("掃具是公用掃具，不需要加入一般道具表單。", true);
+      await set(ref(db, roomPath(`itemCatalog/${name}`)), { name, createdAt: Date.now() });
+      e.target.reset();
+      showToast(`已新增道具：${name}`);
+    };
+
+    window.deleteCatalogItem = async (name) => {
+      if (!state.isTeacher || !confirm(`刪除道具「${name}」？已在學生背包中的同名物品不會自動刪除。`)) return;
+      await set(ref(db, roomPath(`itemCatalog/${name}`)), null);
+      showToast(`已刪除道具：${name}`);
+    };
+
+    function renderSpecialSettings() {
+      const chance = document.getElementById('specialChancePct');
+      const reward = document.getElementById('specialCrystalReward');
+      if (chance) chance.value = ((state.settings.specialChance ?? 0.001) * 100).toFixed(2);
+      if (reward) reward.value = state.settings.specialCrystalReward ?? 10;
+    }
+
+    window.saveSpecialSettings = async () => {
+      if (!state.isTeacher) return;
+      const specialChance = Math.max(0, Math.min(1, parseFloat(document.getElementById('specialChancePct').value || 0) / 100));
+      const specialCrystalReward = Math.max(0, parseInt(document.getElementById('specialCrystalReward').value || 0, 10));
+      await update(ref(db, roomPath('settings')), { specialChance, specialCrystalReward });
+      showToast("已儲存特殊互動設定。");
+    };
+
+    window.updateMagicStudentSelect = () => {
+      if (!state.isTeacher) return;
+      const sel = document.getElementById('magicStudent');
+      if (!sel || document.activeElement === sel) return;
+      const current = sel.value;
+      sel.innerHTML = '<option value="">選擇學生...</option>';
+      Object.entries(state.cats).forEach(([uid, cat]) => {
+        if (cat.email !== 'a776663@st.tc.edu.tw') sel.innerHTML += `<option value="${uid}">${escapeHtml(cat.name || cat.email || uid)}</option>`;
+      });
+      sel.value = current;
+    };
+
+    function renderMagicState() {
+      const el = document.getElementById('magicStateText');
+      if (!el) return;
+      const parts = [];
+      if (state.magic.muted) parts.push('禁言中');
+      if (state.magic.frozenUntil > Date.now()) parts.push(`定身中（到 ${formatDateTime(state.magic.frozenUntil)}）`);
+      if (state.magic.petrified) parts.push('石化中');
+      el.textContent = parts.length ? `目前狀態：${parts.join('、')}` : '目前沒有群體魔法。';
+    }
+
+    window.toggleClassMagic = async (key) => {
+      if (!state.isTeacher) return;
+      if (key === 'muted') {
+        await update(ref(db, roomPath('classMagic')), { muted: !state.magic?.muted });
+        addLog(`🪄 老師${state.magic?.muted ? '解除' : '施放'}了禁言。`);
+        return;
+      }
+      if (key === 'petrified') {
+        const active = !!state.magic?.petrified;
+        const ownsMute = !!state.magic?.petrifiedMuted;
+        await update(ref(db, roomPath('classMagic')), { petrified: !active, petrifiedMuted: !active && !state.magic?.muted, muted: active ? (ownsMute ? false : !!state.magic?.muted) : true });
+        addLog(active ? '🪄 老師解除石化。' : '🪄 老師施放石化，所有人不能移動與發言。');
+      }
+    };
+
+    window.toggleFreeze20 = async () => {
+      if (!state.isTeacher) return;
+      const active = state.magic?.frozenUntil > Date.now();
+      const ownsMute = !!state.magic?.frozenMuted;
+      await update(ref(db, roomPath('classMagic')), { frozenUntil: active ? 0 : Date.now() + 20000, frozenMuted: !active && !state.magic?.muted, muted: active ? (ownsMute ? false : !!state.magic?.muted) : true });
+      addLog(active ? '🪄 老師解除定身。' : '🪄 老師施放定身，20 秒內不能移動與發言。');
+    };
+
+    window.summonStudent = async () => {
+      if (!state.isTeacher || !currentUser) return;
+      const uid = document.getElementById('magicStudent').value;
+      const teacher = state.cats[currentUser.uid];
+      if (!uid || !state.cats[uid] || !teacher) return showToast("請選擇要召喚的學生。", true);
+      await update(ref(db, `cats/${uid}`), { x: Math.min(99, (teacher.x || 50) + 3), y: teacher.y || 50, roomId: currentRoomId, status: '被老師召喚' });
+      addLog(`🪄 老師召喚了 ${state.cats[uid]?.name || '學生'}。`);
+    };
+
+    window.summonAllStudents = async () => {
+      if (!state.isTeacher || !currentUser) return;
+      const teacher = state.cats[currentUser.uid];
+      const updates = {};
+      Object.entries(state.cats).forEach(([uid, cat], index) => {
+        if (cat.email === 'a776663@st.tc.edu.tw') return;
+        updates[`cats/${uid}/x`] = Math.max(1, Math.min(99, (teacher?.x || 50) + ((index % 5) - 2) * 3));
+        updates[`cats/${uid}/y`] = Math.max(1, Math.min(99, (teacher?.y || 50) + Math.floor(index / 5) * 3));
+        updates[`cats/${uid}/roomId`] = currentRoomId;
+        updates[`cats/${uid}/status`] = '被大召喚';
+      });
+      await update(ref(db), updates);
+      addLog('🪄 老師施放大召喚，所有學生都被傳送到老師身邊。');
+    };
+
+    window.returnAllSupplies = async () => {
+      if (!state.isTeacher) return;
+      const updates = {};
+      Object.entries(state.cats).forEach(([uid, cat]) => {
+        Object.entries(supplyNames).forEach(([key, toolName]) => {
+          if ((cat.inventory?.[toolName] || 0) > 0) {
+            updates[`cats/${uid}/inventory/${toolName}`] = 0;
+            if (cat.email !== 'a776663@st.tc.edu.tw') addLog(`${cat.name || '某位同學'}的${toolName}突然從手上飛出去，撞到他的下巴，自己飛回掃具櫃了。`);
+          }
+        });
+      });
+      Object.entries(supplyMax).forEach(([key, qty]) => { updates[roomPath(`cleaningSupplies/${key}`)] = qty; });
+      await update(ref(db), updates);
+      showToast("所有掃具已強制回歸掃具櫃。");
+    };
+
     // === 打掃與潔淨魔法 ===
+    let pendingCleanChoice = null;
+    const getHeldCleaningTool = (cat, tools) => tools.find(tool => (cat?.inventory?.[tool] || 0) > 0);
+    const findCleanPartners = (myCat, partnerTool) => Object.entries(state.cats).filter(([uid, cat]) => uid !== currentUser.uid && cat.online && (cat.roomId || 'room1') === currentRoomId && (cat.inventory?.[partnerTool] || 0) > 0 && Math.hypot((cat.x || 0) - (myCat.x || 0), (cat.y || 0) - (myCat.y || 0)) <= 10);
+    window.confirmCleanPartner = async () => {
+      if (!pendingCleanChoice) return;
+      const partnerUid = document.getElementById('cleanPartnerSelect').value;
+      if (!partnerUid) return showToast("請選擇合作對象。", true);
+      await set(ref(db, roomPath(`cleanRequests/${pendingCleanChoice.mId}/${currentUser.uid}`)), { partnerUid, type: pendingCleanChoice.type, time: Date.now() });
+      window.closeModal('modalCleanPartner');
+      showToast(`已邀請 ${state.cats[partnerUid]?.name || '同學'}，請對方 2 秒內也按下打掃。`);
+      pendingCleanChoice = null;
+    };
+    const finishCoopClean = async (mId, myCat, partnerUid) => {
+      let success = false;
+      await runTransaction(ref(db, roomPath(`messes/${mId}`)), (m) => { if(m) { success = true; return null; } return m; });
+      await set(ref(db, roomPath(`cleanRequests/${mId}`)), null);
+      if(!success) return showToast(`已經被別人掃掉囉！`, true);
+      const updates = {};
+      updates[`cats/${currentUser.uid}/gold`] = increment(5);
+      updates[`cats/${partnerUid}/gold`] = increment(5);
+      await update(ref(db), updates);
+      showToast(`✨ 合作打掃完成！兩人各獲得 5 金幣！`);
+      addLog(`🧹 ${myCat.name} 和 ${state.cats[partnerUid]?.name || '同學'} 合作清理了教室！`);
+    };
     window.cleanMess = async (mId, type) => {
       if(!currentUser || !guardOpenClassroom()) return;
       const myCat = state.cats[currentUser.uid]; const reqTools = cleanReqs[type] || [];
@@ -1306,12 +1576,25 @@
       if (reqTools.length === 1) {
         if(!myCat.inventory || !myCat.inventory[reqTools[0]]) return showToast(`你需要去掃具櫃借用「${reqTools[0]}」才能打掃！`, true);
       } else {
-        const myTool = reqTools.find(tool => (myCat.inventory?.[tool] || 0) > 0);
+        const myTool = getHeldCleaningTool(myCat, reqTools);
         const partnerTool = reqTools.find(tool => tool !== myTool);
         if (!myTool || !partnerTool) return showToast(`需要兩人合作：一人拿「${reqTools[0]}」，一人拿「${reqTools[1]}」。`, true);
-        const partner = Object.entries(state.cats).find(([uid, cat]) => uid !== currentUser.uid && cat.online && (cat.roomId || 'room1') === currentRoomId && (cat.inventory?.[partnerTool] || 0) > 0 && Math.hypot((cat.x || 0) - (myCat.x || 0), (cat.y || 0) - (myCat.y || 0)) <= 10);
-        if (!partner) return showToast(`請找一位拿著「${partnerTool}」的同學站在旁邊一起打掃。`, true);
-        partnerUid = partner[0];
+        const reqSnap = await get(ref(db, roomPath(`cleanRequests/${mId}`)));
+        const requests = reqSnap.val() || {};
+        const matched = Object.entries(requests).find(([fromUid, req]) => fromUid !== currentUser.uid && req.partnerUid === currentUser.uid && Date.now() - (req.time || 0) <= 2000 && state.cats[fromUid]?.inventory?.[partnerTool]);
+        if (matched) return finishCoopClean(mId, myCat, matched[0]);
+        const partners = findCleanPartners(myCat, partnerTool);
+        if (!partners.length) return showToast(`請找一位拿著「${partnerTool}」的同學站在旁邊一起打掃。`, true);
+        if (partners.length === 1) {
+          await set(ref(db, roomPath(`cleanRequests/${mId}/${currentUser.uid}`)), { partnerUid: partners[0][0], type, time: Date.now() });
+          return showToast(`已邀請 ${partners[0][1]?.name || '同學'}，請對方 2 秒內也按下打掃。`);
+        }
+        pendingCleanChoice = { mId, type };
+        const sel = document.getElementById('cleanPartnerSelect');
+        sel.innerHTML = '';
+        partners.forEach(([uid, cat]) => { sel.innerHTML += `<option value="${uid}">${escapeHtml(cat.name || '同學')}（拿著${partnerTool}）</option>`; });
+        window.openModal('modalCleanPartner');
+        return;
       }
       let success = false; await runTransaction(ref(db, roomPath(`messes/${mId}`)), (m) => { if(m) { success = true; return null; } return m; });
       if(success) {
@@ -1331,6 +1614,7 @@
     let lastChatTime = 0; let chatCooldownTimer = null;
     document.getElementById('chatForm').onsubmit = (e) => {
       e.preventDefault(); if(!currentUser || !guardOpenClassroom()) return; const now = Date.now(); if(now - lastChatTime < 10000) return;
+      if (isMutedForStudent()) return showToast("目前被老師施了禁言/定身魔法，不能發言。", true);
       const text = document.getElementById('chatInput').value.trim(); if(!text) return;
       update(ref(db, `cats/${currentUser.uid}/chat`), { text, time: now, type: 'normal' }); document.getElementById('chatInput').value = ''; lastChatTime = now;
       const btn = document.getElementById('chatBtn'); const timerSpan = document.getElementById('chatTimer'); btn.disabled = true; let left = 10;
@@ -1348,8 +1632,8 @@
       }
     });
 
-    document.getElementById('btnWhisper').onclick = () => { if(!guardOpenClassroom()) return; const text = prompt("輸入悄悄話 (30字內)："); if(text && text.trim().length > 0) { update(ref(db, `cats/${currentUser.uid}/chat`), { text: text.substring(0,30), time: Date.now(), type: 'whisper' }); showToast("已發出悄悄話！"); window.closeModal('modalInteract'); } };
-    document.getElementById('btnPassNote').onclick = () => { if(!guardOpenClassroom()) return; const text = prompt("輸入紙條內容 (30字內)："); if(text && text.trim().length > 0 && targetUidForInteract) { push(ref(db, 'notes'), { from: currentUser.uid, fromName: state.cats[currentUser.uid].name, to: targetUidForInteract, toName: state.cats[targetUidForInteract].name, text: text.substring(0,30), time: Date.now() }); showToast(`已丟紙條！`); window.closeModal('modalInteract'); } };
+    document.getElementById('btnWhisper').onclick = () => { if(!guardOpenClassroom()) return; if (isMutedForStudent()) return showToast("目前被老師施了禁言/定身魔法，不能悄悄話。", true); const text = prompt("輸入悄悄話 (30字內)："); if(text && text.trim().length > 0) { update(ref(db, `cats/${currentUser.uid}/chat`), { text: text.substring(0,30), time: Date.now(), type: 'whisper' }); showToast("已發出悄悄話！"); window.closeModal('modalInteract'); } };
+    document.getElementById('btnPassNote').onclick = () => { if(!guardOpenClassroom()) return; if (isMutedForStudent()) return showToast("目前被老師施了禁言/定身魔法，不能傳紙條。", true); const text = prompt("輸入紙條內容 (30字內)："); if(text && text.trim().length > 0 && targetUidForInteract) { push(ref(db, 'notes'), { from: currentUser.uid, fromName: state.cats[currentUser.uid].name, to: targetUidForInteract, toName: state.cats[targetUidForInteract].name, text: text.substring(0,30), time: Date.now() }); showToast(`已丟紙條！`); window.closeModal('modalInteract'); } };
     document.getElementById('btnInspect').onclick = () => { if(!targetUidForInteract) return; const tCat = state.cats[targetUidForInteract]; const div = document.getElementById('inspectContent'); div.innerHTML = `<div class="inv-item" style="border-color:#f5b041;"><span>金幣 🪙</span><span>${tCat.gold||0}</span></div><div class="inv-item" style="border-color:#a569bd;"><span>水晶 💎</span><span>${tCat.crystal||0}</span></div>`; if(tCat.inventory) { Object.entries(tCat.inventory).forEach(([item, qty]) => { if(qty > 0) div.innerHTML += `<div class="inv-item"><span>${item}</span><span>x${qty}</span></div>`; }); } else { div.innerHTML += `<div style="grid-column:1/-1; color:#888; font-size:0.8rem; text-align:center;">背包空空。</div>`; } document.getElementById('inspectArea').style.display = 'block'; };
     document.getElementById('btnGreet').onclick = async () => {
       if (!currentUser || !targetUidForInteract || !guardOpenClassroom()) return;
@@ -1414,8 +1698,9 @@
       Array.from(layer.children).forEach(child => { const uid = child.id.replace('cat-', ''); if (!state.cats[uid] || !state.cats[uid].online || (state.cats[uid].roomId || 'room1') !== currentRoomId) child.remove(); });
     }
 
-    function renderShop() { const list = document.getElementById('shopList'); list.innerHTML = ''; Object.entries(state.shop).forEach(([sId, item]) => { list.innerHTML += `<div class="shop-item"><div class="shop-info"><strong>${item.name}</strong><span>${item.currency==='gold'?'🪙':'💎'} ${item.price}</span></div><button class="buy-btn" onclick="window.buyShopItem('${sId}')">購買</button></div>`; }); }
-    window.buyShopItem = async (sId) => { if(!currentUser || !guardOpenClassroom()) return; const item = state.shop[sId]; let success = false, msg = ""; await runTransaction(ref(db, `cats/${currentUser.uid}`), (cat) => { if(cat) { if (item.currency === 'gold' && (cat.gold||0) >= item.price) { cat.gold -= item.price; if(!cat.inventory) cat.inventory = {}; cat.inventory[item.name] = (cat.inventory[item.name]||0) + 1; success = true; } else if (item.currency === 'crystal' && (cat.crystal||0) >= item.price) { cat.crystal -= item.price; if(!cat.inventory) cat.inventory = {}; cat.inventory[item.name] = (cat.inventory[item.name]||0) + 1; success = true; } else { msg = "餘額不足！"; } } return cat; }); if(success) showToast(`購買：${item.name}`); else showToast(msg, true); };
+    function renderShop() { const list = document.getElementById('shopList'); list.innerHTML = ''; Object.entries(state.shop).forEach(([sId, item]) => { list.innerHTML += `<div class="shop-item"><div class="shop-info"><strong>${escapeHtml(item.name)}</strong><span>${item.currency==='gold'?'🪙':'💎'} ${item.price}</span></div><div style="display:flex; gap:6px;"><button class="buy-btn" onclick="window.buyShopItem('${sId}')">購買</button>${state.isTeacher ? `<button class="mini-button" onclick="window.removeShopItem('${sId}')">下架</button>` : ''}</div></div>`; }); if(!list.innerHTML) list.innerHTML = '架上沒有商品喔。'; }
+    window.buyShopItem = async (sId) => { if(!currentUser || !guardOpenClassroom()) return; const item = state.shop[sId]; if(!itemExists(item?.name)) return showToast("這個商品不在教師道具表單中，請老師先修正。", true); let success = false, msg = ""; await runTransaction(ref(db, `cats/${currentUser.uid}`), (cat) => { if(cat) { if (item.currency === 'gold' && (cat.gold||0) >= item.price) { cat.gold -= item.price; if(!cat.inventory) cat.inventory = {}; cat.inventory[item.name] = (cat.inventory[item.name]||0) + 1; success = true; } else if (item.currency === 'crystal' && (cat.crystal||0) >= item.price) { cat.crystal -= item.price; if(!cat.inventory) cat.inventory = {}; cat.inventory[item.name] = (cat.inventory[item.name]||0) + 1; success = true; } else { msg = "餘額不足！"; } } return cat; }); if(success) showToast(`購買：${item.name}`); else showToast(msg, true); };
+    window.removeShopItem = async (sId) => { if (state.isTeacher && confirm("確定下架這個商品？")) await set(ref(db, roomPath(`shop/${sId}`)), null); };
 
     function renderSupplies() { const list = document.getElementById('supplyList'); list.innerHTML = ''; Object.keys(supplyNames).forEach(key => { const count = state.supplies[key] !== undefined ? state.supplies[key] : supplyMax[key]; list.innerHTML += `<div class="supply-item"><div class="shop-info"><strong style="font-size:1.1rem;">${supplyNames[key]}</strong><span>剩餘公用：${count} / ${supplyMax[key]}</span></div><div><button class="borrow-btn" onclick="window.borrowSupply('${key}')">借用</button> <button class="return-btn" onclick="window.returnSupply('${key}')">歸還</button></div></div>`; }); }
     window.borrowSupply = async (key) => {
@@ -1471,11 +1756,12 @@
       if (type === 'delivery') {
         qData.requiredItem = document.getElementById('tqRequiredItem').value.trim();
         qData.requiredCount = Math.max(1, parseInt(document.getElementById('tqRequiredCount').value || 1));
-        if (!qData.requiredItem) return showToast("交件任務需要指定物品名稱。", true);
+        qData.maxDeliverers = Math.max(1, parseInt(document.getElementById('tqMaxDeliverers').value || 1));
+        if (!qData.requiredItem || !itemExists(qData.requiredItem)) return showToast("交件任務需要選擇道具表單中的物品。", true);
       }
       push(ref(db, roomPath('quests')), qData); addLog(`📜 老師發布了新任務！`); e.target.reset(); document.getElementById('typeGatheringOpts').style.display = 'block'; document.getElementById('typeDeliveryOpts').style.display = 'none';
     };
-    document.getElementById('tShopForm').onsubmit = (e) => { e.preventDefault(); if (!state.isTeacher) return; push(ref(db, roomPath('shop')), { name: document.getElementById('tsName').value, price: parseInt(document.getElementById('tsPrice').value), currency: document.getElementById('tsCurrency').value }); e.target.reset(); };
+    document.getElementById('tShopForm').onsubmit = (e) => { e.preventDefault(); if (!state.isTeacher) return; const name = document.getElementById('tsName').value; if(!itemExists(name)) return showToast("商品必須先存在於道具表單。", true); push(ref(db, roomPath('shop')), { name, price: parseInt(document.getElementById('tsPrice').value), currency: document.getElementById('tsCurrency').value }); e.target.reset(); renderItemCatalog(); };
   </script>
 </body>
 </html>
