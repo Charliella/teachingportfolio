@@ -1,0 +1,2063 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Cloud Class Cats 雲端教室 RPG</title>
+  <style>
+    :root {
+      --bg-top: #c3efff; --bg-bottom: #fef7d7;
+      --ink: #283446; --muted: #5f7086;
+      --line: rgba(40, 52, 70, 0.12);
+      --panel: rgba(255, 255, 255, 0.92);
+      --panel-strong: rgba(255, 255, 255, 0.98);
+      --navy: #28425f; --gold: #f5b041; --crystal: #a569bd;
+      --shadow: 0 8px 24px rgba(39, 74, 105, 0.12);
+      font-family: "Segoe UI", "Microsoft JhengHei", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    
+    html, body { 
+      margin: 0; padding: 0; width: 100vw; height: 100vh; height: 100dvh; 
+      overflow: hidden; color: var(--ink); 
+      background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom)); 
+      user-select: none; touch-action: manipulation;
+    }
+    input, textarea, select { user-select: auto; }
+    button, input, select { font: inherit; outline: none; }
+    button { cursor: pointer; transition: transform 0.1s; }
+    button:active { transform: scale(0.96); }
+
+    .app-shell { display: flex; flex-direction: column; height: 100%; width: 100%; max-width: 1800px; margin: 0 auto; padding: 12px; gap: 12px; }
+
+    #toastContainer { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none;}
+    .toast { background: rgba(40, 66, 95, 0.95); color: white; padding: 12px 24px; border-radius: 12px; font-weight: bold; box-shadow: 0 8px 20px rgba(0,0,0,0.2); transition: opacity 0.3s; }
+    .toast.warn { background: rgba(231, 76, 60, 0.95); border: 2px solid #ffb8b8; color: #fff; }
+
+    .hero-panel { display: flex; justify-content: space-between; align-items: center; padding: 12px 24px; border-radius: 16px; background: var(--panel); box-shadow: var(--shadow); flex-shrink: 0; }
+    .hero-panel h1 { margin: 0; font-size: 1.6rem; color: var(--navy); }
+    .hero-panel p { margin: 4px 0 0; color: var(--muted); font-size: 0.85rem;}
+    
+    .status-badges { display: flex; gap: 12px; }
+    .badge { padding: 6px 12px; border-radius: 10px; background: white; border: 1px solid var(--line); text-align: center; }
+    .badge span { display: block; font-size: 0.65rem; color: var(--muted); margin-bottom: 2px; font-weight: bold;}
+    .badge strong { font-size: 1.1rem; color: var(--navy); }
+
+    .workspace { display: flex; flex: 1; gap: 12px; min-height: 0; }
+    .classroom-container { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
+    .classroom-panel { flex: 1; min-height: 0; background: var(--panel); border-radius: 16px; box-shadow: var(--shadow); position: relative; }
+    .board-wrapper { position: absolute; inset: 12px; border-radius: 12px; border: 2px solid var(--line); background: #f4f1ea; overflow: hidden; }
+    
+    .classroom-board { 
+      width: 100%; height: 100%; position: relative; 
+      background-image: linear-gradient(rgba(200, 200, 200, 0.25) 1px, transparent 1px), linear-gradient(90deg, rgba(200, 200, 200, 0.25) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    /* 教室場景物件 */
+    .room-object { position: absolute; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1rem; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: 2px solid rgba(255,255,255,0.6); color: rgba(0,0,0,0.6); pointer-events: none; text-align: center; line-height: 1.2; transform: translate(-50%, -50%);}
+    
+    /* 可佈置物件 */
+    .blackboard { width: 40%; height: 6%; background: #4a6657; color: #fff; }
+    .tv-screen { width: 8%; height: 6%; background: #2c3e50; color: #a1c4fd; font-size: 0.8rem; }
+    .piano { width: 10%; height: 6%; background: #2c2c2c; color: #fff; font-size: 0.8rem; border-radius: 4px; }
+    .teacher-desk-obj { width: 8%; height: 8%; background: #dcb38a; }
+    .plant-top-left, .plant-bottom-right { width: 5%; height: 7%; background: #27ae60; border-radius: 50%; font-size: 0.7rem; color: white;}
+    .aquarium { width: 8%; height: 8%; background: #a4ebf3; color: #1f618d; border: 3px solid #3498db; }
+    .lockers { width: 4%; height: 45%; background: #e0d5a3; font-size: 0.8rem; writing-mode: vertical-rl; }
+    .bulletin-board { width: 40%; height: 5%; background: #f0e68c; font-size: 0.85rem;}
+    .bookshelf { width: 20%; height: 8%; background: #8b5a2b; color: white; font-size: 0.85rem; }
+    .reading-corner { width: 18%; height: 18%; background: #ffdfa3; }
+    .sink { width: 8%; height: 6%; background: #bdc3c7; border-radius: 8px 8px 0 0; font-size: 0.8rem;}
+    .cleaning-corner { width: 10%; height: 15%; background: #a3e0c0; border: 3px solid #2ecc71; box-shadow: 0 0 15px rgba(46, 204, 113, 0.4); }
+    .trash-can { width: 5%; height: 6%; background: #7f8c8d; border-radius: 50%; font-size: 0.7rem;}
+    .desk-group { width: 12%; height: 10%; background: #e8ded1; }
+    .desk-single { width: 5%; height: 6%; background: #e8ded1; border-radius: 4px; border: 1px solid #c2b5a3; font-size: 0.65rem; }
+
+    /* 固定牆面物件 */
+    .front-door { top: 12%; right: 0; width: 3%; height: 12%; background: #bd9a7a; border-radius: 4px 0 0 4px; transform:translate(0,-50%);}
+    .back-door { bottom: 12%; right: 0; width: 3%; height: 12%; background: #bd9a7a; border-radius: 4px 0 0 4px; transform:translate(0,50%);}
+    .window { left: 0; width: 2%; height: 12%; background: rgba(135, 206, 235, 0.5); border: 3px solid #fff; border-radius: 0 4px 4px 0; transform:translate(0,-50%);}
+    .w1 { top: 20%; } .w2 { top: 50%; } .w3 { top: 80%; }
+
+    /* 佈置模式專用 */
+    .movable.arranging { border: 3px dashed #e74c3c !important; pointer-events: auto !important; cursor: grab !important; z-index: 100; opacity: 0.9;}
+    .movable.arranging:active { cursor: grabbing !important; }
+    .movable.arrange-selected { outline: 4px solid #3498db; outline-offset: 3px; box-shadow: 0 0 0 6px rgba(52,152,219,0.18), 0 4px 10px rgba(0,0,0,0.1); }
+
+    #questPins, #messLayer, #catLayer { position: absolute; inset: 0; pointer-events: none; }
+
+    /* 全新重製小貓角色 */
+    .cat { position: absolute; width: 36px; height: 36px; transform: translate(-50%, -50%); transition: left 0.1s linear, top 0.1s linear; pointer-events: auto; z-index: 10; cursor: pointer; }
+    .cat.me { z-index: 20; filter: drop-shadow(0 0 8px rgba(255, 111, 134, 0.8)); cursor: default; }
+
+    /* 呼吸動畫 */
+    @keyframes breathe { 0%, 100% { transform: scaleY(1) translateY(0); } 50% { transform: scaleY(0.96) translateY(1px); } }
+    @keyframes tail-wag { 0%, 100% { transform: translateX(-50%) rotate(25deg); } 50% { transform: translateX(-50%) rotate(45deg); } }
+
+    .cat-body { 
+      position: absolute; inset: 0; background: var(--cat-color); 
+      border: 2px solid var(--ink); border-radius: 50% 50% 45% 45%; z-index: 2; 
+      animation: breathe 2.5s infinite ease-in-out;
+      box-shadow: inset -3px -4px 0 rgba(0,0,0,0.15); /* 立體陰影 */
+    }
+    .cat-ear { 
+      position: absolute; top: -6px; width: 14px; height: 16px; 
+      background: var(--cat-color); border: 2px solid var(--ink); z-index: 1; 
+      overflow: hidden;
+    }
+    .cat-ear::after { /* 內耳 */
+      content: ''; position: absolute; bottom: 0; left: 2px; right: 2px; top: 5px;
+      background: rgba(255,255,255,0.4); border-radius: 50% 50% 0 0;
+    }
+    .cat-ear.left { left: 0px; border-radius: 12px 4px 0 0; transform: rotate(-22deg); }
+    .cat-ear.right { right: 0px; border-radius: 4px 12px 0 0; transform: rotate(22deg); }
+    
+    .cat-tail { 
+      position: absolute; bottom: 2px; left: 50%; width: 8px; height: 20px; 
+      background: var(--cat-color); border: 2px solid var(--ink); border-radius: 4px; 
+      transform-origin: bottom center; animation: tail-wag 3s infinite ease-in-out; z-index: 0; 
+    }
+    
+    .cat-face { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); width: 22px; height: 10px; }
+    .cat-eye { position: absolute; top: 0; width: 5px; height: 6px; background: var(--ink); border-radius: 50%; }
+    .cat-eye::after { /* 眼睛高光 */
+      content:''; position:absolute; top: 1px; right: 1px; width: 2px; height: 2px; background: #fff; border-radius: 50%;
+    }
+    .cat-eye.left { left: 2px; } .cat-eye.right { right: 2px; }
+    
+    .cat-nose { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); width: 5px; height: 3px; background: #ff7f7f; border-radius: 50%; }
+    .cat-nose::before, .cat-nose::after { /* 貓咪鬍鬚 */
+      content: ''; position: absolute; top: 1px; width: 7px; height: 1px; background: rgba(40,52,70,0.5);
+    }
+    .cat-nose::before { left: -10px; transform: rotate(10deg); box-shadow: 0 -3px 0 rgba(40,52,70,0.5); }
+    .cat-nose::after { right: -10px; transform: rotate(-10deg); box-shadow: 0 -3px 0 rgba(40,52,70,0.5); }
+
+    .cat-label { position: absolute; bottom: -24px; left: 50%; transform: translateX(-50%); background: rgba(255,255,255,0.9); padding: 2px 4px; border-radius: 6px; border: 1px solid var(--line); font-size: 0.65rem; font-weight: bold; text-align: center; white-space: nowrap; line-height: 1.2; z-index: 5;}
+    
+    /* 改良對話泡泡 (容納30字不斷行切斷) */
+    .chat-bubble { 
+      position: absolute; bottom: 45px; left: 50%; transform: translateX(-50%); 
+      background: white; border: 2px solid var(--navy); border-radius: 10px; 
+      padding: 6px 10px; font-size: 0.8rem; font-weight: bold; color: var(--navy); 
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15); z-index: 30; pointer-events: none; 
+      width: max-content; max-width: 220px; text-align: center;
+      white-space: pre-wrap; word-break: break-all; line-height: 1.3;
+    }
+    .chat-bubble.whisper { border-color: #a569bd; color: #a569bd; background: #f4ecf7; font-style: italic;}
+    .chat-bubble::after { content:''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%) rotate(45deg); width: 10px; height: 10px; background: inherit; border-right: 2px solid inherit; border-bottom: 2px solid inherit; }
+
+    .mess-obj { position: absolute; font-size: 1.5rem; transform: translate(-50%, -50%); z-index: 5; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)); }
+
+    /* 遊戲操作區 */
+    .controls-overlay { display: none; flex-direction: column; gap: 10px; margin: 10px 0; }
+    .controls-overlay.active { display: flex; }
+    .d-pad-container { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: stretch; background: rgba(255,255,255,0.94); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); padding: 10px; }
+    .d-pad { display: grid; grid-template-columns: repeat(3, 42px); grid-template-rows: repeat(3, 42px); gap: 6px; grid-row: span 2; }
+    .d-btn { background: var(--panel-strong); border: 2px solid var(--line); border-radius: 12px; font-size: 1.1rem; color: var(--navy); box-shadow: 0 4px 0 var(--line); }
+    .d-btn:active { transform: translateY(4px); box-shadow: 0 0 0 var(--line); background: #e9f5ff; }
+    #btnUp { grid-column: 2; grid-row: 1; } #btnLeft { grid-column: 1; grid-row: 2; }
+    #btnRight { grid-column: 3; grid-row: 2; } #btnDown { grid-column: 2; grid-row: 3; }
+
+    #contextActionBtn { display: none; padding: 10px 12px; font-size: 0.95rem; font-weight: bold; background: #3498db; color: white; border: none; border-radius: 12px; box-shadow: 0 6px 0 #2980b9; animation: pulse 1.5s infinite; white-space: normal;}
+    #contextActionBtn:active { transform: translateY(4px); box-shadow: 0 2px 0 #2980b9; }
+    @keyframes pulse { 0% { box-shadow: 0 6px 0 #2980b9, 0 0 0 0 rgba(52, 152, 219, 0.7); } 70% { box-shadow: 0 6px 0 #2980b9, 0 0 0 15px rgba(52, 152, 219, 0); } 100% { box-shadow: 0 6px 0 #2980b9, 0 0 0 0 rgba(52, 152, 219, 0); } }
+
+    .comm-stack { display: flex; flex-direction: column; gap: 0; background: var(--panel-strong); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
+    .classroom-message-panel { padding: 8px 10px 6px; display: flex; flex-direction: column; gap: 6px; }
+    .classroom-message-header { display: flex; justify-content: space-between; gap: 8px; align-items: center; color: var(--navy); font-size: 0.9rem; font-weight: 900; }
+    .classroom-message-actions { display: flex; gap: 5px; flex-wrap: nowrap; justify-content: flex-end; }
+    .classroom-message-actions .teacher-only { display: none; }
+    .teacher-view .classroom-message-actions .teacher-only { display: inline-flex; }
+    .classroom-message-list { display: flex; flex-direction: column; gap: 4px; min-height: 152px; max-height: 152px; overflow: hidden; }
+    .chat-bar { display: flex; gap: 8px; align-items: center; padding: 8px 10px; border-top: 1px solid var(--line);}
+    .chat-bar input { flex: 1; padding: 10px; border: 2px solid var(--line); border-radius: 9px; font-size: 1rem; }
+    .chat-bar button { padding: 0 16px; background: var(--navy); color: white; border: none; border-radius: 9px; font-weight: bold; height: 40px;}
+    .rescue-btn { padding: 12px 16px; border: none; border-radius: 12px; background: #16a085; color: white; font-weight: 900; box-shadow: 0 6px 0 #117a65; white-space: nowrap; }
+    .rescue-btn:disabled { background: #b7c6c2; box-shadow: 0 6px 0 #91a29d; cursor: not-allowed; }
+
+    .quest-pin { position: absolute; width: 140px; padding: 10px; background: rgba(255, 255, 255, 0.95); border: 2px solid #ff9166; border-radius: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.15); transform: translate(-50%, -100%); pointer-events: auto; text-align: center; z-index: 15; }
+    .quest-pin::after { content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%) rotate(45deg); width: 10px; height: 10px; background: white; border-right: 2px solid #ff9166; border-bottom: 2px solid #ff9166; }
+    .quest-pin strong { display: block; font-size: 0.9rem; color: var(--navy); }
+    .quest-pin .rewards { font-size: 0.75rem; color: var(--muted); margin: 6px 0; font-weight: bold;}
+    .quest-pin button { width: 100%; padding: 6px; border: none; border-radius: 6px; background: linear-gradient(135deg, #ff9166, #ff6f86); color: white; font-weight: bold; }
+
+    /* 右側面板 */
+    .sidebar { width: 360px; display: flex; flex-direction: column; background: var(--panel); padding: 16px; border-radius: 16px; box-shadow: var(--shadow); overflow-y: auto; flex-shrink: 0;}
+    .sidebar-nav { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; flex-shrink: 0;}
+    .sidebar-nav button { flex: 1; padding: 8px 4px; border: 1px solid var(--line); border-radius: 8px; background: white; color: var(--muted); font-weight: bold; font-size: 0.8rem;}
+    .sidebar-nav button.active { background: var(--navy); color: white; border-color: var(--navy); }
+    .panel-section { display: none; flex-direction: column; gap: 12px;} 
+    .panel-section.active { display: flex; }
+    h2.sec-title { margin: 0; font-size: 1.05rem; border-bottom: 2px solid var(--line); padding-bottom: 6px; color: var(--navy);}
+    
+    .auth-form { display: grid; gap: 10px; }
+    .auth-form label { display: grid; gap: 4px; font-size: 0.85rem; font-weight: bold; color: var(--muted); }
+    .auth-form input, .auth-form select { width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 8px; }
+    .primary-button { background: var(--navy); color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; width: 100%;}
+    .danger-button { background: #ff6f86; color: white; border: none; padding: 8px 12px; border-radius: 8px; font-weight: bold; }
+
+    .player-card, .quest-card, .shop-item, .supply-item { background: white; padding: 12px; border-radius: 12px; border: 1px solid var(--line); }
+    .stat-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; text-align: center; }
+    .stat-row div { background: white; padding: 8px; border-radius: 10px; border: 1px solid var(--line); }
+    .inventory-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .inv-item { background: #fdfdfd; border: 1px solid var(--line); padding: 8px; border-radius: 8px; font-size: 0.8rem; font-weight: bold; display: flex; justify-content: space-between;}
+    
+    .quest-card.pending { border-color: #f5b041; background: #fffaf0; }
+    .teacher-action-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;}
+    .btn-approve { background: #2ecc71; color: white; border: none; padding: 6px; border-radius: 6px; font-weight: bold;}
+    .btn-reject { background: #e74c3c; color: white; border: none; padding: 6px; border-radius: 6px; font-weight: bold;}
+    .btn-prank { background: #8e44ad; color: white; border: none; padding: 8px; border-radius: 8px; font-weight: bold; flex: 1;}
+    .btn-arrange { background: #95a5a6; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; width: 100%; }
+    .teacher-toolbox { display: grid; gap: 8px; background: #f8fbff; border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+    .tool-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .tool-row button, .tool-row select { flex: 1; min-width: 92px; }
+    .mini-button { border: 1px solid var(--line); background: white; color: var(--navy); padding: 7px 8px; border-radius: 8px; font-weight: 800; font-size: 0.78rem; }
+    .mini-button.active { background: #3498db; color: white; border-color: #3498db; }
+    .broadcast-item { display: grid; gap: 4px; margin-bottom: 8px; padding: 8px; border-radius: 8px; background: #fff; border: 1px solid var(--line); }
+    .broadcast-time { font-size: 0.72rem; color: var(--muted); font-weight: 800; }
+    .broadcast-actions { display: none; gap: 6px; }
+    .teacher-view .broadcast-actions { display: flex; }
+    .hidden-stat-list { display: grid; gap: 6px; }
+    .hidden-stat-list .inv-item { border-color: #d6eaf8; background: #fbfdff; }
+
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px);}
+    .modal-overlay.active { display: flex; }
+    .modal-box { background: var(--panel-strong); width: 90%; max-width: 450px; border-radius: 20px; padding: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); border: 1px solid var(--line); position: relative;}
+    .close-modal { position: absolute; top: 16px; right: 16px; background: #eee; border: none; border-radius: 50%; width: 32px; height: 32px; font-weight: bold; color: var(--navy); }
+    .interact-btns { display: grid; gap: 10px; margin: 20px 0; }
+    .interact-btn { padding: 12px; border: 2px solid var(--line); border-radius: 12px; background: white; font-size: 1rem; font-weight: bold; color: var(--navy); display: flex; align-items: center; gap: 10px; }
+    .closed-screen { display: none; position: fixed; inset: 0; z-index: 3000; background: rgba(248,251,255,0.96); align-items: center; justify-content: center; text-align: center; padding: 24px; }
+    .closed-screen.active { display: flex; }
+    .closed-screen-box { max-width: 420px; background: white; border: 3px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); padding: 28px; }
+    .closed-screen-box h2 { margin: 0 0 12px; color: var(--navy); font-size: 1.4rem; }
+    .admin-grid { display: grid; gap: 8px; }
+    .admin-row { display: grid; grid-template-columns: 1.1fr 0.8fr 0.8fr; gap: 8px; align-items: end; }
+    .admin-row textarea { min-height: 72px; resize: vertical; font-size: 0.82rem; }
+    .message-list { display: flex; flex-direction: column; gap: 4px; max-height: 420px; overflow: auto; padding-right: 4px; }
+    .classroom-message-list.message-list { height: 160px; min-height: 160px; max-height: 160px; overflow: hidden; }
+    .message-item { height: 28px; flex: 0 0 28px; background: #fff; border: 1px solid var(--line); border-left: 4px solid #5dade2; border-radius: 8px; padding: 4px 8px; font-size: 0.78rem; line-height: 1.15; display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; }
+    .message-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    .message-empty { height: 152px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 0.85rem; background: #fff; border: 1px dashed var(--line); border-radius: 8px; }
+    .message-item.broadcast { border-left-color: #f5b041; }
+    .message-item.private { border-left-color: #a569bd; }
+    .message-item.system { border-left-color: #e74c3c; }
+    .message-time { flex: 0 0 auto; color: var(--muted); font-size: 0.68rem; }
+    .warehouse-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; max-height: 170px; overflow: auto; }
+    .warehouse-item { display: flex; justify-content: space-between; gap: 6px; align-items: center; background: white; border: 1px solid var(--line); border-radius: 8px; padding: 6px; font-size: 0.78rem; font-weight: 800; }
+    .warehouse-item button { width: auto; white-space: nowrap; }
+    .message-actions { display: none; gap: 4px; margin-left: auto; flex: 0 0 auto; }
+    .message-actions .mini-button { padding: 3px 5px; font-size: 0.68rem; }
+    .teacher-view .message-actions { display: inline-flex; }
+    .teacher-subtabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 12px; }
+    .teacher-subtabs button { border: 1px solid var(--line); background: #fff; color: var(--navy); border-radius: 8px; padding: 8px 10px; font-weight: 800; cursor: pointer; }
+    .teacher-subtabs button.active { background: var(--navy); color: #fff; }
+    .teacher-page { display: none; gap: 10px; }
+    .teacher-page.active { display: grid; }
+  </style>
+</head>
+<body>
+  <div id="toastContainer"></div>
+  <div id="closedScreen" class="closed-screen">
+    <div class="closed-screen-box">
+      <h2>目前教室關閉中，無法登入系統</h2>
+      <p>請等老師開啟教室後再重新登入。</p>
+    </div>
+  </div>
+
+  <div class="app-shell">
+    <header class="hero-panel">
+      <div>
+        <h1>Cloud Class Cats 雲端教室</h1>
+        <p>老師可於下課時間重新佈置教室 • 互動附帶 1% 驚喜彩蛋！</p>
+      </div>
+      <div class="status-badges">
+        <div class="badge"><span>目前教室</span><strong><select id="roomSelect" style="border:none; background:transparent; color:var(--navy); font-weight:900;"><option value="room1">主教室</option></select></strong></div>
+        <div class="badge"><span>教室狀態</span><strong id="badgeGameState">關閉中</strong></div>
+        <div class="badge"><span>在線人數</span><strong id="badgeOnline">0</strong></div>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <!-- 教室主地圖區 -->
+      <section class="classroom-container">
+        <div class="classroom-panel">
+          <div class="board-wrapper">
+            <div class="classroom-board" id="classroomBoard">
+              <!-- 可佈置的教室物件 -->
+              <div class="room-object blackboard movable" id="obj-blackboard">大黑板</div>
+              <div class="room-object tv-screen movable" id="obj-tv">班級電視</div>
+              <div class="room-object piano movable" id="obj-piano">鋼琴</div>
+              <div class="room-object teacher-desk-obj movable" id="obj-desk">老師講桌</div>
+              <div class="room-object plant-top-left movable" id="obj-plant1">盆栽</div>
+              <div class="room-object aquarium movable" id="obj-aquarium">生態水族箱</div>
+              <div class="room-object lockers movable" id="obj-lockers">學生置物櫃</div>
+              <div class="room-object bulletin-board movable" id="obj-bulletin">後方佈告欄</div>
+              <div class="room-object bookshelf movable" id="obj-bookshelf">閱讀區大書架</div>
+              <div class="room-object reading-corner movable" id="obj-reading">圖書角</div>
+              <div class="room-object sink movable" id="obj-sink">洗手台</div>
+              <div class="room-object cleaning-corner movable" id="obj-cabinet">掃除用具櫃</div>
+              <div class="room-object trash-can movable" id="obj-trashcan">垃圾桶</div>
+              <div class="room-object plant-bottom-right movable" id="obj-plant2">盆栽</div>
+
+              <div class="room-object desk-group movable" id="obj-g1">第一組</div>
+              <div class="room-object desk-group movable" id="obj-g2">第二組</div>
+              <div class="room-object desk-group movable" id="obj-g3">第三組</div>
+              <div class="room-object desk-group movable" id="obj-g4">第四組</div>
+              <div class="room-object desk-group movable" id="obj-g5">第五組</div>
+              <div class="room-object desk-group movable" id="obj-g6">第六組</div>
+              <div class="room-object desk-group movable" id="obj-g7">第七組</div>
+              <div class="room-object desk-group movable" id="obj-g8">第八組</div>
+              
+              <!-- JavaScript 動態生成 obj-d1 ~ obj-d30 (個人座位) 於此 -->
+
+              <!-- 固定不動的牆壁物件 -->
+              <div class="room-object window w1">窗戶</div>
+              <div class="room-object window w2">窗戶</div>
+              <div class="room-object window w3">窗戶</div>
+              <div class="room-object front-door">前門</div>
+              <div class="room-object back-door">後門</div>
+
+              <div id="questPins"></div>
+              <div id="messLayer"></div>
+              <div id="catLayer"></div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- 右側資訊與控制面板 -->
+      <aside class="sidebar" id="mainSidebar">
+        <!-- 登入前 -->
+        <div id="authSection" class="panel-section active">
+          <h2 class="sec-title">帳號登入 / 註冊</h2>
+          <div class="sidebar-nav">
+            <button type="button" id="tabLogin" class="active">登入</button>
+            <button type="button" id="tabRegister">註冊 (學生)</button>
+          </div>
+          <form id="authForm" class="auth-form">
+            <label id="nameLabel" style="display:none;">小貓名稱 <input type="text" id="inName" placeholder="例如：小米糕" /></label>
+            <label>Email <input type="email" id="inEmail" placeholder="student@school.tw" required /></label>
+            <label>密碼 <input type="password" id="inPass" required minlength="6" /></label>
+            <button type="submit" id="authSubmitBtn" class="primary-button">登入</button>
+          </form>
+        </div>
+
+        <!-- 導覽列 -->
+        <div id="userNav" style="display:none;">
+          <div class="sidebar-nav" id="mainTabs">
+            <button data-target="tabPlayer" class="active">背包</button>
+            <button data-target="tabShop">福利社</button>
+            <button data-target="tabQuests">任務板</button>
+            <button data-target="tabTeacher" id="navTeacherBtn" style="display:none; background:#ffe79c; color:var(--navy);">👨‍🏫 老師</button>
+          </div>
+        </div>
+
+        <div class="controls-overlay" id="sideClassroomControls">
+          <div class="d-pad-container">
+            <div class="d-pad">
+              <button class="d-btn" id="btnUp" oncontextmenu="return false;">▲</button><button class="d-btn" id="btnLeft" oncontextmenu="return false;">◀</button>
+              <button class="d-btn" id="btnRight" oncontextmenu="return false;">▶</button><button class="d-btn" id="btnDown" oncontextmenu="return false;">▼</button>
+            </div>
+            <button id="contextActionBtn">互動按鈕</button>
+            <button id="centerRescueBtn" class="rescue-btn" type="button">回教室中心</button>
+          </div>
+          <div class="comm-stack">
+            <section class="classroom-message-panel" aria-label="教室即時訊息欄">
+              <div class="classroom-message-header">
+                <strong>教室即時訊息</strong>
+                <div class="classroom-message-actions">
+                  <button type="button" class="mini-button" onclick="window.scrollClassroomMessages(-1)">上</button>
+                  <button type="button" class="mini-button" onclick="window.scrollClassroomMessages(1)">下</button>
+                  <button type="button" class="mini-button teacher-only" onclick="window.backupMessages()">備份</button>
+                  <button type="button" class="mini-button teacher-only" onclick="window.clearMessages()">刪除全部</button>
+                </div>
+              </div>
+              <div id="classroomMessageList" class="classroom-message-list message-list">目前沒有訊息。</div>
+            </section>
+            <form id="chatForm" class="chat-bar">
+              <input type="text" id="chatInput" placeholder="說話... (30字內)" maxlength="30" autocomplete="off" required>
+              <button type="submit" id="chatBtn">發言</button>
+              <span id="chatTimer" style="min-width: 40px;">就緒</span>
+            </form>
+          </div>
+        </div>
+        <!-- 背包 -->
+        <div id="tabPlayer" class="panel-section">
+          <div><h2 class="sec-title" style="display:inline-block; border:none;">我的狀態</h2> <button id="logoutBtn" class="danger-button" style="float:right;">登出</button></div>
+          <div class="player-card" id="playerCard"></div>
+          <div class="stat-row"><div><span>金幣 🪙</span><strong id="pGold">0</strong></div><div><span>水晶 💎</span><strong id="pCrystal">0</strong></div></div>
+          <div id="teacherHiddenStats" style="display:none;">
+            <h2 class="sec-title">老師可見隱藏數值</h2>
+            <div id="hiddenStatsList" class="hidden-stat-list"></div>
+          </div>
+          <div id="teacherBagTools" style="display:none;">
+            <h2 class="sec-title">老師背包管理</h2>
+            <div class="auth-form">
+              <label>選擇學生
+                <select id="bagStudent" onchange="window.updateBagItems()"><option value="">選擇學生...</option></select>
+              </label>
+              <div style="display:grid; grid-template-columns:1fr auto; gap:8px; align-items:end;">
+                <label>沒收物品
+                  <select id="bagItem"><option value="">先選擇學生...</option></select>
+                </label>
+                <button type="button" class="danger-button" onclick="window.confiscateBagItem()">沒收</button>
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 80px auto; gap:8px; align-items:end;">
+                <label>贈與物品 <select id="giftItemName"><option value="">請先建立道具</option></select></label>
+                <label>數量 <input type="number" id="giftItemQty" min="1" value="1"></label>
+                <button type="button" class="primary-button" onclick="window.giftBagItem()" style="background:#2ecc71;">贈與</button>
+              </div>
+            </div>
+          </div>
+          <h2 class="sec-title">我的道具欄</h2>
+          <div id="inventoryList" class="inventory-grid">空</div>
+        </div>
+
+        <!-- 商店 -->
+        <div id="tabShop" class="panel-section">
+          <h2 class="sec-title">教室福利社</h2>
+          <div id="shopList">架上沒有商品喔。</div>
+        </div>
+
+        <!-- 任務列表 -->
+        <div id="tabQuests" class="panel-section">
+          <h2 class="sec-title">活躍與待處理任務</h2>
+          <div id="questList">沒有任務。</div>
+          <h2 class="sec-title">教室廣播動態</h2>
+          <div id="activityLog" style="margin:0; font-size:0.85rem; color:var(--muted); line-height:1.6;"></div>
+        </div>
+
+
+        <!-- 教師後台 -->
+        <div id="tabTeacher" class="panel-section">
+          <h2 class="sec-title" style="color:#e67e22;">👨‍🏫 教師專屬控制台</h2>
+          <div class="teacher-subtabs" id="teacherSubTabs"></div>
+          <div id="teacherPageGeneral" class="teacher-page active"></div>
+          <div id="teacherPageItems" class="teacher-page"></div>
+          <div id="teacherPageMagic" class="teacher-page"></div>
+          <div id="teacherPageTasks" class="teacher-page"></div>
+          <div id="teacherPageStudents" class="teacher-page"></div>
+          <div id="teacherPageShop" class="teacher-page"></div>
+          <div style="display:flex; flex-direction:column; gap:10px; margin-bottom: 8px;">
+            <select id="layoutSelect" class="auth-form" style="padding:8px; border-radius:8px; border:1px solid var(--line);">
+              <option value="1">預設 1：自訂配置</option>
+              <option value="2">預設 2：自訂配置</option>
+              <option value="3">預設 3：自訂配置</option>
+              <option value="4">預設 4：自訂配置</option>
+            </select>
+            <div style="display:flex; gap:10px;">
+              <button class="primary-button" id="toggleGameBtn" style="flex:1;">開啟教室</button>
+              <button class="danger-button" id="clearQuestsBtn" style="flex:1;">清空任務</button>
+            </div>
+            <div style="display:flex; gap:10px;">
+              <button class="primary-button" id="applyLayoutBtn" type="button" style="background:#5dade2; flex:1;">載入選擇預設</button>
+              <button class="primary-button" id="saveLayoutPresetBtn" type="button" style="background:#2ecc71; flex:1;">儲存為此預設</button>
+            </div>
+          </div>
+          <button class="btn-arrange" id="btnArrange" style="margin-bottom: 12px;">🛠️ 手動佈置模式 (下課可用)</button>
+          <div class="teacher-toolbox" id="arrangeTools">
+            <div class="tool-row">
+              <button type="button" class="mini-button" id="btnMultiSelect">多選拖曳</button>
+              <button type="button" class="mini-button" id="btnSelectDesks">選取桌椅</button>
+              <button type="button" class="mini-button" id="btnClearSelection">取消選取</button>
+            </div>
+            <div class="tool-row">
+              <label style="font-size:0.8rem; font-weight:bold;"><input type="checkbox" id="snapGrid" checked> 拖曳自動對齊格線</label>
+              <button type="button" class="mini-button" onclick="window.alignSelection('left')">靠左</button>
+              <button type="button" class="mini-button" onclick="window.alignSelection('centerX')">垂直置中</button>
+              <button type="button" class="mini-button" onclick="window.alignSelection('tidyRows')">桌椅排整齊</button>
+              <button type="button" class="mini-button" onclick="window.sendSelectionToWarehouse()">放入倉庫</button>
+            </div>
+            <div>
+              <strong style="font-size:0.82rem; color:var(--navy);">倉庫</strong>
+              <div id="warehouseList" class="warehouse-list">目前沒有物件在倉庫。</div>
+            </div>
+          </div>
+
+          <h3 style="font-size:0.95rem; margin:16px 0 8px;">📣 教室廣播管理</h3>
+          <form id="broadcastForm" class="auth-form">
+            <label>直接發布訊息 <input type="text" id="broadcastText" maxlength="80" placeholder="輸入要公告給本教室的訊息" required></label>
+            <button type="submit" class="primary-button" style="background:#3498db;">發布廣播</button>
+          </form>
+          <div class="tool-row">
+            <button type="button" class="mini-button" onclick="window.backupBroadcasts()">備份廣播</button>
+            <button type="button" class="mini-button" onclick="window.clearBroadcasts()">刪除全部廣播</button>
+          </div>
+
+          <h3 style="font-size:0.95rem; margin:16px 0 8px;">🎒 道具表單</h3>
+          <form id="itemCatalogForm" class="auth-form">
+            <label>新增真實道具 <input type="text" id="catalogItemName" placeholder="例如：作業本、橡皮擦" required></label>
+            <button type="submit" class="primary-button" style="background:#2ecc71;">新增道具</button>
+          </form>
+          <div id="itemCatalogList" class="inventory-grid" style="margin-top:8px;">尚未建立道具。</div>
+
+          <h3 style="font-size:0.95rem; margin:16px 0 8px;">🌟 特殊互動設定</h3>
+          <div class="teacher-toolbox">
+            <div class="admin-row">
+              <label>出現機率(%) <input type="number" id="specialChancePct" min="0" max="100" step="0.01" value="0.1"></label>
+              <label>水晶獎勵 <input type="number" id="specialCrystalReward" min="0" value="10"></label>
+              <button type="button" class="primary-button" onclick="window.saveSpecialSettings()" style="background:#a569bd;">儲存</button>
+            </div>
+            <label>特殊對話內容（每行：物件ID=文字，例如 obj-piano=鋼琴發光了）
+              <textarea id="specialDialogText" placeholder="obj-piano=鋼琴突然彈出神秘旋律！&#10;obj-blackboard=黑板浮現了神秘文字！"></textarea>
+            </label>
+          </div>
+
+          <h3 style="font-size:0.95rem; margin:16px 0 8px;">🪄 群體魔法</h3>
+          <div class="teacher-toolbox">
+            <div class="tool-row">
+              <button type="button" class="mini-button" onclick="window.returnAllSupplies()">掃具回歸</button>
+              <button type="button" class="mini-button" onclick="window.toggleSupplyLock()">掃具櫃上鎖 / 解鎖</button>
+              <button type="button" class="mini-button" onclick="window.toggleClassMagic('muted')">禁言 / 解除</button>
+              <button type="button" class="mini-button" onclick="window.toggleFreeze20()">定身20秒 / 解除</button>
+            </div>
+            <div class="tool-row">
+              <button type="button" class="mini-button" onclick="window.toggleClassMagic('petrified')">石化 / 解除</button>
+              <button type="button" class="mini-button" onclick="window.summonStudent()">召喚指定學生</button>
+              <button type="button" class="mini-button" onclick="window.summonAllStudents()">大召喚</button>
+            </div>
+            <label>召喚學生
+              <select id="magicStudent"><option value="">選擇學生...</option></select>
+            </label>
+            <label>技能目標
+              <select id="magicTarget"><option value="all">全體</option><option value="single">單體（使用上方學生）</option></select>
+            </label>
+            <div id="magicStateText" style="font-size:0.85rem; color:var(--muted);">目前沒有群體魔法。</div>
+          </div>
+          
+          <h3 style="font-size:0.95rem; margin:8px 0;">📋 進行中 & 待審核任務</h3>
+          <div id="pendingQuestList" style="font-size:0.85rem; color:var(--muted);">目前沒有待處理的任務。</div>
+
+          <h3 style="font-size:0.95rem; margin:16px 0 8px;">♻️ 回收學生物品 (抽獎/兌換)</h3>
+          <div class="auth-form" style="display:grid; grid-template-columns:1fr 1fr auto; gap:8px; align-items:end;">
+            <label>選擇學生
+              <select id="trStudent" onchange="window.updateReclaimItems()"><option value="">選擇學生...</option></select>
+            </label>
+            <label>選擇物品
+              <select id="trItem"><option value="">先選擇學生...</option></select>
+            </label>
+            <button type="button" class="primary-button" onclick="window.reclaimItem()" style="background:#e74c3c;">回收</button>
+          </div>
+
+          <h3 style="font-size:0.95rem; margin:16px 0 8px;">🛠️ 終極後台：學生資料總管</h3>
+          <div class="teacher-toolbox admin-grid">
+            <label>選擇學生
+              <select id="adminStudent" onchange="window.loadAdminStudent()"><option value="">選擇學生...</option></select>
+            </label>
+            <div class="admin-row">
+              <label>名稱 <input type="text" id="adminName"></label>
+              <label>金幣 <input type="number" id="adminGold" value="0"></label>
+              <label>水晶 <input type="number" id="adminCrystal" value="0"></label>
+            </div>
+            <label>背包 / 物品（每行：物品名稱=數量）
+              <textarea id="adminInventory" placeholder="掃把=1&#10;抹布=2"></textarea>
+            </label>
+            <div class="tool-row">
+              <button type="button" class="primary-button" onclick="window.saveAdminStudent()" style="background:#2ecc71; flex:1;">儲存學生資料</button>
+              <button type="button" class="danger-button" onclick="window.kickAdminStudent()" style="flex:1;">強制踢出學生</button>
+            </div>
+          </div>
+
+          <h3 style="font-size:0.95rem; margin:16px 0 8px;">😈 / ✨ 老師場景技能</h3>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn-prank" style="background:#00bcd4; flex:1 1 100%;" onclick="window.cleanMagic()">✨ 潔淨魔法 (清空垃圾)</button>
+            <button class="btn-prank" onclick="window.spawnMess('trash')">丟垃圾</button>
+            <button class="btn-prank" onclick="window.spawnMess('puddle')">打翻水</button>
+            <button class="btn-prank" onclick="window.spawnMess('dust')">撒灰塵</button>
+          </div>
+
+          <h3 style="font-size:0.95rem; margin:16px 0 8px;">📜 投遞新任務</h3>
+          <form id="tQuestForm" class="auth-form">
+            <label>任務類型
+              <select id="tqType">
+                <option value="gathering">👥 集結任務 (需湊滿人數)</option>
+                <option value="general">⏳ 一般任務 (不限人數，老師手動發獎)</option>
+                <option value="delivery">📦 交件任務 (需持有指定物品)</option>
+              </select>
+            </label>
+            <label>任務標題 <input type="text" id="tqTitle" required></label>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              <label>獎勵金幣🪙 <input type="number" id="tqGold" value="10" min="0"></label>
+              <label>獎勵水晶💎 <input type="number" id="tqCrystal" value="0" min="0"></label>
+            </div>
+            <div id="typeGatheringOpts">
+              <label>需滿人數 <input type="number" id="tqMin" min="1" max="25" value="2"></label>
+            </div>
+            <div id="typeDeliveryOpts" style="display:none; gap:10px;" class="auth-form">
+              <label>必須持有物品名稱 <select id="tqRequiredItem"><option value="">請先建立道具</option></select></label>
+              <label>審核通過後收走數量 <input type="number" id="tqRequiredCount" min="1" value="1"></label>
+              <label>最多交件人數 <input type="number" id="tqMaxDeliverers" min="1" max="30" value="1"></label>
+            </div>
+            <button type="submit" class="primary-button" style="background:#f5b041;">發布任務</button>
+          </form>
+          
+          <h3 style="font-size:0.95rem; margin:16px 0 8px;">🛍️ 上架商店商品</h3>
+          <form id="tShopForm" class="auth-form" style="margin-bottom: 24px;">
+            <label>商品名稱 <select id="tsName" required><option value="">請先建立道具</option></select></label>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              <label>價格 <input type="number" id="tsPrice" value="50" min="1"></label>
+              <label>貨幣 <select id="tsCurrency"><option value="gold">金幣</option><option value="crystal">水晶</option></select></label>
+            </div>
+            <button type="submit" class="primary-button" style="background:#a569bd;">上架商品</button>
+          </form>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <!-- Modal: 掃具櫃 -->
+  <div class="modal-overlay" id="modalSupply">
+    <div class="modal-box">
+      <button class="close-modal" onclick="closeModal('modalSupply')">✕</button>
+      <h2 class="sec-title">班級公共掃具櫃</h2>
+      <p style="font-size:0.85rem; color:var(--muted);">借用對應的掃具才能打掃教室髒亂喔！</p>
+      <div id="supplyList">讀取中...</div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalCleanPartner">
+    <div class="modal-box">
+      <button class="close-modal" onclick="closeModal('modalCleanPartner')">×</button>
+      <h2 class="sec-title">選擇合作打掃對象</h2>
+      <p style="font-size:0.85rem; color:var(--muted);">選好後，兩個人都必須在 2 秒內按下打掃，才會完成合作。</p>
+      <div class="auth-form">
+        <label>附近同學
+          <select id="cleanPartnerSelect"></select>
+        </label>
+        <button type="button" class="primary-button" onclick="window.confirmCleanPartner()" style="background:#2ecc71;">送出合作邀請</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: 互動選單 -->
+  <div class="modal-overlay" id="modalInteract">
+    <div class="modal-box">
+      <button class="close-modal" onclick="closeModal('modalInteract')">✕</button>
+      <h2 class="sec-title" id="interactTitle">互動</h2>
+      <div class="interact-btns">
+        <button class="interact-btn" id="btnGreet">👋 打招呼</button>
+        <button class="interact-btn" id="btnWhisper">🤫 講悄悄話 (限附近的人聽到)</button>
+        <button class="interact-btn" id="btnPassNote">📝 傳紙條 (私訊，老師會攔截)</button>
+        <button class="interact-btn" id="btnInspect">🎒 觀察對方的背包</button>
+      </div>
+      <div id="inspectArea" style="display:none; margin-top:16px; border-top:2px dashed var(--line); padding-top:16px;">
+        <h3 style="font-size:0.9rem; margin:0 0 10px;">對方身上的物品：</h3>
+        <div id="inspectContent" class="inventory-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    // === 替換成你的 Firebase 設定碼 ===
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-auth.js";
+    import { getDatabase, ref, onValue, set, update, push, onDisconnect, get, increment, runTransaction, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-database.js";
+
+    // 🔴 請把下方這塊替換成你剛剛在 Firebase 複製的程式碼 🔴
+    const firebaseConfig = {
+      apiKey: "AIzaSyBW5gpxJbiSM8RgsZ9xSO1OYaZfGexo13k",
+      authDomain: "cloudclassrpg.firebaseapp.com",
+      databaseURL: "https://cloudclassrpg-default-rtdb.firebaseio.com",
+      projectId: "cloudclassrpg",
+      storageBucket: "cloudclassrpg.firebasestorage.app",
+      messagingSenderId: "986767622004",
+      appId: "1:986767622004:web:fdf613743bfdff3dacf621"
+    };
+
+    let app, auth, db;
+    try { app = initializeApp(firebaseConfig); auth = getAuth(app); db = getDatabase(app); } catch(e) { alert("Firebase 尚未設定！"); }
+
+    const state = { gameOpen: false, isTeacher: false, cats: {}, quests: {}, shop: {}, supplies: {}, messes: {}, classroomObjects: null, logs: [], messages: [], itemCatalog: {}, settings: { specialChance: 0.001, specialCrystalReward: 10, specialDialogs: {}, supplyLocked: false }, magic: {}, forceClosed: false };
+    let currentUser = null; let targetUidForInteract = null;
+    let currentRoomId = 'room1';
+    localStorage.setItem('cloudClassCatsRoom', currentRoomId);
+    let activeRoomId = currentRoomId;
+    let sessionStartedAt = Date.now();
+    let handledDismissAt = 0;
+    const roomNames = { room1: '主教室' };
+    const roomPath = (path = '') => `rooms/${currentRoomId}${path ? '/' + path : ''}`;
+    const centerPoint = { x: 50, y: 50 };
+    const CENTER_COOLDOWN = 60 * 1000;
+    const GREET_COOLDOWN = 60 * 60 * 1000;
+    const formatDateTime = (time) => new Date(time || Date.now()).toLocaleString('zh-TW', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+    const escapeHtml = (text = '') => String(text).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+    const sameRoomCats = () => Object.fromEntries(Object.entries(state.cats).filter(([_, cat]) => (cat.roomId || 'room1') === currentRoomId));
+    const catColors = ["#ffcf8f", "#ffd6eb", "#c7f0ac", "#9fd7ff", "#ffe79c", "#d9c7ff"];
+    const supplyNames = { broom: "掃把", mop: "拖把", rag: "抹布", dustpan: "畚箕", bucket: "水桶" };
+    const supplyMax = { broom: 6, mop: 6, rag: 10, dustpan: 6, bucket: 6 };
+    const messIcons = { trash: '🗑️', puddle: '💧', dust: '💨' };
+    const cleanReqs = { trash: ['掃把', '畚箕'], puddle: ['拖把', '水桶'], dust: ['抹布'] };
+    const supplyItemSet = new Set(Object.values(supplyNames));
+    const classroomClosedForStudent = () => !state.isTeacher && (!state.gameOpen || state.forceClosed);
+    const mySingleMagic = () => currentUser ? (state.magic?.single?.[currentUser.uid] || {}) : {};
+    const isMutedForStudent = () => !state.isTeacher && !!(state.magic?.muted || state.magic?.frozenUntil > Date.now() || state.magic?.petrified || mySingleMagic().muted || mySingleMagic().frozenUntil > Date.now() || mySingleMagic().petrified);
+    const isMovementBlockedForStudent = () => !state.isTeacher && !!(state.magic?.frozenUntil > Date.now() || state.magic?.petrified || mySingleMagic().frozenUntil > Date.now() || mySingleMagic().petrified);
+    const showClosedScreen = (show) => document.getElementById('closedScreen').classList.toggle('active', !!show);
+    const guardOpenClassroom = () => {
+      if (!classroomClosedForStudent()) return true;
+      showClosedScreen(true);
+      showToast("目前教室關閉中，無法使用系統。", true);
+      return false;
+    };
+    const itemExists = (name) => supplyItemSet.has(name) || !!state.itemCatalog?.[name];
+    const normalizeEmailInput = (raw) => {
+      const value = String(raw || '').trim();
+      return value.includes('@') ? value : `${value}@st.tc.edu.tw`;
+    };
+
+    // 初始化動態生成個人座位 DOM (obj-d1 ~ obj-d30)
+    const cBoardInner = document.getElementById('classroomBoard');
+    for(let i = 1; i <= 30; i++) {
+        const d = document.createElement('div');
+        d.className = 'room-object desk-single movable';
+        d.id = 'obj-d' + i; d.textContent = i;
+        d.style.display = 'none'; // 預設隱藏
+        cBoardInner.appendChild(d);
+    }
+
+    // 教室預設物件中心座標 (配置1: 小組桌椅)
+    const getBaseLayout = () => ({
+      'obj-blackboard': {x: 50, y: 4}, 'obj-tv': {x: 19, y: 4}, 'obj-piano': {x: 80, y: 4},
+      'obj-desk': {x: 34, y: 14}, 'obj-plant1': {x: 4.5, y: 4.5}, 'obj-aquarium': {x: 94, y: 14},
+      'obj-lockers': {x: 98, y: 44.5}, 'obj-bookshelf': {x: 45, y: 86}, 'obj-reading': {x: 14, y: 83},
+      'obj-sink': {x: 76, y: 96}, 'obj-cabinet': {x: 89, y: 84.5}, 'obj-trashcan': {x: 89.5, y: 96},
+      'obj-plant2': {x: 95.5, y: 95.5}, 'obj-bulletin': {x: 45, y: 97.5},
+      'obj-g1': {x: 28, y: 30}, 'obj-g2': {x: 51, y: 30}, 'obj-g3': {x: 74, y: 30},
+      'obj-g4': {x: 28, y: 55}, 'obj-g5': {x: 51, y: 55}, 'obj-g6': {x: 74, y: 55},
+      'obj-g7': {x: 28, y: 80}, 'obj-g8': {x: 74, y: 80}
+    });
+
+    const getObjectFallbackLayout = () => {
+      const layout = getBaseLayout();
+      for(let i=1; i<=30; i++) layout['obj-d'+i] = { x: 18 + ((i - 1) % 6) * 12.5, y: 30 + Math.floor((i - 1) / 6) * 12.5, hidden: true, inWarehouse: true };
+      return layout;
+    };
+    const defaultObjects = getObjectFallbackLayout();
+    const buildBlankLayout = () => Object.fromEntries(Object.entries(defaultObjects).map(([id, pos]) => [id, { ...pos, hidden: true, inWarehouse: true }]));
+
+    // 互動點位清單 (有隱藏特別事件 1% 機率)
+    const interactables = [
+      { id: 'obj-cabinet', r: 12, label: '打開掃具櫃', type: 'cabinet' },
+      { id: 'obj-piano', r: 12, label: '🎹 彈鋼琴', type: 'object', msg: '叮叮咚咚～彈了一首小蜜蜂 🎶', specialMsg: '🎹 居然彈出了貝多芬的命運交響曲！全班驚呆了！' },
+      { id: 'obj-blackboard', r: 16, label: '🖍️ 畫黑板', type: 'object', msg: '在黑板上畫了一隻大烏龜！🐢', specialMsg: '🖍️ 畫出了蒙娜麗莎的微笑... 太神啦！' },
+      { id: 'obj-tv', r: 10, label: '📺 看電視', type: 'object', msg: '偷看卡通...啊！是教學影片😅', specialMsg: '📺 電視突然播出了未來的樂透號碼！？' },
+      { id: 'obj-aquarium', r: 10, label: '🐟 看水族箱', type: 'object', msg: '咕嚕咕嚕...小魚好可愛！🐠', specialMsg: '🐟 魚竟然跳出水面後空翻了一圈！' },
+      { id: 'obj-sink', r: 10, label: '🚰 洗手', type: 'object', msg: '玩水囉！嘩啦嘩啦～ 💦', specialMsg: '🚰 水龍頭流出了珍珠奶茶！？' },
+      { id: 'obj-trashcan', r: 10, label: '🗑️ 丟垃圾', type: 'object', msg: '三分球！完美命中垃圾桶！🏀', specialMsg: '🗑️ 丟進去的時候裡面發出了『謝謝光臨』的聲音...' },
+      { id: 'obj-bookshelf', r: 12, label: '📚 拿書看', type: 'object', msg: '假裝看書，其實在打瞌睡... 😴', specialMsg: '📚 翻到了一本夾著藏寶圖的神秘古書！' },
+      { id: 'obj-lockers', r: 10, label: '🎒 開置物櫃', type: 'object', msg: '忘記帶課本了，糟糕！ 😱', specialMsg: '🎒 打開櫃子... 裡面竟然藏著一隻正在睡覺的小怪獸！' },
+    ];
+
+    window.showToast = (msg, isWarn = false) => {
+      const toast = document.createElement('div'); toast.className = `toast ${isWarn ? 'warn' : ''}`; toast.innerText = msg;
+      document.getElementById('toastContainer').appendChild(toast);
+      setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
+    };
+
+    window.openModal = (id) => document.getElementById(id).classList.add('active');
+    window.closeModal = (id) => { document.getElementById(id).classList.remove('active'); if(id === 'modalInteract') document.getElementById('inspectArea').style.display = 'none'; };
+
+    const tabLogin = document.getElementById('tabLogin'); const tabRegister = document.getElementById('tabRegister'); let isLoginMode = true;
+    tabLogin.onclick = () => { isLoginMode = true; tabLogin.className='active'; tabRegister.className=''; document.getElementById('nameLabel').style.display='none'; document.getElementById('authSubmitBtn').textContent='登入'; };
+    tabRegister.onclick = () => { isLoginMode = false; tabRegister.className='active'; tabLogin.className=''; document.getElementById('nameLabel').style.display='grid'; document.getElementById('authSubmitBtn').textContent='註冊並進入'; };
+
+    document.getElementById('mainTabs').addEventListener('click', (e) => {
+      if(e.target.tagName !== 'BUTTON') return;
+      document.querySelectorAll('#mainTabs button').forEach(b => b.classList.remove('active')); e.target.classList.add('active');
+      document.querySelectorAll('.panel-section').forEach(p => p.classList.remove('active')); document.getElementById(e.target.dataset.target).classList.add('active');
+    });
+
+    const setupTeacherSubTabs = () => {
+      const tabs = document.getElementById('teacherSubTabs');
+      if (!tabs || tabs.dataset.ready) return;
+      tabs.dataset.ready = '1';
+      const pages = [
+        ['teacherPageGeneral', '教室'],
+        ['teacherPageItems', '道具/互動'],
+        ['teacherPageMagic', '技能'],
+        ['teacherPageTasks', '任務'],
+        ['teacherPageStudents', '學生'],
+        ['teacherPageShop', '福利社']
+      ];
+      pages.forEach(([id, label], index) => {
+        const btn = document.createElement('button');
+        btn.type = 'button'; btn.textContent = label; btn.dataset.page = id;
+        if (index === 0) btn.classList.add('active');
+        btn.onclick = () => {
+          document.querySelectorAll('#teacherSubTabs button').forEach(b => b.classList.toggle('active', b === btn));
+          document.querySelectorAll('#tabTeacher .teacher-page').forEach(p => p.classList.toggle('active', p.id === id));
+        };
+        tabs.appendChild(btn);
+      });
+      const moveBlock = (selector, pageId, includeHeading = true, includeNextToolRow = false) => {
+        let el = document.querySelector(selector);
+        if (selector === '#specialDialogText') el = el?.closest('.teacher-toolbox');
+        if (selector === '#magicStateText') el = el?.closest('.teacher-toolbox');
+        if (selector === '#trStudent') el = el?.closest('.auth-form');
+        if (selector === '#adminStudent') el = el?.closest('.teacher-toolbox');
+        if (selector === '#tabTeacher .btn-prank') el = el?.parentElement;
+        const page = document.getElementById(pageId);
+        if (!el || !page || page.contains(el)) return;
+        const heading = includeHeading && el.previousElementSibling?.tagName === 'H3' ? el.previousElementSibling : null;
+        if (heading) page.appendChild(heading);
+        page.appendChild(el);
+        if (includeNextToolRow && el.nextElementSibling?.classList?.contains('tool-row')) page.appendChild(el.nextElementSibling);
+      };
+      moveBlock('#tabTeacher > div[style*="flex-direction"]', 'teacherPageGeneral', false);
+      document.getElementById('teacherPageGeneral').appendChild(document.getElementById('btnArrange'));
+      document.getElementById('teacherPageGeneral').appendChild(document.getElementById('arrangeTools'));
+      moveBlock('#broadcastForm', 'teacherPageGeneral', true, true);
+      moveBlock('#itemCatalogForm', 'teacherPageItems', true);
+      document.getElementById('teacherPageItems').appendChild(document.getElementById('itemCatalogList'));
+      moveBlock('#specialDialogText', 'teacherPageItems', true);
+      moveBlock('#magicStateText', 'teacherPageMagic', true);
+      moveBlock('#pendingQuestList', 'teacherPageTasks', true);
+      moveBlock('#tQuestForm', 'teacherPageTasks', true);
+      moveBlock('#trStudent', 'teacherPageStudents', true);
+      moveBlock('#adminStudent', 'teacherPageStudents', true);
+      moveBlock('#tabTeacher .btn-prank', 'teacherPageMagic', true);
+      moveBlock('#tShopForm', 'teacherPageShop', true);
+    };
+    setupTeacherSubTabs();
+
+    document.getElementById('roomSelect').value = currentRoomId;
+    document.getElementById('roomSelect').onchange = async (e) => {
+      e.target.value = 'room1';
+      currentRoomId = 'room1';
+      localStorage.setItem('cloudClassCatsRoom', currentRoomId);
+      if (currentUser && db) await update(ref(db, `cats/${currentUser.uid}`), { roomId: currentRoomId, x: centerPoint.x, y: centerPoint.y, status: `留在${roomNames[currentRoomId]}` });
+      showToast("目前只有一間主教室，請用配置選單更換座位排列。");
+    };
+
+    document.getElementById('authForm').onsubmit = async (e) => {
+      e.preventDefault(); const email = normalizeEmailInput(document.getElementById('inEmail').value); const pass = document.getElementById('inPass').value; const name = document.getElementById('inName').value;
+      document.getElementById('inEmail').value = email;
+      try {
+        if (isLoginMode) await signInWithEmailAndPassword(auth, email, pass);
+        else {
+          if (!name) return alert("請輸入小貓顯示名稱！");
+          const cred = await createUserWithEmailAndPassword(auth, email, pass); await updateProfile(cred.user, { displayName: name });
+          await set(ref(db, `cats/${cred.user.uid}`), { name, email, roomId: currentRoomId, x: 50, y: 80, color: catColors[Math.floor(Math.random() * catColors.length)], gold: 0, crystal: 0, hiddenStats: { kindnessGiven: 0, kindnessReceived: 0 }, online: true, status: '剛報到' });
+        }
+      } catch (err) { alert("驗證失敗：" + err.message + "\n\n提醒：如果只輸入座號或代碼，系統會自動補成 @st.tc.edu.tw。若教室關閉，學生也會被擋在登入畫面。"); }
+    };
+    document.getElementById('logoutBtn').onclick = async () => { if (currentUser) { await update(ref(db, `cats/${currentUser.uid}`), { online: false }); signOut(auth); } };
+
+    if(auth) {
+      onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          sessionStartedAt = Date.now();
+          currentUser = user; state.isTeacher = (user.email === 'a776663@st.tc.edu.tw');
+          currentRoomId = 'room1';
+          activeRoomId = currentRoomId;
+          localStorage.setItem('cloudClassCatsRoom', currentRoomId);
+          const gameSnap = await get(ref(db, roomPath('gameState')));
+          state.gameOpen = !!(gameSnap.val()?.isOpen);
+          if (!state.isTeacher && !state.gameOpen) {
+            state.forceClosed = true;
+            alert("目前教室關閉中，無法登入系統");
+            showClosedScreen(true);
+            await update(ref(db, `cats/${user.uid}`), { online: false, roomId: currentRoomId, status: '教室關閉中' }).catch(() => {});
+            await signOut(auth);
+            return;
+          }
+          await set(ref(db, 'activeRoom'), currentRoomId);
+          if (!state.isTeacher) {
+            document.getElementById('roomSelect').value = currentRoomId;
+            document.getElementById('roomSelect').disabled = true;
+          } else {
+            document.getElementById('roomSelect').disabled = false;
+          }
+          document.getElementById('authSection').classList.remove('active'); document.getElementById('userNav').style.display = 'flex'; document.getElementById('sideClassroomControls').classList.add('active'); document.getElementById('tabPlayer').classList.add('active'); document.body.classList.toggle('teacher-view', state.isTeacher);
+          if(state.isTeacher) document.getElementById('navTeacherBtn').style.display = 'block';
+
+          const myCatRef = ref(db, `cats/${user.uid}`); const snap = await get(myCatRef);
+          if (!snap.exists()) {
+            const fallbackName = state.isTeacher ? '老師' : (user.displayName || (user.email ? user.email.split('@')[0] : '小貓'));
+            await set(myCatRef, { name: fallbackName, email: user.email, roomId: currentRoomId, x: state.isTeacher ? 34 : 50, y: state.isTeacher ? 14 : 80, color: state.isTeacher ? catColors[0] : catColors[Math.floor(Math.random() * catColors.length)], gold: state.isTeacher ? 9999 : 0, crystal: state.isTeacher ? 9999 : 0, hiddenStats: { kindnessGiven: 0, kindnessReceived: 0 }, online: true, status: state.isTeacher ? '巡視中' : '剛報到' });
+          } 
+          else {
+            const cat = snap.val() || {};
+            let fixedName = cat.name || user.displayName || (user.email ? user.email.split('@')[0] : '小貓');
+            if (!state.isTeacher && fixedName === '老師') fixedName = (user.displayName && user.displayName !== '老師') ? user.displayName : (user.email ? user.email.split('@')[0] : '小貓');
+            const repair = { online: true, roomId: currentRoomId, email: user.email, name: state.isTeacher ? '老師' : fixedName };
+            if (typeof cat.x !== 'number' || typeof cat.y !== 'number') { repair.x = state.isTeacher ? 34 : 50; repair.y = state.isTeacher ? 14 : 80; }
+            if (!cat.color) repair.color = state.isTeacher ? catColors[0] : catColors[Math.floor(Math.random() * catColors.length)];
+            if (!cat.hiddenStats) repair.hiddenStats = { kindnessGiven: 0, kindnessReceived: 0 };
+            await update(myCatRef, repair);
+          }
+          onDisconnect(myCatRef).update({ online: false }); addLog(`✨ ${snap.val()?.name || user.displayName} 進入了教室。`);
+        } else {
+          currentUser = null; state.isTeacher = false; document.body.classList.remove('teacher-view'); document.getElementById('userNav').style.display = 'none'; document.getElementById('sideClassroomControls').classList.remove('active');
+          document.querySelectorAll('.panel-section').forEach(p => p.classList.remove('active')); document.getElementById('authSection').classList.add('active');
+        }
+      });
+    }
+
+    if(db) {
+      onValue(ref(db, 'activeRoom'), async (s) => {
+        activeRoomId = 'room1';
+        if (s.val() !== 'room1') set(ref(db, 'activeRoom'), 'room1');
+      });
+      onValue(ref(db, roomPath('gameState')), (s) => { 
+        state.gameOpen = !!(s.val()?.isOpen); 
+        if (state.gameOpen) state.forceClosed = false;
+        showClosedScreen(classroomClosedForStudent());
+        document.getElementById('badgeGameState').textContent = state.gameOpen ? "🟢 上課中" : "🔴 下課中"; 
+        document.getElementById('toggleGameBtn').textContent = state.gameOpen ? "關閉教室" : "開啟教室"; 
+        if(state.gameOpen && window.isArranging) window.toggleArrangeMode(false);
+      });
+      onValue(ref(db, roomPath('dismissNotice')), async (s) => {
+        const notice = s.val();
+        if (!notice || state.isTeacher || !currentUser) return;
+        if ((notice.time || 0) <= sessionStartedAt || handledDismissAt === notice.time) return;
+        handledDismissAt = notice.time;
+        state.forceClosed = true;
+        alert(notice.message || "老師說放學囉！離開教室吧！");
+        showClosedScreen(true);
+        await update(ref(db, `cats/${currentUser.uid}`), { online: false, status: '已放學' });
+        await signOut(auth);
+      });
+      onValue(ref(db, roomPath('classroomObjects')), async (s) => {
+        if (!s.exists() && state.isTeacher) {
+          await set(ref(db, roomPath('classroomObjects')), buildBlankLayout());
+        } else if (s.exists()) {
+          state.classroomObjects = normalizeLayout(s.val());
+          renderObjects();
+        }
+      });
+      onValue(ref(db, 'cats'), (s) => { 
+        state.cats = s.val() || {}; document.getElementById('badgeOnline').textContent = Object.values(state.cats).filter(c=>c.online && (c.roomId || 'room1') === currentRoomId).length; 
+        renderPlayer(); renderCats(); if(state.isTeacher) { window.updateReclaimSelects(); window.updateBagSelects(); window.updateAdminSelects(); window.updateMagicStudentSelect(); }
+      });
+      onValue(ref(db, roomPath('quests')), (s) => { state.quests = s.val() || {}; renderQuests(); renderTeacherQuests(); });
+      onValue(ref(db, roomPath('messes')), (s) => { state.messes = s.val() || {}; renderMesses(); });
+      onValue(ref(db, roomPath('shop')), (s) => { state.shop = s.val() || {}; renderShop(); });
+      onValue(ref(db, roomPath('itemCatalog')), (s) => { state.itemCatalog = s.val() || {}; renderItemCatalog(); });
+      onValue(ref(db, roomPath('settings')), (s) => { state.settings = { specialChance: 0.001, specialCrystalReward: 10, specialDialogs: {}, supplyLocked: false, ...(s.val() || {}) }; renderSpecialSettings(); renderSupplies(); renderMagicState(); });
+      onValue(ref(db, roomPath('classMagic')), (s) => { state.magic = s.val() || {}; renderMagicState(); });
+      onValue(ref(db, roomPath('cleaningSupplies')), (s) => {
+        const val = s.val() || {};
+        state.supplies = { ...supplyMax, ...val };
+        if(state.isTeacher) {
+          const missing = {};
+          Object.keys(supplyMax).forEach(key => { if (val[key] === undefined) missing[key] = supplyMax[key]; });
+          if (Object.keys(missing).length) update(ref(db, roomPath('cleaningSupplies')), missing);
+        }
+        renderSupplies();
+      });
+      onValue(query(ref(db, roomPath('logs')), limitToLast(20)), (s) => {
+        const arr = []; s.forEach(c => { arr.push({ id: c.key, ...c.val() }); }); state.logs = arr;
+        const ul = document.getElementById('activityLog'); ul.innerHTML = '';
+        arr.reverse().forEach(log => { ul.innerHTML += `<div class="broadcast-item"><div class="broadcast-time">${formatDateTime(log.time)}</div><div>${escapeHtml(log.text)}</div><div class="broadcast-actions"><button class="mini-button" onclick="window.editBroadcast('${log.id}')">更新</button><button class="mini-button" onclick="window.deleteBroadcast('${log.id}')">刪除</button></div></div>`; });
+      });
+      onValue(query(ref(db, roomPath('messages')), limitToLast(80)), (s) => {
+        const arr = [];
+        s.forEach(c => arr.push({ id: c.key, ...c.val() }));
+        state.messages = arr.sort((a,b) => (b.time || 0) - (a.time || 0));
+        renderClassroomMessages();
+      });
+      let initialNoteLoad = true;
+      onValue(query(ref(db, 'notes'), limitToLast(1)), (s) => {
+        if(initialNoteLoad) { initialNoteLoad = false; return; }
+        s.forEach(child => {
+          const note = child.val();
+          if (Date.now() - note.time < 10000 && currentUser) {
+            if (note.to === currentUser.uid) showToast(`📝 收到來自 ${note.fromName} 的紙條: ${note.text}`);
+            else if (state.isTeacher && note.from !== currentUser.uid) showToast(`👀 老師攔截到紙條！ ${note.fromName} 傳給 ${note.toName}: ${note.text}`, true);
+          }
+        });
+      });
+    }
+    function sendMessage(to, text, type = 'system', fromName = '系統') {
+      if(db) push(ref(db, roomPath('messages')), { to, text, type, fromName, time: Date.now(), roomId: currentRoomId });
+    }
+    function addLog(text) {
+      if(db) {
+        push(ref(db, roomPath('logs')), { text, time: Date.now(), roomId: currentRoomId });
+        sendMessage('all', text, 'broadcast', '教室廣播');
+      }
+    }
+    let messagePageOffset = 0;
+    const MESSAGE_PAGE_SIZE = 5;
+    function renderClassroomMessages() {
+      const list = document.getElementById('classroomMessageList');
+      if (!list) return;
+      if (!state.messages.length) {
+        messagePageOffset = 0;
+        list.innerHTML = '<div class="message-empty">目前沒有訊息。</div>';
+        return;
+      }
+      const maxOffset = Math.max(0, state.messages.length - MESSAGE_PAGE_SIZE);
+      messagePageOffset = Math.max(0, Math.min(maxOffset, messagePageOffset));
+      const visibleMessages = state.messages.slice(messagePageOffset, messagePageOffset + MESSAGE_PAGE_SIZE);
+      list.innerHTML = '';
+      visibleMessages.forEach(msg => {
+        const controls = state.isTeacher ? `<div class="message-actions"><button class="mini-button" onclick="window.editMessage('${msg.id}')">更新</button><button class="mini-button" onclick="window.deleteMessage('${msg.id}')">刪除</button></div>` : '';
+        list.innerHTML += `<div class="message-item ${escapeHtml(msg.type || 'system')}" title="${escapeHtml(msg.text || '')}"><span class="message-time">${formatDateTime(msg.time)} · ${escapeHtml(msg.fromName || '系統')}</span><span class="message-text">${escapeHtml(msg.text || '')}</span>${controls}</div>`;
+      });
+    }
+    window.scrollClassroomMessages = (dir) => {
+      const maxOffset = Math.max(0, state.messages.length - MESSAGE_PAGE_SIZE);
+      messagePageOffset = Math.max(0, Math.min(maxOffset, messagePageOffset + (dir < 0 ? MESSAGE_PAGE_SIZE : -MESSAGE_PAGE_SIZE)));
+      renderClassroomMessages();
+    };
+    window.editMessage = async (messageId) => {
+      if (!state.isTeacher) return;
+      const msg = state.messages.find(item => item.id === messageId); if (!msg) return;
+      const text = prompt("更新這則訊息：", msg.text || '');
+      if (text && text.trim()) await update(ref(db, roomPath(`messages/${messageId}`)), { text: text.trim(), time: Date.now(), edited: true, editedBy: currentUser?.uid || 'teacher' });
+    };
+    window.deleteMessage = (messageId) => { if (state.isTeacher && confirm("確定刪除這則訊息？")) set(ref(db, roomPath(`messages/${messageId}`)), null); };
+    window.clearMessages = () => { if (state.isTeacher && confirm("確定刪除本教室所有訊息？")) set(ref(db, roomPath('messages')), null); };
+    window.backupMessages = async () => {
+      if (!state.isTeacher) return;
+      const payload = JSON.stringify({ room: roomNames[currentRoomId], exportedAt: formatDateTime(Date.now()), messages: state.messages }, null, 2);
+      try { await navigator.clipboard.writeText(payload); showToast("訊息備份已複製到剪貼簿。"); }
+      catch { prompt("請複製以下訊息備份資料：", payload); }
+    };
+
+    // === 開關教室與自訂教室佈置 ===
+    const normalizeLayout = (layout = {}) => {
+      const fallback = defaultObjects;
+      const normalized = {};
+      Object.keys(fallback).forEach(id => {
+        if (layout[id]) normalized[id] = { ...fallback[id], ...layout[id], hidden: !!layout[id].hidden, inWarehouse: !!layout[id].inWarehouse };
+        else normalized[id] = { ...fallback[id], hidden: true, inWarehouse: true };
+      });
+      Object.entries(layout || {}).forEach(([id, pos]) => {
+        if (!normalized[id]) normalized[id] = pos;
+      });
+      return normalized;
+    };
+    const cloneCurrentLayout = () => normalizeLayout(state.classroomObjects || buildBlankLayout());
+    const currentPresetKey = () => document.getElementById('layoutSelect').value;
+    window.loadLayoutPreset = async () => {
+      if(!state.isTeacher) return;
+      if(state.gameOpen) return showToast("請先關閉教室再載入配置。", true);
+      const slot = currentPresetKey();
+      const snap = await get(ref(db, roomPath(`layoutPresets/${slot}`)));
+      if (!snap.exists()) return showToast(`預設 ${slot} 還沒有儲存內容。`, true);
+      const layout = normalizeLayout(snap.val()?.objects || snap.val());
+      await set(ref(db, roomPath('classroomObjects')), layout);
+      await update(ref(db, roomPath('settings')), { activeLayoutPreset: slot, defaultLayoutLabel: `預設 ${slot}`, defaultLayoutSavedAt: Date.now() });
+      addLog(`🛠️ 老師載入了自訂教室預設 ${slot}。`);
+      showToast(`已載入預設 ${slot}`);
+    };
+    window.saveLayoutPreset = async () => {
+      if(!state.isTeacher) return;
+      if(state.gameOpen) return showToast("請先關閉教室再儲存配置。", true);
+      const slot = currentPresetKey();
+      const layout = cloneCurrentLayout();
+      await set(ref(db, roomPath(`layoutPresets/${slot}`)), { objects: layout, savedAt: Date.now(), savedBy: currentUser?.uid || 'teacher' });
+      await update(ref(db, roomPath('settings')), { activeLayoutPreset: slot, defaultLayoutLabel: `預設 ${slot}`, defaultLayoutSavedAt: Date.now() });
+      showToast(`目前佈置已儲存為預設 ${slot}。`);
+      addLog(`💾 老師將目前佈置儲存為教室預設 ${slot}。`);
+    };
+    document.getElementById('applyLayoutBtn').onclick = window.loadLayoutPreset;
+    document.getElementById('saveLayoutPresetBtn').onclick = window.saveLayoutPreset;
+
+    document.getElementById('toggleGameBtn').onclick = async () => { 
+      if(!state.isTeacher) return;
+      const willOpen = !state.gameOpen;
+      if(willOpen) {
+         const currentLayoutSnap = await get(ref(db, roomPath('classroomObjects')));
+         if (!currentLayoutSnap.exists()) {
+           const slot = state.settings?.activeLayoutPreset || currentPresetKey();
+           const presetSnap = await get(ref(db, roomPath(`layoutPresets/${slot}`)));
+           await set(ref(db, roomPath('classroomObjects')), presetSnap.exists() ? normalizeLayout(presetSnap.val()?.objects || presetSnap.val()) : buildBlankLayout());
+         }
+         addLog(`🛠️ 老師開啟教室。`);
+         const updates = { activeRoom: currentRoomId };
+         Object.keys(roomNames).forEach(roomId => { updates[`rooms/${roomId}/gameState/isOpen`] = roomId === currentRoomId; });
+         await update(ref(db), updates);
+         return;
+      }
+      if (!willOpen) {
+        const updates = {};
+        Object.entries(state.cats).forEach(([uid, cat]) => {
+          const isTeacherCat = cat.email === 'a776663@st.tc.edu.tw';
+          if (!isTeacherCat && cat.online && (cat.roomId || 'room1') === currentRoomId) updates[`cats/${uid}/online`] = false;
+        });
+        updates[roomPath('gameState/isOpen')] = false;
+        updates[roomPath('dismissNotice')] = { time: Date.now(), message: "老師說放學囉！離開教室吧！" };
+        await update(ref(db), updates);
+        addLog("🚪 老師關閉教室，所有人已被請出教室。");
+      }
+    };
+    // === 教室佈置拖曳系統 (Teacher) ===
+    window.isArranging = false;
+    let draggingObjId = null;
+    let dragStartPos = null;
+    let selectedObjectIds = new Set();
+    let multiSelectMode = false;
+    const visibleMovables = () => Array.from(document.querySelectorAll('.movable')).filter(el => el.style.display !== 'none');
+    const allMovables = () => Array.from(document.querySelectorAll('.movable'));
+    const isWarehousePos = (pos) => !pos || pos.hidden || pos.inWarehouse || pos.x < 0 || pos.x > 100 || pos.y < 0 || pos.y > 100;
+    const snapValue = (value) => document.getElementById('snapGrid')?.checked ? Math.round(value / 2) * 2 : value;
+    const refreshSelection = () => document.querySelectorAll('.movable').forEach(el => el.classList.toggle('arrange-selected', selectedObjectIds.has(el.id)));
+    const setSelection = (ids) => { selectedObjectIds = new Set(ids); refreshSelection(); };
+    window.toggleArrangeMode = (forceState) => {
+        if (!state.isTeacher) return;
+        if (state.gameOpen) return showToast("上課中不能佈置喔！請先關閉教室。", true);
+        window.isArranging = forceState !== undefined ? forceState : !window.isArranging;
+        const btn = document.getElementById('btnArrange');
+        btn.textContent = window.isArranging ? "✅ 儲存佈置" : "🛠️ 手動佈置模式 (下課可用)";
+        btn.style.background = window.isArranging ? "#2ecc71" : "#95a5a6";
+        
+        document.querySelectorAll('.movable').forEach(el => {
+            if (window.isArranging) el.classList.add('arranging'); else el.classList.remove('arranging', 'arrange-selected');
+        });
+        if (!window.isArranging) {
+          selectedObjectIds.clear();
+          renderWarehouse();
+          showToast("目前佈置已暫存到教室畫面。要保存成預設，請按「儲存為此預設」。");
+        }
+        if(window.isArranging) showToast("請拖曳畫面上帶有虛線的物品來佈置教室！");
+    };
+    document.getElementById('btnArrange').onclick = () => window.toggleArrangeMode();
+    document.getElementById('btnMultiSelect').onclick = () => {
+      multiSelectMode = !multiSelectMode;
+      document.getElementById('btnMultiSelect').classList.toggle('active', multiSelectMode);
+      showToast(multiSelectMode ? "多選模式：點選多個物件後可一起拖曳。" : "已關閉多選模式。");
+    };
+    document.getElementById('btnSelectDesks').onclick = () => {
+      if (!window.isArranging) return showToast("請先進入手動佈置模式。", true);
+      setSelection(visibleMovables().filter(el => el.id.startsWith('obj-g') || el.id.startsWith('obj-d')).map(el => el.id));
+    };
+    document.getElementById('btnClearSelection').onclick = () => setSelection([]);
+    window.alignSelection = async (mode) => {
+      if (!state.isTeacher || !window.isArranging) return showToast("請先進入手動佈置模式。", true);
+      const ids = selectedObjectIds.size ? Array.from(selectedObjectIds) : visibleMovables().map(el => el.id);
+      const updates = {};
+      if (mode === 'tidyRows') {
+        const desks = ids.filter(id => id.startsWith('obj-d') || id.startsWith('obj-g'));
+        desks.forEach((id, index) => {
+          const col = index % 6, row = Math.floor(index / 6);
+          updates[`${id}/x`] = 18 + col * 12.5;
+          updates[`${id}/y`] = 28 + row * 12;
+        });
+      } else {
+        const positions = ids.map(id => state.classroomObjects?.[id]).filter(Boolean);
+        if (!positions.length) return;
+        const xTarget = mode === 'left' ? Math.min(...positions.map(p => p.x)) : 50;
+        ids.forEach(id => { if (state.classroomObjects?.[id]) updates[`${id}/x`] = xTarget; });
+      }
+      await update(ref(db, roomPath('classroomObjects')), updates);
+      showToast("佈置已自動對齊。");
+    };
+
+    const getBoardPos = (e) => {
+        const board = document.getElementById('classroomBoard');
+        const rect = board.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        let x = ((clientX - rect.left) / rect.width) * 100;
+        let y = ((clientY - rect.top) / rect.height) * 100;
+        return { x: Math.max(-30, Math.min(130, x)), y: Math.max(-30, Math.min(130, y)) };
+    };
+
+    const startDrag = (e) => {
+        if (!window.isArranging) return;
+        const target = e.target.closest('.movable');
+        if (target) {
+          e.preventDefault();
+          if (multiSelectMode || e.shiftKey) {
+            if (selectedObjectIds.has(target.id)) selectedObjectIds.delete(target.id); else selectedObjectIds.add(target.id);
+            refreshSelection();
+          }
+          if (!selectedObjectIds.has(target.id)) setSelection([target.id]);
+          draggingObjId = target.id;
+          dragStartPos = { pointer: getBoardPos(e), objects: {} };
+          selectedObjectIds.forEach(id => {
+            const pos = state.classroomObjects?.[id];
+            if (pos) dragStartPos.objects[id] = { x: pos.x, y: pos.y };
+          });
+        }
+    };
+    const moveDrag = (e) => {
+        if (draggingObjId && window.isArranging) {
+            e.preventDefault();
+            const posNow = getBoardPos(e);
+            const dx = posNow.x - dragStartPos.pointer.x;
+            const dy = posNow.y - dragStartPos.pointer.y;
+            Object.entries(dragStartPos.objects).forEach(([id, start]) => {
+              const x = Math.max(-30, Math.min(130, snapValue(start.x + dx)));
+              const y = Math.max(-30, Math.min(130, snapValue(start.y + dy)));
+              const el = document.getElementById(id);
+              if (el) { el.style.left = x + '%'; el.style.top = y + '%'; }
+              if (state.classroomObjects && state.classroomObjects[id]) {
+                state.classroomObjects[id].x = x;
+                state.classroomObjects[id].y = y;
+                state.classroomObjects[id].hidden = false;
+                state.classroomObjects[id].inWarehouse = false;
+              }
+            });
+        }
+    };
+    const endDrag = () => {
+        if (draggingObjId && window.isArranging) {
+            const updates = {};
+            selectedObjectIds.forEach(id => {
+              const el = document.getElementById(id);
+              if (el) {
+                const x = parseFloat(el.style.left);
+                const y = parseFloat(el.style.top);
+                const inWarehouse = x < 0 || x > 100 || y < 0 || y > 100;
+                updates[`${id}/x`] = x;
+                updates[`${id}/y`] = y;
+                updates[`${id}/hidden`] = inWarehouse;
+                updates[`${id}/inWarehouse`] = inWarehouse;
+              }
+            });
+            update(ref(db, roomPath('classroomObjects')), updates);
+            if (Object.values(updates).includes(true)) showToast("移出教室範圍的物件已放入倉庫。");
+            draggingObjId = null;
+            dragStartPos = null;
+        }
+    };
+    const cBoard = document.getElementById('classroomBoard');
+    cBoard.addEventListener('mousedown', startDrag); cBoard.addEventListener('touchstart', startDrag, {passive: false});
+    document.addEventListener('mousemove', moveDrag); document.addEventListener('touchmove', moveDrag, {passive: false});
+    document.addEventListener('mouseup', endDrag); document.addEventListener('touchend', endDrag);
+
+    function renderObjects() {
+        if(!state.classroomObjects) return;
+        allMovables().forEach(el => {
+            const pos = state.classroomObjects[el.id];
+            if(isWarehousePos(pos)) { 
+                el.style.display = 'none'; 
+            } else { 
+                el.style.display = 'flex'; 
+                el.style.left = pos.x + '%'; 
+                el.style.top = pos.y + '%'; 
+            }
+        });
+        renderWarehouse();
+    }
+    function renderWarehouse() {
+      const list = document.getElementById('warehouseList');
+      if (!list || !state.classroomObjects) return;
+      const stored = allMovables().filter(el => isWarehousePos(state.classroomObjects[el.id]));
+      list.innerHTML = stored.length ? '' : '目前沒有物件在倉庫。';
+      stored.forEach(el => {
+        list.innerHTML += `<div class="warehouse-item"><span>${escapeHtml(el.textContent || el.id)}</span><button type="button" class="mini-button" onclick="window.restoreObjectFromWarehouse('${el.id}')">放回</button></div>`;
+      });
+    }
+    window.restoreObjectFromWarehouse = async (id) => {
+      if (!state.isTeacher || !state.classroomObjects?.[id]) return;
+      const visibleCount = visibleMovables().length;
+      const x = 42 + (visibleCount % 5) * 4;
+      const y = 42 + Math.floor(visibleCount / 5) * 4;
+      await update(ref(db, roomPath(`classroomObjects/${id}`)), { x: Math.min(96, x), y: Math.min(96, y), hidden: false, inWarehouse: false });
+      showToast("已從倉庫放回教室。");
+    };
+    window.sendSelectionToWarehouse = async () => {
+      if (!state.isTeacher || !window.isArranging) return showToast("請先進入手動佈置模式。", true);
+      const ids = selectedObjectIds.size ? Array.from(selectedObjectIds) : [];
+      if (!ids.length) return showToast("請先選取要放入倉庫的物件。", true);
+      const updates = {};
+      ids.forEach(id => { updates[`${id}/hidden`] = true; updates[`${id}/inWarehouse`] = true; updates[`${id}/x`] = -10; updates[`${id}/y`] = -10; });
+      await update(ref(db, roomPath('classroomObjects')), updates);
+      setSelection([]);
+      showToast("已放入倉庫，可在其他預設配置中再放回使用。");
+    };
+
+    // === 移動與物品互動邏輯 ===
+    const dirState = { up: false, down: false, left: false, right: false };
+    const MOVE_STEP = 4;
+    let lastStepAt = 0;
+    const moveOneCell = async (dir) => {
+      if (!currentUser || window.isArranging || classroomClosedForStudent()) return guardOpenClassroom();
+      if (isMovementBlockedForStudent()) return showToast("你被群體魔法定住了，暫時不能移動。", true);
+      const now = Date.now();
+      if (now - lastStepAt < 120) return;
+      const myCat = state.cats[currentUser.uid];
+      if (!myCat) return;
+      const delta = { up: [0, -MOVE_STEP], down: [0, MOVE_STEP], left: [-MOVE_STEP, 0], right: [MOVE_STEP, 0] }[dir];
+      lastStepAt = now;
+      myCat.x = Math.max(1, Math.min(99, (myCat.x || centerPoint.x) + delta[0]));
+      myCat.y = Math.max(1, Math.min(99, (myCat.y || centerPoint.y) + delta[1]));
+      renderCats();
+      await update(ref(db, `cats/${currentUser.uid}`), { x: myCat.x, y: myCat.y, roomId: currentRoomId, status: '移動中...' });
+      setTimeout(() => { if (currentUser) set(ref(db, `cats/${currentUser.uid}/status`), '待機中'); }, 500);
+    };
+    const bindBtn = (id, dir) => {
+      const btn = document.getElementById(id);
+      const start = (e) => { e.preventDefault(); moveOneCell(dir); }; const end = (e) => { e.preventDefault(); dirState[dir] = false; };
+      btn.addEventListener('mousedown', start); btn.addEventListener('touchstart', start); btn.addEventListener('mouseup', end); btn.addEventListener('touchend', end); btn.addEventListener('mouseleave', end);
+    };
+    bindBtn('btnUp', 'up'); bindBtn('btnDown', 'down'); bindBtn('btnLeft', 'left'); bindBtn('btnRight', 'right');
+
+    const actionBtn = document.getElementById('contextActionBtn');
+    let currentAction = null;
+
+    actionBtn.onclick = () => {
+      if(!currentAction) return;
+      if(!guardOpenClassroom()) return;
+      if(currentAction.type === 'cabinet') window.openModal('modalSupply');
+      else if(currentAction.type === 'clean') window.cleanMess(currentAction.id, currentAction.messType);
+      else if(currentAction.type === 'object') window.interactWithObject(currentAction.id, currentAction.msg, currentAction.specialMsg);
+    };
+
+    window.interactWithObject = async (objId, msg, specialMsg) => {
+      if(!currentUser || !guardOpenClassroom()) return;
+      let success = false;
+      await runTransaction(ref(db, roomPath(`objects/${objId}`)), (obj) => {
+         const now = Date.now();
+         if (obj && obj.inUseBy && (now - obj.timestamp < 3000)) return; 
+         success = true; return { inUseBy: currentUser.uid, timestamp: now };
+      });
+      if (success) { 
+        let finalMsg = msg;
+        if (Math.random() < (state.settings.specialChance ?? 0.001) && specialMsg) {
+            finalMsg = state.settings.specialDialogs?.[objId] || specialMsg;
+            const crystalReward = Math.max(0, parseInt(state.settings.specialCrystalReward ?? 10, 10));
+            if (crystalReward > 0) await runTransaction(ref(db, `cats/${currentUser.uid}/crystal`), (oldQty) => (oldQty || 0) + crystalReward);
+            showToast(`✨ 觸發了隱藏的特別事件！獲得 ${crystalReward} 水晶！`);
+            sendMessage(currentUser.uid, `你觸發特殊互動：「${finalMsg}」並獲得 ${crystalReward} 水晶。`, 'system', '特殊互動');
+        }
+        update(ref(db, `cats/${currentUser.uid}/chat`), { text: finalMsg, time: Date.now(), type: 'normal' }); 
+      } else { showToast('大家都在用這個，請等一下喔！', true); }
+    };
+
+    function moveLoop() {
+      if (currentUser && !classroomClosedForStudent() && (state.gameOpen || state.isTeacher) && !window.isArranging) {
+        const myCat = state.cats[currentUser.uid];
+        if (myCat) {
+          let closestMess = null; let minDistMess = 6;
+          Object.entries(state.messes).forEach(([mId, m]) => {
+             const dist = Math.hypot(myCat.x - m.x, myCat.y - m.y);
+             if(dist < minDistMess) { minDistMess = dist; closestMess = { id: mId, ...m }; }
+          });
+
+          let closestInt = null; let minDistInt = 999;
+          interactables.forEach(item => {
+             const objPos = state.classroomObjects ? state.classroomObjects[item.id] : null;
+             if(objPos && !objPos.hidden) {
+                 const dist = Math.hypot(myCat.x - objPos.x, myCat.y - objPos.y);
+                 if(dist < minDistInt && dist <= item.r) { minDistInt = dist; closestInt = item; }
+             }
+          });
+
+          if (closestMess) {
+            currentAction = { type: 'clean', id: closestMess.id, messType: closestMess.type };
+            actionBtn.textContent = `🧹 打掃 ${closestMess.type === 'trash' ? '垃圾' : closestMess.type === 'puddle' ? '水漬' : '灰塵'}`;
+            actionBtn.style.display = 'block'; actionBtn.style.background = '#e67e22'; actionBtn.style.boxShadow = '0 6px 0 #d35400';
+          } else if (closestInt) {
+            currentAction = closestInt;
+            actionBtn.textContent = closestInt.label;
+            actionBtn.style.display = 'block'; actionBtn.style.background = '#3498db'; actionBtn.style.boxShadow = '0 6px 0 #2980b9';
+            if(closestInt.type === 'cabinet') { actionBtn.style.background = '#2ecc71'; actionBtn.style.boxShadow = '0 6px 0 #27ae60'; }
+          } else {
+            actionBtn.style.display = 'none'; currentAction = null;
+          }
+        }
+      }
+      requestAnimationFrame(moveLoop);
+    }
+    requestAnimationFrame(moveLoop);
+
+    setInterval(() => {
+      if (currentUser && (state.gameOpen || state.isTeacher) && (dirState.up||dirState.down||dirState.left||dirState.right) && !window.isArranging) {
+        const myCat = state.cats[currentUser.uid]; if(myCat) update(ref(db, `cats/${currentUser.uid}`), { x: myCat.x, y: myCat.y, roomId: currentRoomId, status: '移動中...' });
+      }
+    }, 200);
+    document.addEventListener('mouseup', () => { if(!dirState.up && !dirState.down && !dirState.left && !dirState.right && currentUser) update(ref(db, `cats/${currentUser.uid}`), { status: '發呆中' }); });
+
+    // === 任務審核雙軌制與踢人 ===
+    document.getElementById('tqType').onchange = (e) => {
+      document.getElementById('typeGatheringOpts').style.display = e.target.value === 'gathering' ? 'block' : 'none';
+      document.getElementById('typeDeliveryOpts').style.display = e.target.value === 'delivery' ? 'grid' : 'none';
+    };
+
+    function renderQuests() {
+      const qList = document.getElementById('questList'); const pins = document.getElementById('questPins'); qList.innerHTML = '';
+      Object.entries(state.quests).forEach(([qId, q]) => {
+        const isDone = q.status === 'done'; const isPending = q.status === 'pending'; const jCount = q.joinedBy ? Object.keys(q.joinedBy).length : 0;
+        const isGen = q.type === 'general'; const isDelivery = q.type === 'delivery';
+        let reqText = isDelivery ? `📦 需持有 ${q.requiredItem || '指定物品'} x${q.requiredCount || 1}` : (isGen ? `⏳ 一般任務` : `👥 ${q.minPlayers}人集結`);
+        let btnText = isDone ? '✅ 已完成' : isPending ? '⏳ 等待老師審核...' : (isGen ? `👉 加入任務` : '👉 派小貓支援');
+        if (isDelivery && !isPending && !isDone) btnText = '📦 交件登記';
+
+        qList.innerHTML += `<div class="quest-card ${isPending?'pending':''}"><strong>${q.title}</strong><p>獎勵：🪙 ${q.rewardGold || 0} / 💎 ${q.rewardCrystal || 0}</p><div><span class="tag">${reqText}</span><span class="tag">${jCount}人已加入</span></div><button onclick="window.joinQuest('${qId}')" ${isDone||isPending?'disabled':''} style="width:100%; margin-top:8px; padding:8px; background:${isDone?'#eee':isPending?'#f5b041':'#ffe79c'}; border:none; border-radius:6px; font-weight:bold;">${btnText}</button></div>`;
+
+        let pin = document.getElementById(`pin-${qId}`);
+        if (!pin && !isDone) { pin = document.createElement('div'); pin.id = `pin-${qId}`; pin.className = 'quest-pin'; pins.appendChild(pin); }
+        if (isDone) { if(pin) pin.remove(); }
+        else if (pin) {
+          pin.style.left = q.x + '%'; pin.style.top = q.y + '%';
+          if(isPending) { pin.innerHTML = `<strong>${q.title}</strong><span style="color:#f39c12; font-weight:bold; display:block; margin-top:6px;">⏳ 審核中</span>`; }
+          else { pin.innerHTML = `<strong>${q.title}</strong><div class="rewards">🪙 ${q.rewardGold||0} | 💎 ${q.rewardCrystal||0}</div><span style="color:${isGen?'#3498db':isDelivery?'#8e44ad':'#5f7086'}; font-weight:bold;">${isGen?'不限人數參與':isDelivery?`交件：${escapeHtml(q.requiredItem || '指定物品')} x${q.requiredCount || 1}`:`缺 ${q.minPlayers - jCount} 人`}</span><button onclick="window.joinQuest('${qId}')">${isDelivery?'交件登記':'加入小隊'}</button>`; }
+        }
+      });
+      Array.from(pins.children).forEach(child => { const qId = child.id.replace('pin-', ''); if (!state.quests[qId] || state.quests[qId].status === 'done') child.remove(); });
+    }
+
+    window.joinQuest = async (qId) => {
+      if (!currentUser || !guardOpenClassroom()) return; if (!state.gameOpen && !state.isTeacher) return showToast("下課中無法解任務", true);
+      const myUid = currentUser.uid; const myCat = state.cats[myUid]; const qRef = ref(db, roomPath(`quests/${qId}`));
+      const snap = await get(qRef); const q = snap.val(); if (!q || q.status !== 'waiting') return;
+      if (q.rejectedBy?.[myUid]) return showToast("老師已拒絕你參與這個任務。", true);
+      if (Math.hypot(myCat.x - q.x, myCat.y - q.y) > 12) return showToast("距離太遠了！請靠近地圖上的圖釘喔。", true);
+      if (q.type === 'delivery') {
+        const requiredItem = (q.requiredItem || '').trim(); const requiredCount = Math.max(1, parseInt(q.requiredCount || 1));
+        if (!requiredItem) return showToast("這個交件任務尚未設定指定物品。", true);
+        if (!itemExists(requiredItem)) return showToast("這個交件物品不在教師道具表單中。", true);
+        if (!myCat.inventory || (myCat.inventory[requiredItem] || 0) < requiredCount) return showToast(`需要持有「${requiredItem}」x${requiredCount} 才能加入任務。`, true);
+      }
+
+      let wentPending = false;
+      await runTransaction(qRef, (quest) => {
+        if (quest) { 
+          if (quest.status !== 'waiting') return quest; 
+          if (!quest.joinedBy) quest.joinedBy = {}; 
+          if (quest.joinedBy[myUid]) return quest; 
+          if (quest.rejectedBy && quest.rejectedBy[myUid]) return quest;
+          quest.joinedBy[myUid] = true; 
+          if (quest.type === 'delivery') {
+              const maxDeliverers = Math.max(1, parseInt(quest.maxDeliverers || 1));
+              if (Object.keys(quest.joinedBy).length >= maxDeliverers) { quest.status = 'pending'; wentPending = true; }
+          } else if (quest.type === 'gathering' && Object.keys(quest.joinedBy).length >= quest.minPlayers) { 
+              quest.status = 'pending'; wentPending = true; 
+          } 
+        }
+        return quest;
+      });
+      if (wentPending) { showToast(`集結完畢！等待審核中...`); addLog(`⏳ [${q.title}] 已集結完畢，等待老師審核！`); }
+      else { showToast(`成功加入 [${q.title}] ！`); }
+    };
+
+    function renderTeacherQuests() {
+      if(!state.isTeacher) return;
+      const list = document.getElementById('pendingQuestList'); list.innerHTML = '';
+      const active = Object.entries(state.quests).filter(([_, q]) => q.status === 'pending' || q.status === 'waiting');
+      if(active.length === 0) { list.innerHTML = "目前沒有待處理的任務。"; return; }
+      active.forEach(([qId, q]) => { 
+        const jCount = Object.keys(q.joinedBy||{}).length;
+        let joinedHtml = '';
+        Object.keys(q.joinedBy || {}).forEach(uid => {
+            const sName = state.cats[uid]?.name || '未知';
+            joinedHtml += `<span class="tag" style="background:#fce4ec; color:#c2185b; display:inline-flex; align-items:center; gap:4px; margin-bottom:4px; font-size:0.75rem;">${sName} <button style="background:transparent; border:none; padding:0; cursor:pointer; font-size:10px;" onclick="window.kickFromQuest('${qId}', '${uid}')">踢</button><button style="background:transparent; border:none; padding:0; cursor:pointer; font-size:10px;" onclick="window.rejectQuestStudent('${qId}', '${uid}')">拒</button></span> `;
+        });
+        const rejectedHtml = Object.keys(q.rejectedBy || {}).map(uid => `<span class="tag" style="background:#eee; color:#555;">已拒絕 ${escapeHtml(state.cats[uid]?.name || '未知')}</span>`).join(' ');
+
+        if (q.status === 'pending') {
+           const pendingLabel = q.type === 'delivery' ? `${jCount}人交件待審` : `${jCount}人集結完畢`;
+           list.innerHTML += `<div class="quest-card" style="border-color:#f5b041;"><strong>${q.title} (${pendingLabel})</strong><div>${joinedHtml}</div><div>${rejectedHtml}</div><div class="teacher-action-btns"><button class="btn-approve" onclick="window.approveQuest('${qId}')">✅ 核准發獎勵</button><button class="btn-reject" onclick="window.rejectQuest('${qId}')">❌ 退回重解</button></div></div>`; 
+        } else {
+           list.innerHTML += `<div class="quest-card" style="border-color:#3498db;"><strong>${q.title} (${jCount}人已加入)</strong><div>${joinedHtml}</div><div>${rejectedHtml}</div><div class="teacher-action-btns"><button class="btn-approve" style="background:#3498db;" onclick="window.approveQuest('${qId}')">✅ 結算發獎勵</button><button class="btn-reject" onclick="window.rejectQuest('${qId}')">❌ 撤銷任務</button></div></div>`; 
+        }
+      });
+    }
+
+    window.kickFromQuest = async (qId, sUid) => {
+        if (!state.isTeacher) return;
+        const sName = state.cats[sUid]?.name || "學生";
+        await runTransaction(ref(db, roomPath(`quests/${qId}`)), (quest) => {
+            if (quest && quest.joinedBy && quest.joinedBy[sUid]) {
+                delete quest.joinedBy[sUid];
+                if (quest.type === 'gathering' && Object.keys(quest.joinedBy).length < quest.minPlayers) {
+                    quest.status = 'waiting';
+                }
+            }
+            return quest;
+        });
+        addLog(`👨‍🏫 老師說 ${sName} 沒有完成任務喔！`);
+    };
+
+    window.rejectQuestStudent = async (qId, sUid) => {
+        if (!state.isTeacher) return;
+        const sName = state.cats[sUid]?.name || "學生";
+        await runTransaction(ref(db, roomPath(`quests/${qId}`)), (quest) => {
+            if (quest) {
+                if (!quest.rejectedBy) quest.rejectedBy = {};
+                quest.rejectedBy[sUid] = true;
+                if (quest.joinedBy && quest.joinedBy[sUid]) delete quest.joinedBy[sUid];
+                if (quest.type === 'gathering' && Object.keys(quest.joinedBy || {}).length < quest.minPlayers) quest.status = 'waiting';
+                if (quest.type === 'delivery' && Object.keys(quest.joinedBy || {}).length < Math.max(1, parseInt(quest.maxDeliverers || 1))) quest.status = 'waiting';
+            }
+            return quest;
+        });
+        addLog(`🚫 老師拒絕 ${sName} 參與任務。`);
+    };
+
+    window.approveQuest = async (qId) => {
+      if(!state.isTeacher) return; const qRef = ref(db, roomPath(`quests/${qId}`)); let joined = []; let rG = 0, rC = 0, t = "", requiredItem = "", requiredCount = 0, isDelivery = false;
+      await runTransaction(qRef, (q) => { 
+          if(q && (q.status === 'pending' || (q.status === 'waiting' && q.type === 'general'))) { 
+              q.status = 'done'; joined = Object.keys(q.joinedBy||{}); rG = q.rewardGold||0; rC = q.rewardCrystal||0; t = q.title; requiredItem = q.requiredItem || ""; requiredCount = Math.max(1, parseInt(q.requiredCount || 1)); isDelivery = q.type === 'delivery';
+          } return q; 
+      });
+      if(joined.length > 0) {
+        const approved = [];
+        for (const uid of joined) {
+          let canApprove = true;
+          if (isDelivery && requiredItem) {
+            await runTransaction(ref(db, `cats/${uid}/inventory/${requiredItem}`), (qty) => {
+              if ((qty || 0) < requiredCount) { canApprove = false; return qty || 0; }
+              return (qty || 0) - requiredCount;
+            });
+          }
+          if (canApprove) approved.push(uid);
+        }
+        if (approved.length > 0) {
+          const updates = {}; approved.forEach(uid => { updates[`cats/${uid}/gold`] = increment(rG); updates[`cats/${uid}/crystal`] = increment(rC); updates[`cats/${uid}/status`] = '解完任務！'; });
+          await update(ref(db), updates); addLog(`👨‍🏫 老師發放了 [${t}] 的獎勵！${isDelivery && approved.length < joined.length ? '（有學生物品不足，未發獎）' : ''}`);
+        } else { addLog(`👨‍🏫 [${t}] 沒有可通過的交件。`); }
+      } else if (t) { addLog(`👨‍🏫 老師結算了 [${t}]，但沒有人加入...`); }
+    };
+    window.rejectQuest = async (qId) => { if(!state.isTeacher) return; await update(ref(db, roomPath(`quests/${qId}`)), { status: 'waiting', joinedBy: null }); addLog(`❌ 老師退回/撤銷了某個任務。`); };
+
+    // === 回收物品 ===
+    window.updateReclaimSelects = () => {
+      if (!state.isTeacher) return; const stuSel = document.getElementById('trStudent'); const itemSel = document.getElementById('trItem');
+      if (document.activeElement === stuSel || document.activeElement === itemSel) return;
+      const currUid = stuSel.value; stuSel.innerHTML = '<option value="">選擇學生...</option>';
+      Object.entries(sameRoomCats()).forEach(([uid, cat]) => { stuSel.innerHTML += `<option value="${uid}">${cat.name}</option>`; });
+      stuSel.value = currUid; window.updateReclaimItems();
+    };
+
+    window.updateReclaimItems = () => {
+        const uid = document.getElementById('trStudent').value; const iSel = document.getElementById('trItem'); const currItem = iSel.value;
+        iSel.innerHTML = '';
+        if (!uid || !state.cats[uid]) { iSel.innerHTML = '<option value="">先選擇學生...</option>'; return; }
+        const inv = state.cats[uid].inventory || {}; let hasItem = false;
+        Object.entries(inv).forEach(([itemName, qty]) => { if (qty > 0) { hasItem = true; iSel.innerHTML += `<option value="${itemName}">${itemName} (剩 ${qty})</option>`; } });
+        if (!hasItem) iSel.innerHTML = '<option value="">背包沒有可回收物品</option>'; else { iSel.value = currItem; if(!iSel.value) iSel.selectedIndex = 0; }
+    };
+
+    window.reclaimItem = async () => {
+        if (!state.isTeacher) return; const uid = document.getElementById('trStudent').value; const itemName = document.getElementById('trItem').value;
+        if (!uid || !itemName) return showToast("請選擇學生與物品", true);
+        let success = false; let studentName = state.cats[uid]?.name || "學生";
+        await runTransaction(ref(db, `cats/${uid}`), (cat) => { if (cat && cat.inventory && cat.inventory[itemName] > 0) { cat.inventory[itemName] -= 1; success = true; } return cat; });
+        if (success) { showToast(`已成功回收 ${studentName} 的 ${itemName}`); addLog(`♻️ 老師從 ${studentName} 那裡回收了 1 個 [${itemName}]。`); } 
+        else { showToast("回收失敗，學生可能沒有該物品了。", true); }
+    };
+
+    window.updateBagSelects = () => {
+      if (!state.isTeacher) return;
+      const stuSel = document.getElementById('bagStudent'); const itemSel = document.getElementById('bagItem');
+      if (!stuSel || document.activeElement === stuSel || document.activeElement === itemSel) return;
+      const currUid = stuSel.value; stuSel.innerHTML = '<option value="">選擇學生...</option>';
+      Object.entries(sameRoomCats()).forEach(([uid, cat]) => { if (!cat.email?.includes('a776663@st.tc.edu.tw')) stuSel.innerHTML += `<option value="${uid}">${cat.name}</option>`; });
+      stuSel.value = currUid; window.updateBagItems();
+    };
+
+    window.updateBagItems = () => {
+      const uid = document.getElementById('bagStudent').value; const iSel = document.getElementById('bagItem'); const currItem = iSel.value;
+      iSel.innerHTML = '';
+      if (!uid || !state.cats[uid]) { iSel.innerHTML = '<option value="">先選擇學生...</option>'; return; }
+      const inv = state.cats[uid].inventory || {}; let hasItem = false;
+      Object.entries(inv).forEach(([itemName, qty]) => { if (qty > 0) { hasItem = true; iSel.innerHTML += `<option value="${itemName}">${itemName} (剩 ${qty})</option>`; } });
+      if (!hasItem) iSel.innerHTML = '<option value="">背包沒有物品</option>'; else { iSel.value = currItem; if(!iSel.value) iSel.selectedIndex = 0; }
+    };
+
+    window.confiscateBagItem = async () => {
+      if (!state.isTeacher) return;
+      const uid = document.getElementById('bagStudent').value; const itemName = document.getElementById('bagItem').value;
+      if (!uid || !itemName) return showToast("請選擇學生與物品。", true);
+      let success = false; const studentName = state.cats[uid]?.name || "學生";
+      await runTransaction(ref(db, `cats/${uid}/inventory/${itemName}`), (qty) => {
+        if ((qty || 0) <= 0) return qty || 0;
+        success = true; return (qty || 0) - 1;
+      });
+      if (success) { showToast(`已沒收 ${studentName} 的 ${itemName}`); addLog(`🎒 老師沒收了 ${studentName} 的 1 個 [${itemName}]。`); }
+      else showToast("沒收失敗，學生可能沒有該物品了。", true);
+    };
+
+    window.giftBagItem = async () => {
+      if (!state.isTeacher) return;
+      const uid = document.getElementById('bagStudent').value; const itemName = document.getElementById('giftItemName').value.trim();
+      const qty = Math.max(1, parseInt(document.getElementById('giftItemQty').value || 1));
+      if (!uid || !itemName) return showToast("請選擇學生並輸入物品名稱。", true);
+      if (!itemExists(itemName)) return showToast("這個道具不在教師道具表單中，不能贈與。", true);
+      await runTransaction(ref(db, `cats/${uid}/inventory/${itemName}`), (oldQty) => (oldQty || 0) + qty);
+      showToast(`已贈與 ${state.cats[uid]?.name || "學生"}：${itemName} x${qty}`);
+      addLog(`🎁 老師贈與 ${state.cats[uid]?.name || "學生"} [${itemName}] x${qty}。`);
+    };
+
+    window.updateAdminSelects = () => {
+      if (!state.isTeacher) return;
+      const sel = document.getElementById('adminStudent');
+      if (!sel || document.activeElement === sel) return;
+      const currUid = sel.value;
+      sel.innerHTML = '<option value="">選擇學生...</option>';
+      Object.entries(state.cats).forEach(([uid, cat]) => {
+        if (cat.email !== 'a776663@st.tc.edu.tw') sel.innerHTML += `<option value="${uid}">${escapeHtml(cat.name || cat.email || uid)}</option>`;
+      });
+      sel.value = currUid;
+    };
+
+    window.loadAdminStudent = () => {
+      if (!state.isTeacher) return;
+      const uid = document.getElementById('adminStudent').value;
+      const cat = state.cats[uid];
+      document.getElementById('adminName').value = cat?.name || '';
+      document.getElementById('adminGold').value = cat?.gold || 0;
+      document.getElementById('adminCrystal').value = cat?.crystal || 0;
+      document.getElementById('adminInventory').value = Object.entries(cat?.inventory || {}).filter(([_, qty]) => qty > 0).map(([item, qty]) => `${item}=${qty}`).join('\n');
+    };
+
+    window.saveAdminStudent = async () => {
+      if (!state.isTeacher) return;
+      const uid = document.getElementById('adminStudent').value;
+      if (!uid || !state.cats[uid]) return showToast("請先選擇學生。", true);
+      const inventory = {};
+      const lines = document.getElementById('adminInventory').value.split('\n').map(line => line.trim()).filter(Boolean);
+      for (const line of lines) {
+        const [rawName, rawQty = '1'] = line.split('=');
+        const itemName = (rawName || '').trim();
+        const qty = Math.max(0, parseInt(rawQty, 10) || 0);
+        if (itemName && !itemExists(itemName)) return showToast(`「${itemName}」不在道具表單中，不能存入背包。`, true);
+        if (itemName && qty > 0) inventory[itemName] = qty;
+      }
+      await update(ref(db, `cats/${uid}`), {
+        name: document.getElementById('adminName').value.trim() || '學生',
+        gold: Math.max(0, parseInt(document.getElementById('adminGold').value || 0, 10)),
+        crystal: Math.max(0, parseInt(document.getElementById('adminCrystal').value || 0, 10)),
+        inventory
+      });
+      showToast("已儲存學生資料。");
+      addLog(`🛠️ 老師更新了 ${state.cats[uid]?.name || '學生'} 的資料。`);
+    };
+
+    window.kickAdminStudent = async () => {
+      if (!state.isTeacher) return;
+      const uid = document.getElementById('adminStudent').value;
+      if (!uid || !state.cats[uid]) return showToast("請先選擇學生。", true);
+      await update(ref(db, `cats/${uid}`), { online: false, status: '被老師請出教室' });
+      showToast("已強制踢出學生。");
+      addLog(`🚪 老師將 ${state.cats[uid]?.name || '學生'} 請出教室。`);
+    };
+
+    const fillItemSelect = (id, keepValue = true) => {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      const current = keepValue ? sel.value : '';
+      sel.innerHTML = '<option value="">請先建立道具</option>';
+      Object.keys(state.itemCatalog || {}).sort((a,b) => a.localeCompare(b, 'zh-Hant')).forEach(name => {
+        sel.innerHTML += `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`;
+      });
+      if (current) sel.value = current;
+    };
+
+    function renderItemCatalog() {
+      fillItemSelect('giftItemName');
+      fillItemSelect('tqRequiredItem');
+      fillItemSelect('tsName');
+      const list = document.getElementById('itemCatalogList');
+      if (!list) return;
+      const items = Object.keys(state.itemCatalog || {}).sort((a,b) => a.localeCompare(b, 'zh-Hant'));
+      list.innerHTML = items.length ? '' : '<div style="grid-column:1/-1; color:#888; font-size:0.8rem;">尚未建立道具。</div>';
+      items.forEach(name => {
+        list.innerHTML += `<div class="inv-item"><span>${escapeHtml(name)}</span><button type="button" class="mini-button" onclick="window.deleteCatalogItem('${escapeHtml(name)}')">刪除</button></div>`;
+      });
+    }
+
+    document.getElementById('itemCatalogForm').onsubmit = async (e) => {
+      e.preventDefault();
+      if (!state.isTeacher) return;
+      const name = document.getElementById('catalogItemName').value.trim();
+      if (!name) return;
+      if (supplyItemSet.has(name)) return showToast("掃具是公用掃具，不需要加入一般道具表單。", true);
+      await set(ref(db, roomPath(`itemCatalog/${name}`)), { name, createdAt: Date.now() });
+      e.target.reset();
+      showToast(`已新增道具：${name}`);
+    };
+
+    window.deleteCatalogItem = async (name) => {
+      if (!state.isTeacher || !confirm(`刪除道具「${name}」？已在學生背包中的同名物品不會自動刪除。`)) return;
+      await set(ref(db, roomPath(`itemCatalog/${name}`)), null);
+      showToast(`已刪除道具：${name}`);
+    };
+
+    function renderSpecialSettings() {
+      const chance = document.getElementById('specialChancePct');
+      const reward = document.getElementById('specialCrystalReward');
+      const dialogText = document.getElementById('specialDialogText');
+      if (chance) chance.value = ((state.settings.specialChance ?? 0.001) * 100).toFixed(2);
+      if (reward) reward.value = state.settings.specialCrystalReward ?? 10;
+      if (dialogText) {
+        const dialogs = state.settings.specialDialogs || {};
+        dialogText.value = interactables.filter(item => item.type === 'object').map(item => `${item.id}=${dialogs[item.id] || item.specialMsg || ''}`).join('\n');
+      }
+    }
+
+    window.saveSpecialSettings = async () => {
+      if (!state.isTeacher) return;
+      const specialChance = Math.max(0, Math.min(1, parseFloat(document.getElementById('specialChancePct').value || 0) / 100));
+      const specialCrystalReward = Math.max(0, parseInt(document.getElementById('specialCrystalReward').value || 0, 10));
+      const specialDialogs = {};
+      document.getElementById('specialDialogText').value.split('\n').map(line => line.trim()).filter(Boolean).forEach(line => {
+        const eq = line.indexOf('=');
+        if (eq > 0) specialDialogs[line.slice(0, eq).trim()] = line.slice(eq + 1).trim();
+      });
+      await update(ref(db, roomPath('settings')), { specialChance, specialCrystalReward, specialDialogs });
+      showToast("已儲存特殊互動設定。");
+    };
+
+    window.toggleSupplyLock = async () => {
+      if (!state.isTeacher) return;
+      const supplyLocked = !state.settings.supplyLocked;
+      await update(ref(db, roomPath('settings')), { supplyLocked });
+      addLog(supplyLocked ? '🔒 老師把掃具櫃上鎖了。' : '🔓 老師解開了掃具櫃。');
+    };
+
+    window.updateMagicStudentSelect = () => {
+      if (!state.isTeacher) return;
+      const sel = document.getElementById('magicStudent');
+      if (!sel || document.activeElement === sel) return;
+      const current = sel.value;
+      sel.innerHTML = '<option value="">選擇學生...</option>';
+      Object.entries(state.cats).forEach(([uid, cat]) => {
+        if (cat.email !== 'a776663@st.tc.edu.tw') sel.innerHTML += `<option value="${uid}">${escapeHtml(cat.name || cat.email || uid)}</option>`;
+      });
+      sel.value = current;
+    };
+
+    function renderMagicState() {
+      const el = document.getElementById('magicStateText');
+      if (!el) return;
+      const parts = [];
+      if (state.settings.supplyLocked) parts.push('掃具櫃上鎖');
+      if (state.magic.muted) parts.push('禁言中');
+      if (state.magic.frozenUntil > Date.now()) parts.push(`定身中（到 ${formatDateTime(state.magic.frozenUntil)}）`);
+      if (state.magic.petrified) parts.push('石化中');
+      const singleCount = Object.values(state.magic.single || {}).filter(m => m.muted || m.petrified || m.frozenUntil > Date.now()).length;
+      if (singleCount) parts.push(`${singleCount} 位學生有單體技能效果`);
+      el.textContent = parts.length ? `目前狀態：${parts.join('、')}` : '目前沒有群體魔法。';
+    }
+
+    window.toggleClassMagic = async (key) => {
+      if (!state.isTeacher) return;
+      const isSingle = document.getElementById('magicTarget')?.value === 'single';
+      const targetUid = document.getElementById('magicStudent')?.value;
+      if (isSingle && !targetUid) return showToast("請先選擇單體施放對象。", true);
+      if (key === 'muted') {
+        if (isSingle) {
+          const active = !!state.magic?.single?.[targetUid]?.muted;
+          await update(ref(db, roomPath(`classMagic/single/${targetUid}`)), { muted: !active });
+          sendMessage(targetUid, active ? '老師解除你身上的禁言。' : '老師對你施放禁言，你暫時不能說話。', 'system', '群體魔法');
+          addLog(`🪄 老師${active ? '解除' : '施放'}了 ${state.cats[targetUid]?.name || '學生'} 的禁言。`);
+        } else {
+          await update(ref(db, roomPath('classMagic')), { muted: !state.magic?.muted });
+          addLog(`🪄 老師${state.magic?.muted ? '解除' : '施放'}了全體禁言。`);
+        }
+        return;
+      }
+      if (key === 'petrified') {
+        if (isSingle) {
+          const active = !!state.magic?.single?.[targetUid]?.petrified;
+          await update(ref(db, roomPath(`classMagic/single/${targetUid}`)), { petrified: !active, muted: !active });
+          sendMessage(targetUid, active ? '老師解除你身上的石化。' : '老師對你施放石化，你不能移動也不能發言。', 'system', '群體魔法');
+          addLog(active ? `🪄 老師解除 ${state.cats[targetUid]?.name || '學生'} 的石化。` : `🪄 老師石化了 ${state.cats[targetUid]?.name || '學生'}。`);
+        } else {
+          const active = !!state.magic?.petrified;
+          const ownsMute = !!state.magic?.petrifiedMuted;
+          await update(ref(db, roomPath('classMagic')), { petrified: !active, petrifiedMuted: !active && !state.magic?.muted, muted: active ? (ownsMute ? false : !!state.magic?.muted) : true });
+          addLog(active ? '🪄 老師解除全體石化。' : '🪄 老師施放全體石化，所有人不能移動與發言。');
+        }
+      }
+    };
+
+    window.toggleFreeze20 = async () => {
+      if (!state.isTeacher) return;
+      const isSingle = document.getElementById('magicTarget')?.value === 'single';
+      const targetUid = document.getElementById('magicStudent')?.value;
+      if (isSingle && !targetUid) return showToast("請先選擇單體施放對象。", true);
+      if (isSingle) {
+        const active = state.magic?.single?.[targetUid]?.frozenUntil > Date.now();
+        await update(ref(db, roomPath(`classMagic/single/${targetUid}`)), { frozenUntil: active ? 0 : Date.now() + 20000, muted: !active });
+        sendMessage(targetUid, active ? '老師解除你身上的定身。' : '老師對你施放定身，20秒內不能移動與發言。', 'system', '群體魔法');
+        addLog(active ? `🪄 老師解除 ${state.cats[targetUid]?.name || '學生'} 的定身。` : `🪄 老師定住了 ${state.cats[targetUid]?.name || '學生'}。`);
+      } else {
+        const active = state.magic?.frozenUntil > Date.now();
+        const ownsMute = !!state.magic?.frozenMuted;
+        await update(ref(db, roomPath('classMagic')), { frozenUntil: active ? 0 : Date.now() + 20000, frozenMuted: !active && !state.magic?.muted, muted: active ? (ownsMute ? false : !!state.magic?.muted) : true });
+        addLog(active ? '🪄 老師解除全體定身。' : '🪄 老師施放全體定身，20 秒內不能移動與發言。');
+      }
+    };
+
+    window.summonStudent = async () => {
+      if (!state.isTeacher || !currentUser) return;
+      const uid = document.getElementById('magicStudent').value;
+      const teacher = state.cats[currentUser.uid];
+      if (!uid || !state.cats[uid] || !teacher) return showToast("請選擇要召喚的學生。", true);
+      await update(ref(db, `cats/${uid}`), { x: Math.min(99, (teacher.x || 50) + 3), y: teacher.y || 50, roomId: currentRoomId, status: '被老師召喚' });
+      addLog(`🪄 老師召喚了 ${state.cats[uid]?.name || '學生'}。`);
+    };
+
+    window.summonAllStudents = async () => {
+      if (!state.isTeacher || !currentUser) return;
+      const teacher = state.cats[currentUser.uid];
+      const updates = {};
+      Object.entries(state.cats).forEach(([uid, cat], index) => {
+        if (cat.email === 'a776663@st.tc.edu.tw') return;
+        updates[`cats/${uid}/x`] = Math.max(1, Math.min(99, (teacher?.x || 50) + ((index % 5) - 2) * 3));
+        updates[`cats/${uid}/y`] = Math.max(1, Math.min(99, (teacher?.y || 50) + Math.floor(index / 5) * 3));
+        updates[`cats/${uid}/roomId`] = currentRoomId;
+        updates[`cats/${uid}/status`] = '被大召喚';
+      });
+      await update(ref(db), updates);
+      addLog('🪄 老師施放大召喚，所有學生都被傳送到老師身邊。');
+    };
+
+    window.returnAllSupplies = async () => {
+      if (!state.isTeacher) return;
+      const updates = {};
+      const isSingle = document.getElementById('magicTarget')?.value === 'single';
+      const targetUid = document.getElementById('magicStudent')?.value;
+      if (isSingle && !targetUid) return showToast("請先選擇單體施放對象。", true);
+      let returnedAny = false;
+      const returnedCounts = {};
+      Object.entries(state.cats).forEach(([uid, cat]) => {
+        if (isSingle && uid !== targetUid) return;
+        Object.entries(supplyNames).forEach(([key, toolName]) => {
+          if ((cat.inventory?.[toolName] || 0) > 0) {
+            returnedAny = true;
+            returnedCounts[key] = (returnedCounts[key] || 0) + (cat.inventory?.[toolName] || 0);
+            updates[`cats/${uid}/inventory/${toolName}`] = 0;
+            if (cat.email !== 'a776663@st.tc.edu.tw') {
+              const funny = `${cat.name || '某位同學'}的${toolName}突然從手上飛出去，打到${cat.name || '他'}的下巴，${cat.name || '他'}頭暈了兩下，掃具自己飛回掃具櫃了。`;
+              addLog(funny);
+              sendMessage(uid, funny, 'system', '掃具回歸');
+            }
+          }
+        });
+      });
+      if (isSingle) Object.entries(returnedCounts).forEach(([key, qty]) => { updates[roomPath(`cleaningSupplies/${key}`)] = Math.min(supplyMax[key], (state.supplies[key] || 0) + qty); });
+      else Object.entries(supplyMax).forEach(([key, qty]) => { updates[roomPath(`cleaningSupplies/${key}`)] = qty; });
+      await update(ref(db), updates);
+      showToast(returnedAny ? "掃具已強制回歸掃具櫃，數量已補滿。" : "掃具櫃數量已補滿。");
+    };
+
+    // === 打掃與潔淨魔法 ===
+    let pendingCleanChoice = null;
+    const getHeldCleaningTool = (cat, tools) => tools.find(tool => (cat?.inventory?.[tool] || 0) > 0);
+    const findCleanPartners = (myCat, partnerTool) => Object.entries(state.cats).filter(([uid, cat]) => uid !== currentUser.uid && cat.online && (cat.roomId || 'room1') === currentRoomId && (cat.inventory?.[partnerTool] || 0) > 0 && Math.hypot((cat.x || 0) - (myCat.x || 0), (cat.y || 0) - (myCat.y || 0)) <= 10);
+    window.confirmCleanPartner = async () => {
+      if (!pendingCleanChoice) return;
+      const partnerUid = document.getElementById('cleanPartnerSelect').value;
+      if (!partnerUid) return showToast("請選擇合作對象。", true);
+      await set(ref(db, roomPath(`cleanRequests/${pendingCleanChoice.mId}/${currentUser.uid}`)), { partnerUid, type: pendingCleanChoice.type, time: Date.now() });
+      window.closeModal('modalCleanPartner');
+      showToast(`已邀請 ${state.cats[partnerUid]?.name || '同學'}，請對方 2 秒內也按下打掃。`);
+      pendingCleanChoice = null;
+    };
+    const finishCoopClean = async (mId, myCat, partnerUid) => {
+      let success = false;
+      await runTransaction(ref(db, roomPath(`messes/${mId}`)), (m) => { if(m) { success = true; return null; } return m; });
+      await set(ref(db, roomPath(`cleanRequests/${mId}`)), null);
+      if(!success) return showToast(`已經被別人掃掉囉！`, true);
+      const updates = {};
+      updates[`cats/${currentUser.uid}/gold`] = increment(5);
+      updates[`cats/${partnerUid}/gold`] = increment(5);
+      await update(ref(db), updates);
+      showToast(`✨ 合作打掃完成！兩人各獲得 5 金幣！`);
+      addLog(`🧹 ${myCat.name} 和 ${state.cats[partnerUid]?.name || '同學'} 合作清理了教室！`);
+    };
+    window.cleanMess = async (mId, type) => {
+      if(!currentUser || !guardOpenClassroom()) return;
+      const myCat = state.cats[currentUser.uid]; const reqTools = cleanReqs[type] || [];
+      if (!myCat) return;
+      let partnerUid = null;
+      if (reqTools.length === 1) {
+        if(!myCat.inventory || !myCat.inventory[reqTools[0]]) return showToast(`你需要去掃具櫃借用「${reqTools[0]}」才能打掃！`, true);
+      } else {
+        const myTool = getHeldCleaningTool(myCat, reqTools);
+        const partnerTool = reqTools.find(tool => tool !== myTool);
+        if (!myTool || !partnerTool) return showToast(`需要兩人合作：一人拿「${reqTools[0]}」，一人拿「${reqTools[1]}」。`, true);
+        const reqSnap = await get(ref(db, roomPath(`cleanRequests/${mId}`)));
+        const requests = reqSnap.val() || {};
+        const matched = Object.entries(requests).find(([fromUid, req]) => fromUid !== currentUser.uid && req.partnerUid === currentUser.uid && Date.now() - (req.time || 0) <= 2000 && state.cats[fromUid]?.inventory?.[partnerTool]);
+        if (matched) return finishCoopClean(mId, myCat, matched[0]);
+        const partners = findCleanPartners(myCat, partnerTool);
+        if (!partners.length) return showToast(`請找一位拿著「${partnerTool}」的同學站在旁邊一起打掃。`, true);
+        if (partners.length === 1) {
+          await set(ref(db, roomPath(`cleanRequests/${mId}/${currentUser.uid}`)), { partnerUid: partners[0][0], type, time: Date.now() });
+          return showToast(`已邀請 ${partners[0][1]?.name || '同學'}，請對方 2 秒內也按下打掃。`);
+        }
+        pendingCleanChoice = { mId, type };
+        const sel = document.getElementById('cleanPartnerSelect');
+        sel.innerHTML = '';
+        partners.forEach(([uid, cat]) => { sel.innerHTML += `<option value="${uid}">${escapeHtml(cat.name || '同學')}（拿著${partnerTool}）</option>`; });
+        window.openModal('modalCleanPartner');
+        return;
+      }
+      let success = false; await runTransaction(ref(db, roomPath(`messes/${mId}`)), (m) => { if(m) { success = true; return null; } return m; });
+      if(success) {
+        const updates = {};
+        updates[`cats/${currentUser.uid}/gold`] = increment(partnerUid ? 5 : 2);
+        if (partnerUid) updates[`cats/${partnerUid}/gold`] = increment(5);
+        await update(ref(db), updates);
+        showToast(partnerUid ? `✨ 合作打掃完成！兩人各獲得 5 金幣！` : `✨ 打掃完成！獲得 2 金幣！`);
+        addLog(partnerUid ? `🧹 ${myCat.name} 和 ${state.cats[partnerUid]?.name || '同學'} 合作清理了教室！` : `🧹 ${myCat.name} 幫忙清理了灰塵！`);
+      } else { showToast(`已經被別人掃掉囉！`, true); }
+    };
+    function renderMesses() { const layer = document.getElementById('messLayer'); layer.innerHTML = ''; Object.entries(state.messes).forEach(([mId, m]) => { layer.innerHTML += `<div class="mess-obj" style="left:${m.x}%; top:${m.y}%;">${messIcons[m.type]}</div>`; }); }
+    
+    window.spawnMess = (type) => { if(!state.isTeacher) return; push(ref(db, roomPath('messes')), { type: type, x: 10 + Math.random() * 80, y: 10 + Math.random() * 80 }); showToast(`已製造髒亂！`); };
+    window.cleanMagic = () => { if(state.isTeacher) { set(ref(db, roomPath('messes')), null); addLog('✨ 老師施展了潔淨魔法，教室變得一塵不染！'); showToast('✨ 已清除所有髒亂！'); } };
+
+    let lastChatTime = 0; let chatCooldownTimer = null;
+    document.getElementById('chatForm').onsubmit = (e) => {
+      e.preventDefault(); if(!currentUser || !guardOpenClassroom()) return; const now = Date.now(); if(now - lastChatTime < 10000) return;
+      if (isMutedForStudent()) return showToast("目前被老師施了禁言/定身魔法，不能發言。", true);
+      const text = document.getElementById('chatInput').value.trim(); if(!text) return;
+      update(ref(db, `cats/${currentUser.uid}/chat`), { text, time: now, type: 'normal' }); document.getElementById('chatInput').value = ''; lastChatTime = now;
+      sendMessage('all', `${state.cats[currentUser.uid]?.name || '有人'}大聲說：${text}`, 'broadcast', state.cats[currentUser.uid]?.name || '同學');
+      const btn = document.getElementById('chatBtn'); const timerSpan = document.getElementById('chatTimer'); btn.disabled = true; let left = 10;
+      chatCooldownTimer = setInterval(() => { left--; timerSpan.textContent = `${left}s`; if(left <= 0) { clearInterval(chatCooldownTimer); btn.disabled = false; timerSpan.textContent = '就緒'; } }, 1000);
+    };
+    setInterval(renderCats, 1000);
+
+    document.getElementById('classroomBoard').addEventListener('click', (e) => {
+      const catEl = e.target.closest('.cat');
+      if(catEl && currentUser && !window.isArranging && guardOpenClassroom()) {
+        const uid = catEl.id.replace('cat-', ''); if(uid === currentUser.uid) return;
+        const myCat = state.cats[currentUser.uid]; const targetCat = state.cats[uid]; if(!myCat || !targetCat) return;
+        if(Math.hypot(myCat.x - targetCat.x, myCat.y - targetCat.y) > 15) return showToast(`太遠了！請走到 ${targetCat.name} 旁邊。`, true);
+        targetUidForInteract = uid; document.getElementById('interactTitle').textContent = `和 ${targetCat.name} 互動`; window.openModal('modalInteract');
+      }
+    });
+
+    document.getElementById('btnWhisper').onclick = () => { if(!guardOpenClassroom()) return; if (isMutedForStudent()) return showToast("目前被老師施了禁言/定身魔法，不能悄悄話。", true); const text = prompt("輸入悄悄話 (30字內)："); if(text && text.trim().length > 0) { const finalText = text.substring(0,30); update(ref(db, `cats/${currentUser.uid}/chat`), { text: finalText, time: Date.now(), type: 'whisper' }); if(targetUidForInteract) sendMessage(targetUidForInteract, `${state.cats[currentUser.uid]?.name || '同學'}悄悄說：${finalText}`, 'private', state.cats[currentUser.uid]?.name || '同學'); showToast("已發出悄悄話！"); window.closeModal('modalInteract'); } };
+    document.getElementById('btnPassNote').onclick = () => { if(!guardOpenClassroom()) return; if (isMutedForStudent()) return showToast("目前被老師施了禁言/定身魔法，不能傳紙條。", true); const text = prompt("輸入紙條內容 (30字內)："); if(text && text.trim().length > 0 && targetUidForInteract) { const finalText = text.substring(0,30); push(ref(db, 'notes'), { from: currentUser.uid, fromName: state.cats[currentUser.uid].name, to: targetUidForInteract, toName: state.cats[targetUidForInteract].name, text: finalText, time: Date.now() }); sendMessage(targetUidForInteract, `${state.cats[currentUser.uid]?.name || '同學'}傳紙條給你：${finalText}`, 'private', state.cats[currentUser.uid]?.name || '同學'); sendMessage('teacher', `${state.cats[currentUser.uid]?.name || '同學'}傳紙條給 ${state.cats[targetUidForInteract]?.name || '同學'}：${finalText}`, 'private', '紙條攔截'); showToast(`已丟紙條！`); window.closeModal('modalInteract'); } };
+    document.getElementById('btnInspect').onclick = () => { if(!targetUidForInteract) return; const tCat = state.cats[targetUidForInteract]; const div = document.getElementById('inspectContent'); div.innerHTML = `<div class="inv-item" style="border-color:#f5b041;"><span>金幣 🪙</span><span>${tCat.gold||0}</span></div><div class="inv-item" style="border-color:#a569bd;"><span>水晶 💎</span><span>${tCat.crystal||0}</span></div>`; if(tCat.inventory) { Object.entries(tCat.inventory).forEach(([item, qty]) => { if(qty > 0) div.innerHTML += `<div class="inv-item"><span>${item}</span><span>x${qty}</span></div>`; }); } else { div.innerHTML += `<div style="grid-column:1/-1; color:#888; font-size:0.8rem; text-align:center;">背包空空。</div>`; } document.getElementById('inspectArea').style.display = 'block'; };
+    document.getElementById('btnGreet').onclick = async () => {
+      if (!currentUser || !targetUidForInteract || !guardOpenClassroom()) return;
+      const myCat = state.cats[currentUser.uid]; const targetCat = state.cats[targetUidForInteract];
+      if (!myCat || !targetCat) return;
+      const now = Date.now(); const last = myCat.greetCooldowns?.[targetUidForInteract] || 0;
+      if (now - last < GREET_COOLDOWN) return showToast(`剛剛跟${targetCat.name}打過招呼了！`, true);
+      const updates = {};
+      updates[`cats/${currentUser.uid}/greetCooldowns/${targetUidForInteract}`] = now;
+      updates[`cats/${currentUser.uid}/hiddenStats/kindnessGiven`] = increment(1);
+      updates[`cats/${targetUidForInteract}/hiddenStats/kindnessReceived`] = increment(1);
+      updates[`cats/${currentUser.uid}/chat`] = { text: `向 ${targetCat.name} 打招呼：你好！`, time: now, type: 'normal' };
+      await update(ref(db), updates);
+      addLog(`👋 ${myCat.name} 向 ${targetCat.name} 打招呼。`);
+      showToast(`已向 ${targetCat.name} 打招呼！`);
+      window.closeModal('modalInteract');
+    };
+
+    document.getElementById('centerRescueBtn').onclick = async () => {
+      if (!currentUser || !guardOpenClassroom()) return;
+      const myCat = state.cats[currentUser.uid]; const now = Date.now();
+      if (!state.isTeacher && myCat?.lastCenterRescueAt && now - myCat.lastCenterRescueAt < CENTER_COOLDOWN) {
+        const left = Math.ceil((CENTER_COOLDOWN - (now - myCat.lastCenterRescueAt)) / 1000);
+        return showToast(`回中心冷卻中，還要 ${left} 秒。`, true);
+      }
+      await update(ref(db, `cats/${currentUser.uid}`), { x: centerPoint.x, y: centerPoint.y, roomId: currentRoomId, lastCenterRescueAt: now, status: '回到教室中心' });
+      showToast(state.isTeacher ? "老師已回到教室中心。" : "已回到教室中心。");
+    };
+
+    function renderPlayer() {
+      if (!currentUser) return; const myCat = state.cats[currentUser.uid]; if (!myCat) return;
+      document.getElementById('playerCard').innerHTML = `<div style="width:40px;height:40px;background:${myCat.color};border-radius:10px;border:2px solid #333;"></div><div><strong style="font-size:1.1rem; color:var(--navy);">${myCat.name}</strong><br><span style="font-size:0.8rem; color:var(--muted);">${state.isTeacher?'👨‍🏫 老師':'🐱 學生'}</span></div>`;
+      document.getElementById('pGold').textContent = myCat.gold || 0; document.getElementById('pCrystal').textContent = myCat.crystal || 0;
+      document.getElementById('teacherHiddenStats').style.display = state.isTeacher ? 'block' : 'none';
+      document.getElementById('teacherBagTools').style.display = state.isTeacher ? 'block' : 'none';
+      if (state.isTeacher) {
+        const statsList = document.getElementById('hiddenStatsList'); statsList.innerHTML = '';
+        Object.entries(sameRoomCats()).forEach(([uid, cat]) => {
+          const stats = cat.hiddenStats || {};
+          statsList.innerHTML += `<div class="inv-item"><span>${escapeHtml(cat.name || '未命名')}</span><span>善待他人 ${stats.kindnessGiven || 0} / 受到善待 ${stats.kindnessReceived || 0}</span></div>`;
+        });
+      }
+      const invList = document.getElementById('inventoryList'); invList.innerHTML = '';
+      if(myCat.inventory) { Object.entries(myCat.inventory).forEach(([item, qty]) => { if(qty > 0) invList.innerHTML += `<div class="inv-item"><span>${item}</span><span>x${qty}</span></div>`; }); }
+      if(invList.innerHTML === '') invList.innerHTML = '<div style="grid-column:1/-1; color:#888; font-size:0.8rem;">背包空空。</div>';
+    }
+
+    function renderCats() {
+      const layer = document.getElementById('catLayer'); const now = Date.now(); const myCat = currentUser ? state.cats[currentUser.uid] : null;
+      Object.entries(state.cats).forEach(([uid, cat]) => {
+        if (!cat.online || (cat.roomId || 'room1') !== currentRoomId) { const el = document.getElementById(`cat-${uid}`); if (el) el.remove(); return; }
+        let el = document.getElementById(`cat-${uid}`);
+        if (!el) { el = document.createElement('div'); el.id = `cat-${uid}`; el.className = 'cat' + (currentUser && uid === currentUser.uid ? ' me' : ''); el.innerHTML = `<div class="cat-tail" style="--cat-color:${cat.color}"></div><div class="cat-ear left" style="--cat-color:${cat.color}"></div><div class="cat-ear right" style="--cat-color:${cat.color}"></div><div class="cat-body" style="--cat-color:${cat.color}"><div class="cat-face"><div class="cat-eye left"></div><div class="cat-eye right"></div><div class="cat-nose"></div></div></div><div class="cat-label">${cat.name}</div><div class="chat-bubble" style="display:none;"></div>`; layer.appendChild(el); }
+        el.style.left = cat.x + '%'; el.style.top = cat.y + '%';
+        const bubble = el.querySelector('.chat-bubble');
+        if (cat.chat && (now - cat.chat.time < 10000)) {
+          let msg = cat.chat.text; bubble.className = 'chat-bubble';
+          if (cat.chat.type === 'whisper') { bubble.classList.add('whisper'); const dist = myCat ? Math.hypot(myCat.x - cat.x, myCat.y - cat.y) : 999; if (uid !== (currentUser?.uid) && dist > 15 && !state.isTeacher) { msg = "🤫 (悄悄話...)"; } }
+          bubble.style.display = 'block'; bubble.textContent = msg;
+        } else { bubble.style.display = 'none'; }
+      });
+      Array.from(layer.children).forEach(child => { const uid = child.id.replace('cat-', ''); if (!state.cats[uid] || !state.cats[uid].online || (state.cats[uid].roomId || 'room1') !== currentRoomId) child.remove(); });
+    }
+
+    function renderShop() { const list = document.getElementById('shopList'); list.innerHTML = ''; Object.entries(state.shop).forEach(([sId, item]) => { list.innerHTML += `<div class="shop-item"><div class="shop-info"><strong>${escapeHtml(item.name)}</strong><span>${item.currency==='gold'?'🪙':'💎'} ${item.price}</span></div><div style="display:flex; gap:6px;"><button class="buy-btn" onclick="window.buyShopItem('${sId}')">購買</button>${state.isTeacher ? `<button class="mini-button" onclick="window.removeShopItem('${sId}')">下架</button>` : ''}</div></div>`; }); if(!list.innerHTML) list.innerHTML = '架上沒有商品喔。'; }
+    window.buyShopItem = async (sId) => { if(!currentUser || !guardOpenClassroom()) return; const item = state.shop[sId]; if(!itemExists(item?.name)) return showToast("這個商品不在教師道具表單中，請老師先修正。", true); let success = false, msg = ""; await runTransaction(ref(db, `cats/${currentUser.uid}`), (cat) => { if(cat) { if (item.currency === 'gold' && (cat.gold||0) >= item.price) { cat.gold -= item.price; if(!cat.inventory) cat.inventory = {}; cat.inventory[item.name] = (cat.inventory[item.name]||0) + 1; success = true; } else if (item.currency === 'crystal' && (cat.crystal||0) >= item.price) { cat.crystal -= item.price; if(!cat.inventory) cat.inventory = {}; cat.inventory[item.name] = (cat.inventory[item.name]||0) + 1; success = true; } else { msg = "餘額不足！"; } } return cat; }); if(success) showToast(`購買：${item.name}`); else showToast(msg, true); };
+    window.removeShopItem = async (sId) => { if (state.isTeacher && confirm("確定下架這個商品？")) await set(ref(db, roomPath(`shop/${sId}`)), null); };
+
+    function renderSupplies() { const list = document.getElementById('supplyList'); if(!list) return; list.innerHTML = state.settings.supplyLocked ? '<div class="supply-item"><strong>掃具櫃已上鎖</strong><span>請等老師解鎖後再借用。</span></div>' : ''; Object.keys(supplyNames).forEach(key => { const count = state.supplies[key] !== undefined ? state.supplies[key] : supplyMax[key]; list.innerHTML += `<div class="supply-item"><div class="shop-info"><strong style="font-size:1.1rem;">${supplyNames[key]}</strong><span>剩餘公用：${count} / ${supplyMax[key]}</span></div><div><button class="borrow-btn" onclick="window.borrowSupply('${key}')" ${state.settings.supplyLocked?'disabled':''}>借用</button> <button class="return-btn" onclick="window.returnSupply('${key}')">歸還</button></div></div>`; }); }
+    window.borrowSupply = async (key) => {
+      if(!currentUser || !guardOpenClassroom()) return;
+      if(state.settings.supplyLocked && !state.isTeacher) return showToast("掃具櫃已被老師上鎖。", true);
+      const toolName = supplyNames[key];
+      const myInv = state.cats[currentUser.uid]?.inventory || {};
+      const borrowedTool = Object.keys(myInv).find(item => supplyItemSet.has(item) && myInv[item] > 0);
+      if (borrowedTool) return showToast(`你已經借了「${borrowedTool}」，一次只能借一個掃具。`, true);
+      const supRef = ref(db, roomPath(`cleaningSupplies/${key}`)); let success = false;
+      await runTransaction(supRef, (val) => { let current = val === null ? supplyMax[key] : val; if (current > 0) { success = true; return current - 1; } return current; });
+      if (success) { await runTransaction(ref(db, `cats/${currentUser.uid}/inventory/${toolName}`), (oldQty) => (oldQty || 0) + 1); showToast(`借用了 ${toolName}`); sendMessage(currentUser.uid, `你借用了 ${toolName}。`, 'system', '掃具櫃'); }
+      else { showToast(`${toolName} 被借光了！`, true); }
+    };
+    window.returnSupply = async (key) => {
+      if(!currentUser || !guardOpenClassroom()) return;
+      const toolName = supplyNames[key];
+      const myInvRef = ref(db, `cats/${currentUser.uid}/inventory/${toolName}`);
+      const snap = await get(myInvRef);
+      if (snap.val() && snap.val() > 0) {
+        await runTransaction(myInvRef, (oldQty) => Math.max(0, (oldQty || 0) - 1));
+        await runTransaction(ref(db, roomPath(`cleaningSupplies/${key}`)), (oldQty) => Math.min(supplyMax[key], (oldQty || 0) + 1));
+        showToast(`已歸還 ${toolName}`);
+        sendMessage(currentUser.uid, `你歸還了 ${toolName}。`, 'system', '掃具櫃');
+      } else { showToast(`你沒有 ${toolName}`, true); }
+    };
+
+    document.getElementById('broadcastForm').onsubmit = (e) => {
+      e.preventDefault(); if (!state.isTeacher) return;
+      const text = document.getElementById('broadcastText').value.trim();
+      if (!text) return;
+      addLog(`📣 ${text}`); e.target.reset(); showToast("已發布教室廣播。");
+    };
+    window.editBroadcast = async (logId) => {
+      if (!state.isTeacher) return;
+      const log = state.logs.find(item => item.id === logId); if (!log) return;
+      const text = prompt("更新廣播訊息：", log.text);
+      if (text && text.trim()) await update(ref(db, roomPath(`logs/${logId}`)), { text: text.trim(), time: Date.now(), edited: true });
+    };
+    window.deleteBroadcast = (logId) => { if (state.isTeacher && confirm("確定刪除這則廣播？")) set(ref(db, roomPath(`logs/${logId}`)), null); };
+    window.clearBroadcasts = () => { if (state.isTeacher && confirm("確定刪除本教室所有廣播動態？")) set(ref(db, roomPath('logs')), null); };
+    window.backupBroadcasts = async () => {
+      if (!state.isTeacher) return;
+      const payload = JSON.stringify({ room: roomNames[currentRoomId], exportedAt: formatDateTime(Date.now()), logs: state.logs }, null, 2);
+      try { await navigator.clipboard.writeText(payload); showToast("廣播備份已複製到剪貼簿。"); }
+      catch { prompt("請複製以下備份資料：", payload); }
+    };
+
+    document.getElementById('clearQuestsBtn').onclick = () => { if(state.isTeacher) set(ref(db, roomPath('quests')), null); };
+    document.getElementById('tQuestForm').onsubmit = (e) => {
+      e.preventDefault(); if (!state.isTeacher) return;
+      const type = document.getElementById('tqType').value;
+      const qData = { title: document.getElementById('tqTitle').value, rewardGold: parseInt(document.getElementById('tqGold').value), rewardCrystal: parseInt(document.getElementById('tqCrystal').value), type: type, x: 20+Math.random()*60, y: 20+Math.random()*60, status: 'waiting', joinedBy: {} };
+      if (type === 'gathering') qData.minPlayers = parseInt(document.getElementById('tqMin').value);
+      if (type === 'delivery') {
+        qData.requiredItem = document.getElementById('tqRequiredItem').value.trim();
+        qData.requiredCount = Math.max(1, parseInt(document.getElementById('tqRequiredCount').value || 1));
+        qData.maxDeliverers = Math.max(1, parseInt(document.getElementById('tqMaxDeliverers').value || 1));
+        if (!qData.requiredItem || !itemExists(qData.requiredItem)) return showToast("交件任務需要選擇道具表單中的物品。", true);
+      }
+      push(ref(db, roomPath('quests')), qData); addLog(`📜 老師發布了新任務！`); e.target.reset(); document.getElementById('typeGatheringOpts').style.display = 'block'; document.getElementById('typeDeliveryOpts').style.display = 'none';
+    };
+    document.getElementById('tShopForm').onsubmit = (e) => { e.preventDefault(); if (!state.isTeacher) return; const name = document.getElementById('tsName').value; if(!itemExists(name)) return showToast("商品必須先存在於道具表單。", true); push(ref(db, roomPath('shop')), { name, price: parseInt(document.getElementById('tsPrice').value), currency: document.getElementById('tsCurrency').value }); e.target.reset(); renderItemCatalog(); };
+  </script>
+</body>
+</html>
