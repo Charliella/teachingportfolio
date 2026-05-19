@@ -262,7 +262,6 @@
         const toast = document.getElementById('toast');
         toast.innerText = msg;
         toast.style.display = 'block';
-        // 重新觸發動畫
         toast.style.animation = 'none';
         toast.offsetHeight; /* trigger reflow */
         toast.style.animation = null;
@@ -285,14 +284,13 @@
                 document.getElementById('displayEmail').textContent = currentUserName + (isAdmin ? " (教)" : "");
                 document.getElementById('adminControls').style.display = isAdmin ? 'flex' : 'none';
 
-                // 監聽全域的系統狀態 (是否已發表)
-                const settingsRef = window.firebaseDoc(window.firebaseDb, "settings", "board_state");
-                unsubscribeSettings = window.firebaseOnSnapshot(settingsRef, (docSnap) => {
+                // 監聽全域的系統狀態 (將狀態儲存在原本的 wordcloud_msgs 集合中，避開權限問題)
+                const stateRef = window.firebaseDoc(window.firebaseDb, "wordcloud_msgs", "_GLOBAL_STATE_");
+                unsubscribeSettings = window.firebaseOnSnapshot(stateRef, (docSnap) => {
                     if (docSnap.exists()) {
                         isPublished = docSnap.data().isPublished === true;
                     } else {
                         isPublished = false;
-                        if (isAdmin) window.firebaseSetDoc(settingsRef, { isPublished: false });
                     }
                     updateBoardVisibility();
                 });
@@ -322,7 +320,7 @@
             publishBtn.style.background = isPublished ? "var(--neon-green)" : "var(--neon-blue)";
         }
 
-        // 輸入區顯示邏輯 (老師永遠可以打字，學生在發表後不可打字)
+        // 輸入區顯示邏輯
         if (isAdmin) {
             inputArea.style.display = "flex";
         } else {
@@ -333,14 +331,12 @@
         let waitText = "";
 
         if (isAdmin) {
-            showCanvas = true; // 老師永遠看得到畫布，以便監控
+            showCanvas = true; // 老師永遠看得到畫布
         } else {
             if (currentMode === 4 || currentMode === 5) {
-                // 模式 4, 5 學生永遠看不到留言板
                 showCanvas = false;
                 waitText = "此模式為不公開收集<br>僅教師可查看留言內容。";
             } else {
-                // 模式 1, 2, 3 學生只有在老師「發表」後才看得到
                 showCanvas = isPublished;
                 waitText = isPublished ? "" : "留言收集區<br>等待老師結束留言並發表...";
             }
@@ -359,8 +355,14 @@
     // 教師切換全域發表狀態
     window.togglePublishState = async function() {
         if (!isAdmin) return;
-        const settingsRef = window.firebaseDoc(window.firebaseDb, "settings", "board_state");
-        await window.firebaseSetDoc(settingsRef, { isPublished: !isPublished }, { merge: true });
+        try {
+            // 使用 wordcloud_msgs 集合來存狀態，因為您已有此集合的讀寫權限
+            const stateRef = window.firebaseDoc(window.firebaseDb, "wordcloud_msgs", "_GLOBAL_STATE_");
+            await window.firebaseSetDoc(stateRef, { isPublished: !isPublished }, { merge: true });
+        } catch (error) {
+            alert("狀態切換失敗，請確認網路或資料庫連線！\n錯誤: " + error.message);
+            console.error(error);
+        }
     };
 
     function toggleAuthMode() {
@@ -410,6 +412,7 @@
         unsubscribeSnapshot = window.firebaseOnSnapshot(q, (snapshot) => {
             canvas.innerHTML = ''; 
             snapshot.forEach((doc) => {
+                if (doc.id === "_GLOBAL_STATE_") return; // 略過狀態紀錄的特殊文件
                 const data = doc.data();
                 if (data.mode !== currentMode) return; 
                 createWordBubble(doc.id, data);
@@ -430,9 +433,9 @@
         } else if (currentMode === 3) {
             authorText = "完全匿名";
         } else if (currentMode === 4) {
-            authorText = isAdmin ? `[${escapeHtml(data.authorName)}]` : ""; // 此模式只有老師看得到
+            authorText = isAdmin ? `[${escapeHtml(data.authorName)}]` : "";
         } else if (currentMode === 5) {
-            authorText = "完全匿名"; // 此模式老師也看不到名字
+            authorText = "完全匿名";
         }
 
         let innerHTML = '';
@@ -444,7 +447,7 @@
             </div>`;
         }
 
-        innerHTML += `<div class="word-author" style="color: ${neonColors[data.mode % 5]};">${authorText}</div>`;
+        innerHTML += `<div class="word-author" style="color: ${neonColors[(data.mode || 1) % 5]};">${authorText}</div>`;
         innerHTML += `<div class="word-text">${escapeHtml(data.text)}</div>`;
         div.innerHTML = innerHTML;
         canvas.appendChild(div);
@@ -456,6 +459,7 @@
         const querySnapshot = await window.firebaseGetDocs(q);
         let content = "=== 匯出紀錄 ===\n";
         querySnapshot.forEach(doc => {
+            if (doc.id === "_GLOBAL_STATE_") return;
             const d = doc.data();
             content += `[${d.timestamp?.toDate().toLocaleString()}] [模式${d.mode}] ${d.authorName}: ${d.text}\n`;
         });
@@ -470,7 +474,11 @@
         if (!isAdmin || !confirm("確定清空所有留言？")) return;
         const querySnapshot = await window.firebaseGetDocs(window.firebaseCollection(window.firebaseDb, "wordcloud_msgs"));
         const batch = window.firebaseWriteBatch(window.firebaseDb);
-        querySnapshot.forEach(doc => batch.delete(doc.ref));
+        querySnapshot.forEach(doc => {
+            if (doc.id !== "_GLOBAL_STATE_") { // 刪除時保留狀態文件
+                batch.delete(doc.ref);
+            }
+        });
         await batch.commit();
         alert("已清空");
     };
@@ -496,7 +504,6 @@
         const text = msgInput.value.trim();
         if (!text || !currentUser) return;
         
-        // 如果老師已經發表關閉輸入，防止極端情況的寫入
         if (!isAdmin && isPublished) {
             alert("老師已結束留言，無法再發送囉！");
             return;
@@ -509,7 +516,6 @@
             timestamp: window.firebaseServerTimestamp()
         });
 
-        // 對學生顯示「已送出」的動畫提示 (不干擾原本打字體驗)
         if (!isAdmin) showToast("已送出！");
     }
 
