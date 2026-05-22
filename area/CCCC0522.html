@@ -251,6 +251,7 @@
     .message-text { min-width: 0; overflow-wrap: anywhere; }
     .message-empty { height: 152px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 0.85rem; background: #fff; border: 1px dashed var(--line); border-radius: 8px; }
     .message-item.broadcast { border-left-color: #f5b041; }
+    .message-item.chat { border-left-color: #3498db; }
     .message-item.private { border-left-color: #a569bd; }
     .message-item.system { border-left-color: #e74c3c; }
     .message-time { flex: 0 0 auto; color: var(--muted); font-size: 0.68rem; }
@@ -268,6 +269,12 @@
     .arrange-side-dock { display: none; gap: 10px; margin-top: 10px; }
     .arranging-active .arrange-side-dock { display: grid; }
     .arranging-active #sideClassroomControls .comm-stack { display: none; }
+    .teacher-cast-entry { display: none; }
+    .teacher-view .teacher-cast-entry { display: block; }
+    .magic-side-dock { display: none; gap: 10px; margin-top: 10px; }
+    .magic-active .magic-side-dock { display: grid; }
+    .magic-active #sideClassroomControls .comm-stack { display: none; }
+    .magic-active .teacher-cast-entry { display: none; }
     .return-map-button { width: 100%; margin-bottom: 12px; background: #16a085; color: #fff; border: none; padding: 10px; border-radius: 8px; font-weight: 900; }
   </style>
 </head>
@@ -379,6 +386,7 @@
             <button id="contextActionBtn">互動按鈕</button>
             <button id="centerRescueBtn" class="rescue-btn" type="button">回教室中心</button>
           </div>
+          <button type="button" id="btnMapMagic" class="primary-button teacher-cast-entry" style="background:#8e44ad;">🪄 地圖施法模式</button>
           <div class="comm-stack">
             <section class="classroom-message-panel" aria-label="教室即時訊息欄">
               <div class="classroom-message-header">
@@ -400,6 +408,7 @@
             </section>
           </div>
           <div class="arrange-side-dock" id="arrangeSideDock" aria-label="佈置工具"></div>
+          <div class="magic-side-dock" id="magicSideDock" aria-label="地圖施法工具"></div>
         </div>
         <!-- 背包 -->
         <div id="tabPlayer" class="panel-section">
@@ -522,7 +531,8 @@
           </div>
 
           <h3 style="font-size:0.95rem; margin:16px 0 8px;">🪄 群體魔法</h3>
-          <div class="teacher-toolbox">
+          <div class="teacher-toolbox" id="magicToolbox">
+            <button type="button" class="primary-button" onclick="window.toggleMapMagicMode(true)" style="background:#8e44ad;">在地圖旁施展魔法</button>
             <div class="tool-row">
               <button type="button" class="mini-button" onclick="window.returnAllSupplies()">掃具回歸</button>
               <button type="button" class="mini-button" onclick="window.toggleSupplyLock()">掃具櫃上鎖 / 解鎖</button>
@@ -830,6 +840,7 @@
       document.querySelectorAll('#topPanelDock .panel-section').forEach(p => p.classList.remove('active'));
     };
     const openMainPanel = (targetId) => {
+      setMagicToolsPlacement(false);
       document.querySelectorAll('#mainTabs button').forEach(b => b.classList.toggle('active', b.dataset.target === targetId));
       document.querySelectorAll('#topPanelDock .panel-section').forEach(p => p.classList.toggle('active', p.id === targetId));
       topPanelDock.classList.add('active');
@@ -910,6 +921,34 @@
         if (el && target && el.parentElement !== target) target.appendChild(el);
       });
     };
+    const setMagicToolsPlacement = (active) => {
+      const dock = document.getElementById('magicSideDock');
+      const page = document.getElementById('teacherPageMagic');
+      const toolbox = document.getElementById('magicToolbox');
+      if (!dock || !page || !toolbox) return;
+      document.body.classList.toggle('magic-active', !!active);
+      if (active) {
+        closeMainPanel();
+        setArrangeToolsPlacement(false);
+        if (!document.getElementById('btnCloseMapMagic')) {
+          const closeBtn = document.createElement('button');
+          closeBtn.type = 'button';
+          closeBtn.id = 'btnCloseMapMagic';
+          closeBtn.className = 'danger-button';
+          closeBtn.textContent = '退出地圖施法';
+          closeBtn.onclick = () => setMagicToolsPlacement(false);
+          dock.appendChild(closeBtn);
+        }
+        if (toolbox.parentElement !== dock) dock.appendChild(toolbox);
+      } else {
+        if (toolbox.parentElement !== page) page.appendChild(toolbox);
+      }
+    };
+    window.toggleMapMagicMode = (active) => {
+      if (!state.isTeacher) return;
+      setMagicToolsPlacement(active !== undefined ? active : !document.body.classList.contains('magic-active'));
+    };
+    document.getElementById('btnMapMagic').onclick = () => window.toggleMapMagicMode(true);
 
     document.getElementById('roomSelect').value = currentRoomId;
     document.getElementById('roomSelect').onchange = async (e) => {
@@ -984,7 +1023,8 @@
           onDisconnect(myCatRef).update({ online: false }); addLog(`✨ ${(snap.exists() ? snap.val()?.name : user.displayName) || user.email} 進入了教室。`);
         } else {
           setArrangeToolsPlacement(false);
-          currentUser = null; state.isTeacher = false; document.body.classList.remove('teacher-view'); document.body.classList.remove('arranging-active'); document.getElementById('userNav').style.display = 'none'; closeMainPanel(); document.getElementById('sideClassroomControls').classList.remove('active'); document.getElementById('navTeacherBtn').style.display = 'none';
+          setMagicToolsPlacement(false);
+          currentUser = null; state.isTeacher = false; document.body.classList.remove('teacher-view'); document.body.classList.remove('arranging-active', 'magic-active'); document.getElementById('userNav').style.display = 'none'; closeMainPanel(); document.getElementById('sideClassroomControls').classList.remove('active'); document.getElementById('navTeacherBtn').style.display = 'none';
           document.querySelectorAll('.panel-section').forEach(p => p.classList.remove('active')); document.getElementById('authSection').classList.add('active');
         }
       });
@@ -1070,16 +1110,20 @@
     }
     function addLog(text) {
       if(db) {
-        push(ref(db, roomPath('logs')), { text, time: Date.now(), roomId: currentRoomId });
+        if (state.isTeacher) push(ref(db, roomPath('logs')), { text, time: Date.now(), roomId: currentRoomId });
         sendMessage('all', text, 'broadcast', '教室廣播');
       }
     }
+    const canSeeMessage = (msg) => {
+      if (!currentUser) return false;
+      return msg.to === 'all' || msg.to === currentUser.uid || (msg.to === 'teacher' && state.isTeacher) || state.isTeacher;
+    };
     function renderClassroomMessages() {
       const list = document.getElementById('classroomMessageList');
       if (!list) return;
       const merged = [];
       const seen = new Set();
-      state.messages.forEach(msg => {
+      state.messages.filter(canSeeMessage).forEach(msg => {
         const key = `${msg.text || ''}|${Math.round((msg.time || 0) / 2000)}`;
         seen.add(key);
         merged.push({ ...msg, source: 'message' });
@@ -1095,7 +1139,7 @@
       }
       list.innerHTML = '';
       merged.forEach(msg => {
-        const controls = state.isTeacher && msg.source === 'message' ? `<div class="message-actions"><button class="mini-button" onclick="window.editMessage('${msg.id}')">更新</button><button class="mini-button" onclick="window.deleteMessage('${msg.id}')">刪除</button></div>` : '';
+        const controls = state.isTeacher ? `<div class="message-actions">${msg.source === 'message' ? `<button class="mini-button" onclick="window.editMessage('${msg.id}')">更新</button><button class="mini-button" onclick="window.deleteMessage('${msg.id}')">刪除</button>` : `<button class="mini-button" onclick="window.editBroadcast('${msg.id}')">更新</button><button class="mini-button" onclick="window.deleteBroadcast('${msg.id}')">刪除</button>`}</div>` : '';
         list.innerHTML += `<div class="message-item ${escapeHtml(msg.type || 'system')}" title="${escapeHtml(msg.text || '')}"><span class="message-time">${formatDateTime(msg.time)} · ${escapeHtml(msg.fromName || '系統')}</span><span class="message-text">${escapeHtml(msg.text || '')}</span>${controls}</div>`;
       });
     }
@@ -1110,10 +1154,14 @@
       if (text && text.trim()) await update(ref(db, roomPath(`messages/${messageId}`)), { text: text.trim(), time: Date.now(), edited: true, editedBy: currentUser?.uid || 'teacher' });
     };
     window.deleteMessage = (messageId) => { if (state.isTeacher && confirm("確定刪除這則訊息？")) set(ref(db, roomPath(`messages/${messageId}`)), null); };
-    window.clearMessages = () => { if (state.isTeacher && confirm("確定刪除本教室所有訊息？")) set(ref(db, roomPath('messages')), null); };
+    window.clearMessages = async () => {
+      if (!state.isTeacher || !confirm("確定刪除本教室所有訊息與動態？")) return;
+      await update(ref(db), { [roomPath('messages')]: null, [roomPath('logs')]: null });
+      showToast("已刪除訊息與動態。");
+    };
     window.backupMessages = async () => {
       if (!state.isTeacher) return;
-      const payload = JSON.stringify({ room: roomNames[currentRoomId], exportedAt: formatDateTime(Date.now()), messages: state.messages }, null, 2);
+      const payload = JSON.stringify({ room: roomNames[currentRoomId], exportedAt: formatDateTime(Date.now()), messages: state.messages, logs: state.logs }, null, 2);
       try { await navigator.clipboard.writeText(payload); showToast("訊息備份已複製到剪貼簿。"); }
       catch { prompt("請複製以下訊息備份資料：", payload); }
     };
@@ -1205,6 +1253,7 @@
         const btn = document.getElementById('btnArrange');
         btn.textContent = window.isArranging ? "✅ 儲存佈置" : "🛠️ 手動佈置模式 (下課可用)";
         btn.style.background = window.isArranging ? "#2ecc71" : "#95a5a6";
+        if (window.isArranging) setMagicToolsPlacement(false);
         setArrangeToolsPlacement(window.isArranging);
         if (window.isArranging) closeMainPanel();
         
@@ -2014,7 +2063,7 @@
       if (isMutedForStudent()) return showToast("目前被老師施了禁言/定身魔法，不能發言。", true);
       const text = document.getElementById('chatInput').value.trim(); if(!text) return;
       update(ref(db, `cats/${currentUser.uid}/chat`), { text, time: now, type: 'normal' }); document.getElementById('chatInput').value = ''; lastChatTime = now;
-      sendMessage('all', `${state.cats[currentUser.uid]?.name || '有人'}大聲說：${text}`, 'broadcast', state.cats[currentUser.uid]?.name || '同學');
+      sendMessage('all', `${state.cats[currentUser.uid]?.name || '有人'}大聲說：${text}`, 'chat', state.cats[currentUser.uid]?.name || '同學');
       const btn = document.getElementById('chatBtn'); const timerSpan = document.getElementById('chatTimer'); btn.disabled = true; let left = 10;
       chatCooldownTimer = setInterval(() => { left--; timerSpan.textContent = `${left}s`; if(left <= 0) { clearInterval(chatCooldownTimer); btn.disabled = false; timerSpan.textContent = '就緒'; } }, 1000);
     };
@@ -2030,8 +2079,39 @@
       }
     });
 
-    document.getElementById('btnWhisper').onclick = () => { if(!guardOpenClassroom()) return; if (isMutedForStudent()) return showToast("目前被老師施了禁言/定身魔法，不能悄悄話。", true); const text = prompt("輸入悄悄話 (30字內)："); if(text && text.trim().length > 0) { const finalText = text.substring(0,30); update(ref(db, `cats/${currentUser.uid}/chat`), { text: finalText, time: Date.now(), type: 'whisper' }); if(targetUidForInteract) sendMessage(targetUidForInteract, `${state.cats[currentUser.uid]?.name || '同學'}悄悄說：${finalText}`, 'private', state.cats[currentUser.uid]?.name || '同學'); showToast("已發出悄悄話！"); window.closeModal('modalInteract'); } };
-    document.getElementById('btnPassNote').onclick = () => { if(!guardOpenClassroom()) return; if (isMutedForStudent()) return showToast("目前被老師施了禁言/定身魔法，不能傳紙條。", true); const text = prompt("輸入紙條內容 (30字內)："); if(text && text.trim().length > 0 && targetUidForInteract) { const finalText = text.substring(0,30); push(ref(db, 'notes'), { from: currentUser.uid, fromName: state.cats[currentUser.uid].name, to: targetUidForInteract, toName: state.cats[targetUidForInteract].name, text: finalText, time: Date.now() }); sendMessage(targetUidForInteract, `${state.cats[currentUser.uid]?.name || '同學'}傳紙條給你：${finalText}`, 'private', state.cats[currentUser.uid]?.name || '同學'); sendMessage('teacher', `${state.cats[currentUser.uid]?.name || '同學'}傳紙條給 ${state.cats[targetUidForInteract]?.name || '同學'}：${finalText}`, 'private', '紙條攔截'); showToast(`已丟紙條！`); window.closeModal('modalInteract'); } };
+    document.getElementById('btnWhisper').onclick = () => {
+      if(!guardOpenClassroom()) return;
+      if (isMutedForStudent()) return showToast("目前被老師施了禁言/定身魔法，不能悄悄話。", true);
+      const text = prompt("輸入悄悄話 (30字內)：");
+      if(text && text.trim().length > 0) {
+        const finalText = text.substring(0,30);
+        const speaker = state.cats[currentUser.uid];
+        update(ref(db, `cats/${currentUser.uid}/chat`), { text: finalText, time: Date.now(), type: 'whisper' });
+        Object.entries(sameRoomCats()).forEach(([uid, cat]) => {
+          if (uid === currentUser.uid || cat.email === TEACHER_EMAIL) return;
+          const near = Math.hypot((cat.x || 0) - (speaker?.x || 0), (cat.y || 0) - (speaker?.y || 0)) <= 15;
+          if (near) sendMessage(uid, `${speaker?.name || '同學'}悄悄說：${finalText}`, 'private', speaker?.name || '同學');
+        });
+        sendMessage('teacher', `耳朵總是聽見不該聽見的聲音：${speaker?.name || '同學'}悄悄說「${finalText}」`, 'private', '老師的耳朵');
+        showToast("已發出悄悄話，附近的人可能聽見。");
+        window.closeModal('modalInteract');
+      }
+    };
+    document.getElementById('btnPassNote').onclick = () => {
+      if(!guardOpenClassroom()) return;
+      if (isMutedForStudent()) return showToast("目前被老師施了禁言/定身魔法，不能傳紙條。", true);
+      const text = prompt("輸入紙條內容 (30字內)：");
+      if(text && text.trim().length > 0 && targetUidForInteract) {
+        const finalText = text.substring(0,30);
+        const fromName = state.cats[currentUser.uid]?.name || '同學';
+        const toName = state.cats[targetUidForInteract]?.name || '同學';
+        push(ref(db, 'notes'), { from: currentUser.uid, fromName, to: targetUidForInteract, toName, text: finalText, time: Date.now() });
+        sendMessage(targetUidForInteract, `${fromName}傳紙條給你：${finalText}`, 'private', fromName);
+        sendMessage('teacher', `老師一定攔截到紙條：${fromName}傳給 ${toName}：「${finalText}」`, 'private', '紙條攔截');
+        showToast(`已丟紙條！`);
+        window.closeModal('modalInteract');
+      }
+    };
     document.getElementById('btnInspect').onclick = () => { if(!targetUidForInteract) return; const tCat = state.cats[targetUidForInteract]; const div = document.getElementById('inspectContent'); div.innerHTML = `<div class="inv-item" style="border-color:#f5b041;"><span>金幣 🪙</span><span>${tCat.gold||0}</span></div><div class="inv-item" style="border-color:#a569bd;"><span>水晶 💎</span><span>${tCat.crystal||0}</span></div>`; if(tCat.inventory) { Object.entries(tCat.inventory).forEach(([item, qty]) => { if(qty > 0) div.innerHTML += `<div class="inv-item"><span>${item}</span><span>x${qty}</span></div>`; }); } else { div.innerHTML += `<div style="grid-column:1/-1; color:#888; font-size:0.8rem; text-align:center;">背包空空。</div>`; } document.getElementById('inspectArea').style.display = 'block'; };
     document.getElementById('btnGreet').onclick = async () => {
       if (!currentUser || !targetUidForInteract || !guardOpenClassroom()) return;
