@@ -692,6 +692,7 @@
     let activeRoomId = currentRoomId;
     let sessionStartedAt = Date.now();
     let handledDismissAt = 0;
+    const TEACHER_EMAIL = 'a776663@st.tc.edu.tw';
     const roomNames = { room1: '主教室' };
     const roomPath = (path = '') => `rooms/${currentRoomId}${path ? '/' + path : ''}`;
     const centerPoint = { x: 50, y: 50 };
@@ -731,6 +732,19 @@
     const normalizeEmailInput = (raw) => {
       const value = String(raw || '').trim();
       return value.includes('@') ? value : `${value}@st.tc.edu.tw`;
+    };
+    const authErrorMessage = (err) => {
+      const code = err?.code || '';
+      const messages = {
+        'auth/invalid-credential': '帳號或密碼不正確，請確認 Email 與密碼。',
+        'auth/user-not-found': '找不到這個帳號，請先註冊或確認 Email 是否輸入正確。',
+        'auth/wrong-password': '密碼不正確，請重新輸入。',
+        'auth/email-already-in-use': '這個 Email 已經註冊過，請改用登入。',
+        'auth/invalid-email': 'Email 格式不正確，請輸入完整 Email，例如 a776663@gmail.com。',
+        'auth/weak-password': '密碼強度不足，請至少輸入 6 個字元。',
+        'auth/too-many-requests': '嘗試次數太多，請稍後再試。'
+      };
+      return messages[code] || `驗證失敗：${err?.message || code || '未知錯誤'}`;
     };
 
     // 初始化動態生成個人座位 DOM (obj-d1 ~ obj-d30)
@@ -916,7 +930,11 @@
           const cred = await createUserWithEmailAndPassword(auth, email, pass); await updateProfile(cred.user, { displayName: name });
           await set(ref(db, `cats/${cred.user.uid}`), { name, email, roomId: currentRoomId, x: 50, y: 80, color: catColors[Math.floor(Math.random() * catColors.length)], gold: 0, crystal: 0, hiddenStats: { kindnessGiven: 0, kindnessReceived: 0 }, online: true, status: '剛報到' });
         }
-      } catch (err) { alert("驗證失敗：" + err.message + "\n\n提醒：如果只輸入座號或代碼，系統會自動補成 @st.tc.edu.tw。若教室關閉，學生也會被擋在登入畫面。"); }
+      } catch (err) {
+        const typed = document.getElementById('inEmail').value.trim();
+        const suffixHint = typed && !typed.includes('@') ? "\n\n提醒：未輸入 @ 時，系統會自動補成 @st.tc.edu.tw。" : "";
+        alert(authErrorMessage(err) + suffixHint);
+      }
     };
     document.getElementById('logoutBtn').onclick = async () => { if (currentUser) { await update(ref(db, `cats/${currentUser.uid}`), { online: false }); signOut(auth); } };
 
@@ -924,7 +942,7 @@
       onAuthStateChanged(auth, async (user) => {
         if (user) {
           sessionStartedAt = Date.now();
-          currentUser = user; state.isTeacher = (user.email === 'a776663@st.tc.edu.tw');
+          currentUser = user; state.isTeacher = (user.email === TEACHER_EMAIL);
           currentRoomId = 'room1';
           activeRoomId = currentRoomId;
           localStorage.setItem('cloudClassCatsRoom', currentRoomId);
@@ -938,7 +956,7 @@
             await signOut(auth);
             return;
           }
-          await set(ref(db, 'activeRoom'), currentRoomId);
+          if (state.isTeacher) await set(ref(db, 'activeRoom'), currentRoomId);
           if (!state.isTeacher) {
             document.getElementById('roomSelect').value = currentRoomId;
             document.getElementById('roomSelect').disabled = true;
@@ -963,7 +981,7 @@
             if (!cat.hiddenStats) repair.hiddenStats = { kindnessGiven: 0, kindnessReceived: 0 };
             await update(myCatRef, repair);
           }
-          onDisconnect(myCatRef).update({ online: false }); addLog(`✨ ${snap.val()?.name || user.displayName} 進入了教室。`);
+          onDisconnect(myCatRef).update({ online: false }); addLog(`✨ ${(snap.exists() ? snap.val()?.name : user.displayName) || user.email} 進入了教室。`);
         } else {
           setArrangeToolsPlacement(false);
           currentUser = null; state.isTeacher = false; document.body.classList.remove('teacher-view'); document.body.classList.remove('arranging-active'); document.getElementById('userNav').style.display = 'none'; closeMainPanel(); document.getElementById('sideClassroomControls').classList.remove('active'); document.getElementById('navTeacherBtn').style.display = 'none';
@@ -975,7 +993,7 @@
     if(db) {
       onValue(ref(db, 'activeRoom'), async (s) => {
         activeRoomId = 'room1';
-        if (s.val() !== 'room1') set(ref(db, 'activeRoom'), 'room1');
+        if (state.isTeacher && s.val() !== 'room1') set(ref(db, 'activeRoom'), 'room1');
       });
       onValue(ref(db, roomPath('gameState')), (s) => { 
         state.gameOpen = !!(s.val()?.isOpen); 
@@ -1159,7 +1177,7 @@
       if (!willOpen) {
         const updates = {};
         Object.entries(state.cats).forEach(([uid, cat]) => {
-          const isTeacherCat = cat.email === 'a776663@st.tc.edu.tw';
+          const isTeacherCat = cat.email === TEACHER_EMAIL;
           if (!isTeacherCat && cat.online && (cat.roomId || 'room1') === currentRoomId) updates[`cats/${uid}/online`] = false;
         });
         updates[roomPath('gameState/isOpen')] = false;
@@ -1626,7 +1644,7 @@
       const stuSel = document.getElementById('bagStudent'); const itemSel = document.getElementById('bagItem');
       if (!stuSel || document.activeElement === stuSel || document.activeElement === itemSel) return;
       const currUid = stuSel.value; stuSel.innerHTML = '<option value="">選擇學生...</option>';
-      Object.entries(sameRoomCats()).forEach(([uid, cat]) => { if (!cat.email?.includes('a776663@st.tc.edu.tw')) stuSel.innerHTML += `<option value="${uid}">${cat.name}</option>`; });
+      Object.entries(sameRoomCats()).forEach(([uid, cat]) => { if (cat.email !== TEACHER_EMAIL) stuSel.innerHTML += `<option value="${uid}">${cat.name}</option>`; });
       stuSel.value = currUid; window.updateBagItems();
     };
 
@@ -1670,7 +1688,7 @@
       const currUid = sel.value;
       sel.innerHTML = '<option value="">選擇學生...</option>';
       Object.entries(state.cats).forEach(([uid, cat]) => {
-        if (cat.email !== 'a776663@st.tc.edu.tw') sel.innerHTML += `<option value="${uid}">${escapeHtml(cat.name || cat.email || uid)}</option>`;
+        if (cat.email !== TEACHER_EMAIL) sel.innerHTML += `<option value="${uid}">${escapeHtml(cat.name || cat.email || uid)}</option>`;
       });
       sel.value = currUid;
     };
@@ -1801,7 +1819,7 @@
       const current = sel.value;
       sel.innerHTML = '<option value="">選擇學生...</option>';
       Object.entries(state.cats).forEach(([uid, cat]) => {
-        if (cat.email !== 'a776663@st.tc.edu.tw') sel.innerHTML += `<option value="${uid}">${escapeHtml(cat.name || cat.email || uid)}</option>`;
+        if (cat.email !== TEACHER_EMAIL) sel.innerHTML += `<option value="${uid}">${escapeHtml(cat.name || cat.email || uid)}</option>`;
       });
       sel.value = current;
     };
@@ -1883,7 +1901,7 @@
       const teacher = state.cats[currentUser.uid];
       const updates = {};
       Object.entries(state.cats).forEach(([uid, cat], index) => {
-        if (cat.email === 'a776663@st.tc.edu.tw') return;
+        if (cat.email === TEACHER_EMAIL) return;
         updates[`cats/${uid}/x`] = Math.max(1, Math.min(99, (teacher?.x || 50) + ((index % 5) - 2) * 3));
         updates[`cats/${uid}/y`] = Math.max(1, Math.min(99, (teacher?.y || 50) + Math.floor(index / 5) * 3));
         updates[`cats/${uid}/roomId`] = currentRoomId;
@@ -1908,7 +1926,7 @@
             returnedAny = true;
             returnedCounts[key] = (returnedCounts[key] || 0) + (cat.inventory?.[toolName] || 0);
             updates[`cats/${uid}/inventory/${toolName}`] = 0;
-            if (cat.email !== 'a776663@st.tc.edu.tw') {
+              if (cat.email !== TEACHER_EMAIL) {
               const funny = `${cat.name || '某位同學'}的${toolName}突然從手上飛出去，打到${cat.name || '他'}的下巴，${cat.name || '他'}頭暈了兩下，掃具自己飛回掃具櫃了。`;
               addLog(funny);
               sendMessage(uid, funny, 'system', '掃具回歸');
