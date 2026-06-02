@@ -685,8 +685,8 @@
     <div class="modal-content">
         <h2 style="color:var(--blue); font-size:30px; margin:0; text-align:center;">勇者冒險日記</h2>
         <div id="inputArea">
-            <p style="font-size:18px; margin:15px 0; text-align:center;">勇者的名字：</p>
-            <input type="text" id="playerName" placeholder="輸入名稱...">
+            <p style="font-size:18px; margin:15px 0; text-align:center;">學生姓名（由導師設定）：</p>
+            <input type="text" id="playerName" placeholder="尚未設定姓名" readonly>
         </div>
         <div id="restStory"></div>
         <button class="key action" style="width:100%; height:58px; font-size:23px; margin-top:10px;" id="modalBtn" onclick="confirmRest()">確認存檔</button>
@@ -718,35 +718,107 @@
         true: {
             intro: [
                 "夕陽灑在王國的石磚路上，【{title}】{name} 剛停下腳步，就被眾人推到混亂的帳本前。",
-                "緊急鐘聲在城牆上響起，【{title}】{name} 立刻接過任務，用冷靜的眼神掃過所有數字。",
-                "王宮大廳燈火通明，【{title}】{name} 站在中央，面對一排連老學者都皺眉的算式。"
+                "緊急鐘聲在城牆上響起，【{title}】{name} 立刻接過任務，用冷靜的眼神掃過所有數字。", // 這裡是放第二個成功開頭故事
+                "王宮大廳燈火通明，【{title}】{name} 站在中央，面對一排連老學者都皺眉的算式。", // 這裡是放第三個成功開頭故事
+                "古老遺跡的石門前，【{title}】{name} 撥開青苔，直面那刻滿數字的遠古機關。",
+                "財政大臣急得滿頭大汗，【{title}】{name} 微微一笑，從容地走上前接下這份重任。",
+                "邊境的魔法結界出現波動，【{title}】{name} 挺身而出，開始推算穩固能量的陣法。",
+                "酒館裡人聲鼎沸，【{title}】{name} 被推舉出來，挑戰傳說中無人能解的數學謎題。",
+                "皇家學院的黑板上寫滿了難題，【{title}】{name} 拿起粉筆，眼神中閃爍著自信的光芒。",
+                "神秘的商人擺出古怪的棋局，【{title}】{name} 撩起斗篷，決定用智慧與對方一決高下。",
+                "大鐘塔的齒輪卡住了，【{title}】{name} 爬上高塔，開始計算齒輪咬合的正確頻率。",
+                "探險隊在迷宮深處迷了路，【{title}】{name} 蹲下身子，根據牆上的數字線索推導出口。",
+                "藏寶箱的密碼鎖極其複雜，【{title}】{name} 深吸一口氣，雙手迅速在轉盤上運作。",
+                "星光璀璨的夜晚，【{title}】{name} 對著星圖，開始計算彗星降落王國的精準軌道。",
+                "慶典的煙火陣法需要校正，【{title}】{name} 接過指揮棒，準備點燃最完美的火花。",
+                "預言書的最後一頁被密碼封印，【{title}】{name} 沉思片刻，準備揭開歷史的真相。"
             ],
             body: [
                 "{name} 沒有慌張，只把題目拆成幾個乾淨的步驟，答案便像被點亮的符文一樣浮現。",
-                "眾人還在翻找算盤時，{name} 已經完成心算，並準確指出最關鍵的數字。",
-                "{name} 把速度與準確度控制得剛剛好，每一次判斷都像劍尖落在正確的位置。"
+                "眾人還在翻找算盤時，{name} 已經完成心算，並準確指出最關鍵的數字。", // 這裡是放第二個成功中段故事
+                "{name} 把速度與準確度控制得剛剛好，每一次判斷都像劍尖落在正確的位置。", // 這裡是放第三個成功中段故事
+                "{name} 的大腦飛速運轉，指尖在空中劃出優美的軌跡，將混亂的公式一條條理清。",
+                "不費吹灰之力，{name} 就看穿了數字背後的邏輯，解題的速度快到讓人產生殘影。",
+                "{name} 沉穩地寫下推導過程，每一個數字都環環相扣，精準得如同精密的機械鐘錶。",
+                "面對排山倒海的數據壓力，{name} 展現了驚人的專注力，突破了最難跨越的邏輯瓶頸。",
+                "{name} 靈感湧現，以勢如破竹之姿解開了核心難題，四周彷彿響起了無形的聖歌。",
+                "沒有任何猶豫，{name} 的思路清晰無比，像是一位大師在畫布上勾勒出完美的線條。",
+                "{name} 巧妙地運用了獨特的解題技巧，化繁為簡，讓原本無解的死結瞬間迎刃而解。",
+                "時間在這一刻彷彿變慢了，{name} 的眼中只有跳動的數字，並在瞬間抓住了唯一的真理。",
+                "{name} 的指尖輕快地敲擊，伴隨著自信的呼吸，最後的關鍵答案呼之欲出。",
+                "周圍的空氣彷彿都在為 {name} 助威，流暢的運算過程讓人看得賞心悅目、嘆為觀止。",
+                "{name} 排除了一切干擾，用無可挑剔的邏輯思維，將所有混亂的線索完美歸位。",
+                "突破了最後一道心智考驗，{name} 的答案無懈可擊，展現了真正強者的智慧風範。"
             ],
             end: [
                 "全場爆出歡呼聲，大家一致認定{name} 的智慧足以守住王國今日的平安。",
-                "國王親自點頭嘉許，將這次勝利記入勇者日記，成為新的傳說篇章。",
-                "同伴們圍上前來擊掌，因為{name} 不只過關，還讓整支隊伍看見了希望。"
+                "國王親自點頭嘉許，將這次勝利記入勇者日記，成為新的傳說篇章。", // 這裡是放第二個成功結尾故事
+                "同伴們圍上前來擊掌，因為{name} 不只過關，還讓整支隊伍看見了希望。", // 這裡是放第三個成功結尾故事
+                "石門轟然開啟，耀眼的金光灑在 {name} 的臉上，這是一場屬於智慧的完勝！",
+                "財政大臣感動得熱淚盈眶，當場宣布 {name} 為王國最不可或缺的頂尖人才。",
+                "結界光芒大盛，危機順利解除，村民們紛紛走上街頭為 {name} 歡呼慶祝。",
+                "酒館老闆豪爽地免了這一單，大聲宣布 {name} 的名字將永遠刻在酒館的英雄榜上。",
+                "老學者們紛紛起立鼓掌，感嘆活了這把年紀，終於見識到 {name} 這種絕世天才。",
+                "神秘商人輸得心服口服，恭敬地雙手奉上稀有寶物，對 {name} 獻上最高敬意。",
+                "大鐘塔重新運轉，清脆的鐘聲響徹雲霄，那是為 {name} 的勝利所奏響的讚歌。",
+                "迷宮通道順利開啟，隊友們高舉火把，簇擁著智慧化身的 {name} 昂首邁向出口。",
+                "寶箱啪嗒一聲彈開，裡面的史詩級裝備在這一刻，全數歸屬於實至名歸的 {name}。",
+                "彗星如預期般在遠方綻放，星光照亮了 {name} 充滿成就感的笑容，完美收工！",
+                "璀璨的煙火在夜空中排列成 {name} 的名字，這場精彩的智慧秀讓所有人永生難忘。",
+                "預言書的封印徹底解除，智慧之光融入體內，{name} 成功加冕為當之無愧的傳奇！"
             ]
         },
         false: {
             intro: [
                 "在一片緊張的注視中，【假的{title}】{name} 偷偷摸出口袋裡皺巴巴的作弊紙。",
-                "王國試煉場上，【假的{title}】{name} 假裝鎮定，額頭上的汗卻比瀑布還誠實。",
-                "號角聲剛響，【假的{title}】{name} 立刻露出神秘微笑，彷彿一切都在掌握之中。"
+                "王國試煉場上，【假的{title}】{name} 假裝鎮定，額頭上的汗卻比瀑布還誠實。", // 這裡是放第二個挑戰開頭故事
+                "號角聲剛響，【假的{title}】{name} 立刻露出神秘微笑，彷彿一切都在掌握之中。", // 這裡是放第三個挑戰開頭故事
+                "面對遠古的神祕石碑，【假的{title}】{name} 開始東張西望，試圖從旁邊同伴的紙上偷看答案。",
+                "在全場期盼的目光下，【假的{title}】{name} 悄悄把算盤反過來撥，企圖矇混過關。",
+                "國王親自監考，【假的{title}】{name} 心虛地狂喝水，試圖用劇烈的咳嗽掩飾內心的慌張。",
+                "眼看時間就要到了，【假的{title}】{name} 決定使出傳說中的絕招——閉著眼睛瞎猜一個數字。",
+                "站在神聖的魔法陣前，【假的{title}】{name} 假裝在冥想，實際上大腦已經一片空白。",
+                "當題目發下來的那一刻，【假的{title}】{name} 的自信瞬間瓦解，開始後悔昨天晚上沒看書。",
+                "面對堆積如山的帳本，【假的{title}】{name} 試圖用高超的演技，假裝自己看懂了複雜的公式。",
+                "在考官嚴厲的目光下，【假的{title}】{name} 的手抖得像在彈吉他，連筆都快拿不穩了。",
+                "挑戰的號角吹響，【假的{title}】{name} 露出了尷尬而不失禮貌的微笑，腳步下意識往後挪。",
+                "群眾都在高喊著英雄的名字，【假的{title}】{name} 只能強顏歡笑，默默祈禱奇蹟發生。",
+                "皇家學院的講台上，【假的{title}】{name} 盯著題目，陷入了對人生意義的深刻懷疑。",
+                "封印機關發出低沉的警告，【假的{title}】{name} 擦了擦冷汗，決定賭一把運氣。"
             ],
             body: [
                 "可惜紙條上的字被手汗糊成一團，{name} 越看越迷糊，連自己寫的是答案還是午餐都分不清。",
-                "{name} 信心滿滿地報出答案，結果數字一路偏到隔壁王國，旁邊的士兵全都安靜了。",
-                "作弊靈感來得太晚，{name} 手忙腳亂按下錯誤步驟，現場氣氛瞬間變得非常尷尬。"
+                "{name} 信心滿滿地報出答案，結果數字一路偏到隔壁王國，旁邊的士兵全都安靜了。", // 這裡是放第二個挑戰中段故事
+                "作弊靈感來得太晚，{name} 手忙腳亂按下錯誤步驟，現場氣氛瞬間變得非常尷尬。", // 這裡是放第三個挑戰中段故事
+                "{name} 算出來的結果讓石碑上的古老符文集體罷工，甚至發出了不耐煩的嗶嗶聲。",
+                "只見 {name} 胡亂點出一串天文數字，負責記錄的書記官手裡的筆啪嗒一聲掉在地上。",
+                "{name} 試圖用豐富的面部表情掩蓋邏輯的混亂，但最後寫下的答案連自己都不敢看。",
+                "由於偷看隔壁桌抄錯行，{name} 把加法做成減法，整個算式當場演變成一場災難。",
+                "{name} 的思路在最後關頭徹底翻車，完美繞開了所有正確答案，成功踩中所有陷阱。",
+                "算到一半，{name} 突然忘記九九乘法表，只能在考卷上畫了一隻生動的史萊姆。",
+                "{name} 的指尖在空中胡亂揮舞，試圖營造大師氣場，可惜交出來的答案是個寂寞。",
+                "因為過度緊張，{name} 把題目裡的零當成了句號，整個計算結果直接縮水了一百倍。",
+                "{name} 腦袋裡塞滿了晚餐吃什麼的想法，寫出來的公式像是一串神祕的亂碼。",
+                "眼看時間歸零，{name} 閉著眼睛把所有數字加在一起，結果驚呆了在場的所有評審。",
+                "{name} 試圖用舌燦蓮花的辯才解釋自己的答案，但明眼人一聽就知道是在胡說八道。",
+                "最後的致命一擊，{name} 算錯了最基礎的小數點，整座邏輯大廈在這一刻轟然倒塌。"
             ],
             end: [
                 "試煉官嘆了一口氣，把{name} 的稱號前面蓋上大大的「假的」，提醒大家下次靠實力比較香。",
-                "圍觀群眾忍不住笑出聲，{name} 只好把這次糗事寫進日記，當成下次練習的動力。",
-                "警鐘沒有響，掌聲也沒有來，只有{name} 默默決定回去把九九乘法表重練一遍。"
+                "圍觀群眾忍不住笑出聲，{name} 只好把這次糗事寫進日記，當成下次練習的動力。", // 這裡是放第二個挑戰結尾故事
+                "警鐘沒有響，掌聲也沒有來，只有{name} 默默決定回去把九九乘法表重練一遍。", // 這裡是放第三個挑戰結尾故事
+                "石門發出沉重的嘆息，隨後死死卡住，{name} 只能一臉尷尬地站在原地吹風。",
+                "國王無奈地搖搖頭，拍拍 {name} 的肩膀說：「孩子，聽我的，回去多做點數學題吧。」",
+                "圍觀的史萊姆都露出了同情的表情，{name} 只能假裝肚子痛，火速逃離試煉現場。",
+                "考官默默遞上一張補考通知單，{name} 接過後流下了悔恨的淚水，決定痛改前非。",
+                "現場響起了無情的烏鴉叫聲，{name} 摸摸鼻子，決定明天開始絕對不熬夜打遊戲了。",
+                "同伴們無奈地集體扶額，{name} 嘿嘿乾笑兩聲，主動承擔了今天晚餐洗碗的重任。",
+                "雖然試煉失敗了，但 {name} 的搞笑表現成功娛樂了全場，也算是一種另類的英雄吧。",
+                "神祕商人收回了寶箱，留下一句「再接再厲」，{name} 只能看著遠去的寶物望洋興嘆。",
+                "大鐘塔傳出卡帶般的怪聲，{name} 吐了吐舌頭，決定等一下去向維修工誠懇道歉。",
+                "雖然這次名聲掃地，但 {name} 拍拍灰塵站了起來，至少這次知道正確答案長什麼樣子了。",
+                "學院的警衛禮貌地將 {name} 請了出去，看來要摘掉「假的」稱號，還有一段路要走。",
+                "全場鴉雀無聲，{name} 默默收起作弊紙，深刻體會到出來混遲早是要還的道理。"
             ]
         }
     };
@@ -761,6 +833,7 @@
     let isCheated = false;
     let userId = null;
     let userEmail = null;
+    let currentStudentName = "佚名勇者";
     let userLevels = {};
     let sessionStartLevel = 0;
     let highestClearedLevel = -1;
@@ -773,12 +846,6 @@
         if (!window.signInWithEmailAndPassword || !window.onAuthStateChanged) {
             document.getElementById("loginMessage").textContent = "Firebase 載入失敗，請檢查網路或重新載入頁面";
             return;
-        }
-
-        try {
-            await window.signOut(window.firebaseAuth);
-        } catch (error) {
-            console.error("登出錯誤:", error);
         }
 
         window.onAuthStateChanged(window.firebaseAuth, async (user) => {
@@ -797,6 +864,8 @@
                 userId = null;
                 userEmail = null;
                 userLevels = {};
+                currentStudentName = "佚名勇者";
+                syncPlayerNameInput();
                 updateTeacherButtons();
                 showOnly("loginOverlay");
             }
@@ -828,15 +897,31 @@
     }
 
     async function loadUserData() {
-        if (!userId || userId === "test-teacher") return;
+        if (!userId || userId === "test-teacher") {
+            syncPlayerNameInput();
+            return;
+        }
         try {
             const docRef = window.firebaseDoc(window.firebaseDb, "players", userId);
             const docSnap = await window.firebaseGetDoc(docRef);
-            userLevels = docSnap.exists() ? (docSnap.data().levels || {}) : {};
+            const data = docSnap.exists() ? docSnap.data() : {};
+            userLevels = data.levels || {};
+            currentStudentName = data.name || "佚名勇者";
         } catch (error) {
             console.error("載入用戶資料失敗:", error);
             userLevels = {};
+            currentStudentName = "佚名勇者";
         }
+        syncPlayerNameInput();
+    }
+
+    function getPlayerName() {
+        return currentStudentName || "佚名勇者";
+    }
+
+    function syncPlayerNameInput() {
+        const input = document.getElementById("playerName");
+        if (input) input.value = getPlayerName();
     }
 
     function showLevelSelect() {
@@ -923,6 +1008,7 @@
     function guestPlay() {
         userId = null;
         userEmail = null;
+        currentStudentName = "訪客勇者";
         userLevels = {};
         updateTeacherButtons();
         updateCurrentHeroDisplay();
@@ -932,6 +1018,7 @@
     function testEnter() {
         userId = "test";
         userEmail = "test@example.com";
+        currentStudentName = "測試學生";
         userLevels = {0: 10, 1: 5, 2: 3, 3: 2, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1};
         updateTeacherButtons();
         updateCurrentHeroDisplay();
@@ -941,6 +1028,7 @@
     function teacherTestEnter() {
         userId = "test-teacher";
         userEmail = TEACHER_EMAILS[0];
+        currentStudentName = "導師測試";
         userLevels = {0: 10, 1: 5, 2: 3};
         updateTeacherButtons();
         updateCurrentHeroDisplay();
@@ -1157,7 +1245,7 @@
     }
 
     function showPassStory(cheated, clearedLevel, completedGame) {
-        const nameVal = document.getElementById("playerName").value || "佚名勇者";
+        const nameVal = getPlayerName();
         const story = buildStory(!cheated, clearedLevel, nameVal);
         document.getElementById("modal").classList.add("active");
         document.getElementById("inputArea").style.display = "none";
@@ -1176,7 +1264,7 @@
 
     function showVictoryScreen(cheated) {
         stopTimer();
-        const nameVal = document.getElementById("playerName").value || "佚名勇者";
+        const nameVal = getPlayerName();
         const title = cheated ? "假的數學戰神" : "數學戰神";
         const resultText = cheated
             ? `【${title}】${nameVal} 靠著作弊洞察闖到了終點，但王國魔法石仍然記得真相。這次算是看完結局，下次請用真正的心算力量把王國救回來！`
@@ -1187,6 +1275,7 @@
 
     function openRest() {
         stopTimer();
+        syncPlayerNameInput();
         document.getElementById("modal").classList.add("active");
         document.getElementById("inputArea").style.display = "block";
         document.getElementById("restStory").style.display = "none";
@@ -1195,11 +1284,16 @@
     }
 
     async function confirmRest() {
-        const nameVal = document.getElementById("playerName").value || "佚名勇者";
+        const nameVal = getPlayerName();
         document.getElementById("inputArea").style.display = "none";
         document.getElementById("restStory").style.display = "block";
         document.getElementById("modalBtn").innerText = "關閉存檔日記";
-        document.getElementById("modalBtn").onclick = () => location.reload();
+        document.getElementById("modalBtn").onclick = async () => {
+            document.getElementById("modal").classList.remove("active");
+            await loadUserData();
+            updateCurrentHeroDisplay();
+            showLevelSelect();
+        };
 
         if (userId && userId !== "test" && userId !== "test-teacher" && !isCheated) {
             try {
@@ -1221,7 +1315,6 @@
                     existingData.maxLevel = nextMaxClear;
                 }
 
-                existingData.name = nameVal;
                 existingData.email = userEmail;
                 existingData.lastStartedLevel = sessionStartLevel;
                 existingData.lastClearedLevel = sessionHighestClear;
