@@ -551,7 +551,8 @@
 <div id="levelSelectOverlay" class="overlay">
     <div class="dialog-card">
         <h1>選擇起始關卡</h1>
-        <p style="font-size:20px; line-height:1.5; color:#ccc; margin-bottom:26px;">根據你的最高記錄，可以選擇以下關卡開始冒險：</p>
+        <p style="font-size:20px; line-height:1.5; color:#ccc; margin-bottom:16px;">根據你的最高記錄，可以選擇以下關卡開始冒險；也可以挑一關進入生存模式。</p>
+        <div style="color:#9aa3af; font-size:15px; line-height:1.5; margin-bottom:18px;">生存模式：每題都必須達成快差，答錯或超時就結束，排行榜記錄最高連續答對題數。</div>
         <div id="levelSelectButtons" style="display:flex; flex-wrap:wrap; gap:12px; justify-content:center; margin-bottom:24px;"></div>
         <button class="key" style="padding:12px 30px; font-size:18px; height:auto; background:#666;" onclick="backToLogin()">返回登入</button>
     </div>
@@ -570,7 +571,11 @@
 
 <div id="leaderboardOverlay" class="overlay">
     <div style="width:min(96vw, 1180px); max-height:92dvh; overflow:auto;">
-        <h1 style="font-size:32px; color:var(--blue); margin-bottom:16px; text-align:center;">全班關卡突破統計</h1>
+        <h1 id="leaderboardTitle" style="font-size:32px; color:var(--blue); margin-bottom:12px; text-align:center;">全班關卡突破統計</h1>
+        <div style="display:flex; gap:8px; justify-content:center; margin-bottom:14px;">
+            <button class="mini-btn blue" onclick="showLeaderboard('normal')">闖關資料</button>
+            <button class="mini-btn primary" onclick="showLeaderboard('survival')">生存模式</button>
+        </div>
         <table id="leaderboardTable" style="width:100%; border-collapse:collapse; color:#fff;">
             <tbody id="leaderboardBody">
                 <tr><td colspan="16" style="padding:20px; text-align:center; color:#888;">載入中...</td></tr>
@@ -616,7 +621,10 @@
                 <input class="admin-input" id="editName" placeholder="學生姓名">
                 <label>Email</label>
                 <input class="admin-input" id="editEmail" placeholder="Email">
+                <h3 style="color:var(--blue); margin:12px 0 8px;">闖關資料</h3>
                 <div class="admin-grid" id="levelEditors"></div>
+                <h3 style="color:var(--green); margin:14px 0 8px;">生存模式資料</h3>
+                <div class="admin-grid" id="survivalEditors"></div>
                 <div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px;">
                     <label>最高突破<input class="admin-input" type="number" id="editMaxCleared" min="-1" max="9"></label>
                     <label>停在關卡<input class="admin-input" type="number" id="editAbandoned" min="-1" max="9"></label>
@@ -838,6 +846,10 @@
     let sessionStartLevel = 0;
     let highestClearedLevel = -1;
     let sessionClears = {};
+    let survivalMode = false;
+    let survivalRunScore = 0;
+    let survivalFinished = false;
+    let survivalBestRecords = {};
     let timerId = null;
     let teacherStudents = [];
     let selectedStudentId = null;
@@ -864,6 +876,7 @@
                 userId = null;
                 userEmail = null;
                 userLevels = {};
+                survivalBestRecords = {};
                 currentStudentName = "佚名勇者";
                 syncPlayerNameInput();
                 updateTeacherButtons();
@@ -906,10 +919,12 @@
             const docSnap = await window.firebaseGetDoc(docRef);
             const data = docSnap.exists() ? docSnap.data() : {};
             userLevels = data.levels || {};
+            survivalBestRecords = data.survival || {};
             currentStudentName = data.name || "佚名勇者";
         } catch (error) {
             console.error("載入用戶資料失敗:", error);
             userLevels = {};
+            survivalBestRecords = {};
             currentStudentName = "佚名勇者";
         }
         syncPlayerNameInput();
@@ -937,21 +952,37 @@
         const buttonContainer = document.getElementById("levelSelectButtons");
         buttonContainer.innerHTML = "";
         for (let i = startLevel; i <= endLevel; i++) {
+            const group = document.createElement("div");
+            group.style.cssText = "display:flex; gap:6px; align-items:stretch;";
+
             const button = document.createElement("button");
             button.className = "key action";
-            button.style.cssText = "padding:12px 20px; font-size:18px; height:auto;";
+            button.style.cssText = "padding:12px 18px; font-size:18px; height:auto;";
             button.textContent = `第${i}關`;
-            button.onclick = () => selectLevel(i - 1);
-            buttonContainer.appendChild(button);
+            button.onclick = () => selectLevel(i - 1, false);
+            group.appendChild(button);
+
+            const survivalButton = document.createElement("button");
+            survivalButton.className = "key";
+            survivalButton.style.cssText = "padding:12px 14px; font-size:16px; height:auto; background:var(--green); color:#001018;";
+            survivalButton.textContent = "生存";
+            survivalButton.title = `第${i}關生存模式`;
+            survivalButton.onclick = () => selectLevel(i - 1, true);
+            group.appendChild(survivalButton);
+
+            buttonContainer.appendChild(group);
         }
         showOnly("levelSelectOverlay");
     }
 
-    function selectLevel(levelIndex) {
+    function selectLevel(levelIndex, asSurvival = false) {
         curLvl = levelIndex;
         sessionStartLevel = levelIndex;
         highestClearedLevel = levelIndex - 1;
         sessionClears = {};
+        survivalMode = asSurvival;
+        survivalRunScore = 0;
+        survivalFinished = false;
         streak = 0;
         times = [];
         isCheated = false;
@@ -1010,6 +1041,7 @@
         userEmail = null;
         currentStudentName = "訪客勇者";
         userLevels = {};
+        survivalBestRecords = {};
         updateTeacherButtons();
         updateCurrentHeroDisplay();
         showLevelSelect();
@@ -1020,6 +1052,7 @@
         userEmail = "test@example.com";
         currentStudentName = "測試學生";
         userLevels = {0: 10, 1: 5, 2: 3, 3: 2, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1};
+        survivalBestRecords = {0: {best: 12}, 1: {best: 8}, 2: {best: 5}};
         updateTeacherButtons();
         updateCurrentHeroDisplay();
         showLevelSelect();
@@ -1030,6 +1063,7 @@
         userEmail = TEACHER_EMAILS[0];
         currentStudentName = "導師測試";
         userLevels = {0: 10, 1: 5, 2: 3};
+        survivalBestRecords = {0: {best: 20}, 1: {best: 11}};
         updateTeacherButtons();
         updateCurrentHeroDisplay();
         showLevelSelect();
@@ -1055,17 +1089,20 @@
         const upgradeLevel = getUpgradeLevel(count);
         const heroName = `${heroes[curLvl]} ${romanNumerals[upgradeLevel]}`;
         const prefix = isCheated ? "假的" : "";
-        document.getElementById("lvlStatus").innerText = prefix + heroName;
+        const statusText = survivalMode ? `生存模式｜${heroName}` : prefix + heroName;
+        document.getElementById("lvlStatus").innerText = statusText;
         document.getElementById("rankListDisplay").innerHTML = heroes.map((h, i) => {
             const displayName = i === curLvl ? heroName : h;
-            return `<li class="rank-item ${i === curLvl ? "active" : ""}">${i + 1}. ${prefix}${displayName}</li>`;
+            const survivalRecord = getSurvivalBest(i);
+            const survivalText = survivalMode ? ` <span style="color:var(--green);">BEST ${survivalRecord}</span>` : "";
+            return `<li class="rank-item ${i === curLvl ? "active" : ""}">${i + 1}. ${prefix}${displayName}${survivalText}</li>`;
         }).join("");
     }
 
     function generate() {
         const lvl = levels[curLvl];
-        document.getElementById("levelTitle").innerText = lvl.name;
-        document.getElementById("goalCond").innerText = `${lvl.fast[0]}s/${lvl.fast[1]}勝 或 ${lvl.slow[0]}s/${lvl.slow[1]}勝`;
+        document.getElementById("levelTitle").innerText = survivalMode ? `${lvl.name}｜生存模式` : lvl.name;
+        document.getElementById("goalCond").innerText = survivalMode ? `${lvl.fast[0]}s內答對，錯題或超時失敗` : `${lvl.fast[0]}s/${lvl.fast[1]}勝 或 ${lvl.slow[0]}s/${lvl.slow[1]}勝`;
         document.getElementById("remainderZone").style.display = lvl.type.includes("Rem") ? "block" : "none";
 
         let qText = "";
@@ -1169,8 +1206,13 @@
         const fastColor = elapsed <= lvl.fast[0] ? "var(--green)" : "var(--orange)";
         document.getElementById("liveTimer").style.borderColor = fastColor;
         document.getElementById("liveTimer").style.color = fastColor;
-        document.getElementById("paceHint").innerText = `本題 ${elapsed.toFixed(1)}s｜快差${fastNeed} 慢差${slowNeed}`;
+        document.getElementById("paceHint").innerText = survivalMode
+            ? `生存 ${survivalRunScore} 題｜上限 ${lvl.fast[0]}s`
+            : `本題 ${elapsed.toFixed(1)}s｜快差${fastNeed} 慢差${slowNeed}`;
         if (avgSoFar > 0) document.getElementById("avgTime").innerText = avgSoFar.toFixed(1);
+        if (survivalMode && !survivalFinished && elapsed > lvl.fast[0]) {
+            failSurvival("時間到");
+        }
     }
 
     function pressKey(k) {
@@ -1188,6 +1230,26 @@
         const dur = (Date.now() - startTime) / 1000;
         let ok = uA === targetAns;
         if (levels[curLvl].type.includes("Rem")) ok = ok && uR === targetRem;
+
+        if (survivalMode) {
+            if (!ok) {
+                failSurvival("答錯");
+                return;
+            }
+            if (dur > levels[curLvl].fast[0]) {
+                failSurvival("超過快差時間");
+                return;
+            }
+            survivalRunScore++;
+            streak = survivalRunScore;
+            times.push(dur);
+            const avg = (times.reduce((a, b) => a + b, 0) / times.length).toFixed(1);
+            document.getElementById("avgTime").innerText = avg;
+            document.getElementById("streak").innerText = streak;
+            showFb("生存成功！下一題", "var(--green)");
+            generate();
+            return;
+        }
 
         if (ok) {
             streak++;
@@ -1210,6 +1272,10 @@
     }
 
     function execCheat() {
+        if (survivalMode) {
+            alert("生存模式不能使用作弊洞察。");
+            return;
+        }
         isCheated = true;
         updateRankBoard();
         document.getElementById("ansMain").value = targetAns;
@@ -1223,6 +1289,89 @@
         highestClearedLevel = Math.max(highestClearedLevel, levelIndex);
         sessionClears[levelIndex] = (sessionClears[levelIndex] || 0) + 1;
         userLevels[levelIndex] = (userLevels[levelIndex] || 0) + 1;
+    }
+
+    function getSurvivalBest(levelIndex) {
+        const record = survivalBestRecords[levelIndex] || {};
+        return Math.max(0, Number(record.best || 0));
+    }
+
+    function normalizeSurvivalRecord(record) {
+        if (typeof record === "number") return { best: Math.max(0, record) };
+        if (!record || typeof record !== "object") return { best: 0 };
+        return { ...record, best: Math.max(0, Number(record.best || 0)) };
+    }
+
+    async function saveSurvivalResult(levelIndex, score, outcome) {
+        const safeScore = Math.max(0, Number(score || 0));
+        const currentLocal = normalizeSurvivalRecord(survivalBestRecords[levelIndex]);
+        const nextLocal = {
+            ...currentLocal,
+            best: Math.max(currentLocal.best, safeScore),
+            lastScore: safeScore,
+            lastOutcome: outcome,
+            lastPlayed: new Date()
+        };
+        if (safeScore > currentLocal.best) nextLocal.bestAt = new Date();
+        survivalBestRecords[levelIndex] = nextLocal;
+
+        if (!userId || userId === "test" || userId === "test-teacher" || isCheated) return;
+        try {
+            const docRef = window.firebaseDoc(window.firebaseDb, "players", userId);
+            const docSnap = await window.firebaseGetDoc(docRef);
+            const existingData = docSnap.exists() ? docSnap.data() : {};
+            const survival = existingData.survival || {};
+            const oldRecord = normalizeSurvivalRecord(survival[levelIndex]);
+            const newRecord = {
+                ...oldRecord,
+                best: Math.max(oldRecord.best, safeScore),
+                lastScore: safeScore,
+                lastOutcome: outcome,
+                plays: Math.max(0, Number(oldRecord.plays || 0)) + 1,
+                lastPlayed: new Date()
+            };
+            if (safeScore > oldRecord.best) newRecord.bestAt = new Date();
+            survival[levelIndex] = newRecord;
+            existingData.survival = survival;
+            existingData.email = userEmail;
+            existingData.lastSurvivalLevel = levelIndex;
+            existingData.lastSurvivalScore = safeScore;
+            existingData.lastSurvivalOutcome = outcome;
+            existingData.lastPlay = new Date();
+            await window.firebaseSetDoc(docRef, existingData);
+        } catch (error) {
+            alert("無法上傳生存模式資料，請檢查 Firebase 設定。");
+        }
+    }
+
+    async function failSurvival(reason) {
+        if (!survivalMode || survivalFinished) return;
+        survivalFinished = true;
+        stopTimer();
+        const levelIndex = curLvl;
+        const oldBest = getSurvivalBest(levelIndex);
+        const score = survivalRunScore;
+        await saveSurvivalResult(levelIndex, score, reason);
+        const newBest = Math.max(oldBest, score);
+        showFb(`生存結束：${reason}`, "var(--red)");
+        document.getElementById("modal").classList.add("active");
+        document.getElementById("inputArea").style.display = "none";
+        document.getElementById("restStory").style.display = "block";
+        document.getElementById("restStory").innerHTML = `
+            <h2 style="color:var(--green); text-align:center; margin:0 0 12px;">生存模式結束</h2>
+            <p style="font-size:22px; text-align:center; line-height:1.7;">
+                第 ${levelIndex + 1} 關｜本次連續答對 <b>${score}</b> 題<br>
+                最高紀錄 <b>${newBest}</b> 題
+            </p>
+            <p style="color:#9aa3af; text-align:center;">失敗原因：${escapeHtml(reason)}</p>
+        `;
+        document.getElementById("modalBtn").innerText = "回選關卡";
+        document.getElementById("modalBtn").onclick = async () => {
+            document.getElementById("modal").classList.remove("active");
+            await loadUserData();
+            updateCurrentHeroDisplay();
+            showLevelSelect();
+        };
     }
 
     function upgrade(byCheat = false) {
@@ -1295,7 +1444,11 @@
             showLevelSelect();
         };
 
-        if (userId && userId !== "test" && userId !== "test-teacher" && !isCheated) {
+        if (survivalMode) {
+            await saveSurvivalResult(curLvl, survivalRunScore, "rested");
+        }
+
+        if (!survivalMode && userId && userId !== "test" && userId !== "test-teacher" && !isCheated) {
             try {
                 const docRef = window.firebaseDoc(window.firebaseDb, "players", userId);
                 const docSnap = await window.firebaseGetDoc(docRef);
@@ -1344,9 +1497,14 @@
             .split("{title}").join(title);
     }
 
-    async function showLeaderboard() {
+    async function showLeaderboard(mode = "normal") {
+        if (mode === "survival") {
+            await showSurvivalLeaderboard();
+            return;
+        }
         document.getElementById("victoryOverlay").classList.remove("active");
         document.getElementById("leaderboardOverlay").classList.add("active");
+        document.getElementById("leaderboardTitle").textContent = "全班關卡突破統計";
         const tbody = document.getElementById("leaderboardBody");
         tbody.innerHTML = '<tr><td colspan="16" style="padding:20px; text-align:center; color:#888;">載入中...</td></tr>';
 
@@ -1399,6 +1557,54 @@
             tbody.innerHTML = Object.keys(stats).length ? tableContent : '<tr><td colspan="16" style="padding:20px; text-align:center; color:#888;">暫無資料</td></tr>';
         } catch (error) {
             tbody.innerHTML = `<tr><td colspan="16" style="padding:20px; text-align:center; color:var(--red);">載入失敗: ${escapeHtml(error.message)}</td></tr>`;
+        }
+    }
+
+    async function showSurvivalLeaderboard() {
+        document.getElementById("victoryOverlay").classList.remove("active");
+        document.getElementById("leaderboardOverlay").classList.add("active");
+        document.getElementById("leaderboardTitle").textContent = "全班生存模式最高紀錄";
+        const tbody = document.getElementById("leaderboardBody");
+        tbody.innerHTML = '<tr><td colspan="14" style="padding:20px; text-align:center; color:#888;">載入中...</td></tr>';
+
+        try {
+            const querySnapshot = await window.firebaseGetDocs(window.firebaseCollection(window.firebaseDb, "players"));
+            const rows = [];
+            querySnapshot.forEach((playerDoc) => {
+                const data = playerDoc.data();
+                const survival = data.survival || {};
+                const bests = levels.map((_, index) => normalizeSurvivalRecord(survival[index]).best);
+                rows.push({
+                    name: data.name || "佚名勇者",
+                    email: data.email || playerDoc.id,
+                    bests,
+                    topBest: Math.max(0, ...bests),
+                    totalBest: bests.reduce((sum, value) => sum + value, 0),
+                    lastScore: Number(data.lastSurvivalScore || 0),
+                    lastLevel: normalizeLevelIndex(data.lastSurvivalLevel)
+                });
+            });
+
+            rows.sort((a, b) => b.topBest - a.topBest || b.totalBest - a.totalBest || a.email.localeCompare(b.email));
+            let tableContent = '<tr style="background:var(--green); color:#001018; position:sticky; top:0; z-index:1;">';
+            tableContent += '<th style="padding:8px; border:1px solid #444; min-width:100px;">學生姓名</th>';
+            tableContent += '<th style="padding:8px; border:1px solid #444; min-width:120px;">Email</th>';
+            levels.forEach((_, index) => tableContent += `<th style="padding:8px; border:1px solid #444; min-width:62px;">Lv.${index + 1}</th>`);
+            tableContent += '<th style="padding:8px; border:1px solid #444;">最高</th><th style="padding:8px; border:1px solid #444;">總和</th><th style="padding:8px; border:1px solid #444;">最後紀錄</th></tr>';
+
+            rows.forEach((rowData) => {
+                let row = `<tr><td style="padding:8px; border:1px solid #444;">${escapeHtml(rowData.name)}</td><td style="padding:8px; border:1px solid #444; font-size:12px;">${escapeHtml(rowData.email)}</td>`;
+                rowData.bests.forEach((best) => {
+                    row += `<td style="padding:8px; border:1px solid #444; text-align:center; background:${best > 0 ? "#2f8f46" : "#1a1d25"}; color:${best > 0 ? "#fff" : "#888"}; font-weight:${best > 0 ? "900" : "400"};">${best}</td>`;
+                });
+                const lastText = rowData.lastLevel >= 0 ? `Lv.${rowData.lastLevel + 1} / ${rowData.lastScore}題` : "-";
+                row += `<td style="padding:8px; border:1px solid #444; text-align:center; color:var(--green); font-weight:900;">${rowData.topBest}</td><td style="padding:8px; border:1px solid #444; text-align:center;">${rowData.totalBest}</td><td style="padding:8px; border:1px solid #444; text-align:center;">${lastText}</td></tr>`;
+                tableContent += row;
+            });
+
+            tbody.innerHTML = rows.length ? tableContent : '<tr><td colspan="14" style="padding:20px; text-align:center; color:#888;">尚無生存模式資料</td></tr>';
+        } catch (error) {
+            tbody.innerHTML = `<tr><td colspan="14" style="padding:20px; text-align:center; color:var(--red);">載入失敗: ${escapeHtml(error.message)}</td></tr>`;
         }
     }
 
@@ -1465,6 +1671,12 @@
         document.getElementById("levelEditors").innerHTML = levels.map((level, index) => {
             return `<label>第${index + 1}關<input class="admin-input" type="number" min="0" id="editLevel${index}" value="${Number(levelsData[index] || 0)}"></label>`;
         }).join("");
+
+        const survivalData = data.survival || {};
+        document.getElementById("survivalEditors").innerHTML = levels.map((level, index) => {
+            const record = normalizeSurvivalRecord(survivalData[index]);
+            return `<label>第${index + 1}關最高<input class="admin-input" type="number" min="0" id="editSurvival${index}" value="${record.best}"></label>`;
+        }).join("");
     }
 
     async function saveTeacherStudent() {
@@ -1477,11 +1689,21 @@
             if (value > 0) newLevels[index] = value;
         });
 
+        const newSurvival = {};
+        levels.forEach((_, index) => {
+            const value = Math.max(0, parseInt(document.getElementById(`editSurvival${index}`).value || "0", 10));
+            const oldRecord = normalizeSurvivalRecord((oldData.survival || {})[index]);
+            if (value > 0 || oldRecord.plays || oldRecord.lastScore) {
+                newSurvival[index] = { ...oldRecord, best: value };
+            }
+        });
+
         const updated = {
             ...oldData,
             name: document.getElementById("editName").value.trim(),
             email: document.getElementById("editEmail").value.trim(),
             levels: newLevels,
+            survival: newSurvival,
             maxClearedLevel: normalizeLevelIndex(document.getElementById("editMaxCleared").value),
             maxLevel: normalizeLevelIndex(document.getElementById("editMaxCleared").value),
             abandonedAtLevel: normalizeLevelIndex(document.getElementById("editAbandoned").value),
@@ -1491,10 +1713,11 @@
         };
 
         try {
-            await window.firebaseSetDoc(window.firebaseDoc(window.firebaseDb, "players", selectedStudentId), updated);
+            const savedStudentId = selectedStudentId;
+            await window.firebaseSetDoc(window.firebaseDoc(window.firebaseDb, "players", savedStudentId), updated);
             document.getElementById("teacherMessage").textContent = "已儲存修改";
             await loadTeacherStudents();
-            selectTeacherStudent(selectedStudentId);
+            selectTeacherStudent(savedStudentId);
         } catch (error) {
             document.getElementById("teacherMessage").textContent = "儲存失敗: " + error.message;
         }
@@ -1503,7 +1726,10 @@
     async function resetSelectedStudent() {
         if (!selectedStudentId) return;
         if (!confirm("確定要重置這位學生的闖關紀錄嗎？")) return;
-        levels.forEach((_, index) => document.getElementById(`editLevel${index}`).value = 0);
+        levels.forEach((_, index) => {
+            document.getElementById(`editLevel${index}`).value = 0;
+            document.getElementById(`editSurvival${index}`).value = 0;
+        });
         document.getElementById("editMaxCleared").value = -1;
         document.getElementById("editAbandoned").value = -1;
         document.getElementById("editTotalPlays").value = 0;
