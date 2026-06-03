@@ -887,7 +887,6 @@
         document.getElementById("loginBtn").addEventListener("click", login);
         document.getElementById("guestBtn").addEventListener("click", guestPlay);
         document.getElementById("testBtn").addEventListener("click", testEnter);
-        document.getElementById("teacherTestBtn").addEventListener("click", teacherTestEnter);
         document.getElementById("ansMain").onclick = () => { activeInput = "main"; updateInputFocus(); };
         document.getElementById("ansRem").onclick = () => { activeInput = "rem"; updateInputFocus(); };
         updateRankBoard();
@@ -1058,16 +1057,6 @@
         showLevelSelect();
     }
 
-    function teacherTestEnter() {
-        userId = "test-teacher";
-        userEmail = TEACHER_EMAILS[0];
-        currentStudentName = "導師測試";
-        userLevels = {0: 10, 1: 5, 2: 3};
-        survivalBestRecords = {0: {best: 20}, 1: {best: 11}};
-        updateTeacherButtons();
-        updateCurrentHeroDisplay();
-        showLevelSelect();
-    }
 
     async function logout() {
         stopTimer();
